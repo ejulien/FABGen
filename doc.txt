@@ -1,0 +1,23 @@
+everything is done BY POINTER, always. the generator takes care of transforming values or reference to a pointer
+
+
+typemap operators
+-----------------
+
+check: verify that a script object can be converted to a C object
+to_c: convert a script object to a C object
+from_c: convert a C object to a script object
+
+
+
+
+
+
+Lua:
+
+typemap signatures
+------------------
+
+check: bool check(lua_State *L, int idx);
+to_c: int to_c(lua_State *L, int idx, c_type *val);
+from_c: int from_c(lua_State *L, c_type *val); // return the number of values pushed onto the stack
