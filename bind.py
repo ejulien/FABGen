@@ -1,7 +1,40 @@
+from pypeg2 import re, flag, name, Plain, optional, attr, K, parse
+
+
 __header = ""
 __source = ""
 
+#--
+typename = re.compile(r"((::)*(_|[A-z])[A-z0-9_]*)+")
+ref_re = re.compile(r"[&*]+")
 
+
+class __CType:
+	def __repr__(self):
+		out = ""
+		if self.const:
+			out += "const "
+		out += self.type
+		if hasattr(self, "ref"):
+			out += self.ref
+		return out
+
+
+__CType.grammar = flag("const", K("const")), optional([flag("signed", K("signed")), flag("unsigned", K("unsigned"))]), attr("type", typename), optional(attr("ref", ref_re))
+
+
+class __CArg:
+	def __repr__(self):
+		out = repr(self.type)
+		if hasattr(self, 'name'):
+			out += ' ' + str(self.name)
+		return out
+
+
+__CArg.grammar = attr("type", __CType), optional(name())
+
+
+#--
 def insert_comment(comment, in_source=True, in_header=True):
 	global __header, __source
 	if in_header:
@@ -135,19 +168,15 @@ def args_to_c(args):
 	if args_len == 1 and args[0] == 'void':
 		return args_to_c_cast
 
-	for i, type in enumerate(args):
-		decl = __type_decls[type]
+	for i, t in enumerate(args):
+		type = Type(t)
+		decl = __type_decls[type.value_name()]
 
 		name = get_arg_name(i)
 
-		# by value
-		__source += type + ' ' + name + ';\n'
+		__source += type.value_name() + ' ' + name + ';\n'
 		__source += __templates['arg_to_c'](i, args_len, '&' + name, decl['__to_c_func']) + '\n'
-		args_to_c_cast.append(name)
-
-		# by ref
-
-		# by pointer
+		args_to_c_cast.append(type.value_to_fully_qualified_transform_str() + name)
 
 	return args_to_c_cast
 
@@ -175,7 +204,29 @@ def rval_from_c(rvals):
 		__source += __templates['rval_from_c'](i, rvals_len, '&' + name, decl['__from_c_func']) + '\n'
 
 
+
+
+
+
+def __prepare_types(types, template):
+	if not type(types) is type([]):
+		types = [types]
+	return [parse(type, template) for type in types]
+
+
+def prepare_args(args):
+	return __prepare_types(args, __CArg)
+
+
+def prepare_rval(rval):
+	return __prepare_types(rval, __CType)
+
+
+
 def bind_function(name, rval, args):
+	rval = prepare_rval(rval)
+	args = prepare_args(args)
+
 	global __header, __source
 	insert_comment('%s %s(%s)' % (rval, name, ', '.join(args)), True, False)
 
