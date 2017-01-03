@@ -10,15 +10,19 @@ typename = re.compile(r"((::)*(_|[A-z])[A-z0-9_]*)+")
 ref_re = re.compile(r"[&*]+")
 
 
+def get_fully_qualified_ctype_name(type):
+	out = ''
+	if type.const:
+		out += 'const '
+	out += type.unqualified_name
+	if hasattr(type, 'ref'):
+		out += ' ' + type.ref
+	return out
+
+
 class __CType:
 	def __repr__(self):
-		out = ""
-		if self.const:
-			out += "const "
-		out += self.unqualified_name
-		if hasattr(self, "ref"):
-			out += self.ref
-		return out
+		return get_fully_qualified_ctype_name(self)
 
 
 __CType.grammar = flag("const", K("const")), optional([flag("signed", K("signed")), flag("unsigned", K("unsigned"))]), attr("unqualified_name", typename), optional(attr("ref", ref_re))
@@ -89,7 +93,7 @@ def set_class_templates(check, to_c, from_c):
 
 
 #
-__type_infos = None
+__ctype_infos = None
 
 
 def get_type_clean_name(type):
@@ -106,13 +110,8 @@ def get_type_clean_name(type):
 	return '_'.join(parts)
 
 
-def __get_type_op_function_name(type, op):
-	""" Return the name of the function implementing an operator for a given type in the generator output."""
-	return "_" + get_type_clean_name(type) + "_" + op
-
-
 def __output_type_op_function(body, type, info, op):
-	name = __get_type_op_function_name(type, op)
+	name = '_%s_%s' % (info['clean_name'], op)
 
 	proto = __templates['proto_' + op](name, type, info)
 
@@ -134,16 +133,17 @@ def bind_common(type, info):
 
 	insert_comment('type operators for ' + type)
 
-	info['type_tag'] = '__%s_type_tag' % type
+	info['clean_name'] = get_type_clean_name(type)
+	info['type_tag'] = '__%s_type_tag' % info['clean_name']
 	insert_source_code('static const char *%s = "%s";\n' % (info['type_tag'], type))
 
 
 def bind_type(type, check, to_c, from_c):
 	"""Declare a simple type natively supported by the VM"""
-	global __type_infos
+	global __ctype_infos
 
 	info = {'policy': 'by_value'}
-	__type_infos[type] = info
+	__ctype_infos[type] = info
 
 	global __header, __source
 	bind_common(type, info)
@@ -168,10 +168,10 @@ def bind_type(type, check, to_c, from_c):
 #
 def bind_class(type, check, to_c, from_c):
 	"""Declare a C++ struct/class"""
-	global __type_infos
+	global __ctype_infos
 
 	info = {'policy': 'by_pointer'}
-	__type_infos[type] = info
+	__ctype_infos[type] = info
 
 	global __header, __source
 	bind_common(type, info)
@@ -203,23 +203,28 @@ def __get_arg_name(i):
 	return 'arg' + str(i)
 
 
-def get_type_info(type):
+def get_ctype_info(ctype):
 	"""Return the argument type information structure."""
-	return __type_infos[type.unqualified_name]
+	full_qualified_ctype_name = get_fully_qualified_ctype_name(ctype)
+
+	if full_qualified_ctype_name in __ctype_infos:
+		return __ctype_infos[full_qualified_ctype_name]
+
+	return __ctype_infos[ctype.unqualified_name]
 
 
-def qualify_value_var(var_name, type):
-	"""Qualify a C value variable so that it conforms to a type signature."""
-	if hasattr(type, 'ref'):
-		if type.ref == '*':
+def qualify_value_var(var_name, ctype):
+	"""Qualify a C value variable so that it conforms to a C type signature."""
+	if hasattr(ctype, 'ref'):
+		if ctype.ref == '*':
 			return '&' + var_name
-		if type.ref == '&':
+		if ctype.ref == '&':
 			return var_name
 
 	return var_name
 
 
-def qualify_pointer_var(var_name, type):
+def qualify_pointer_var(var_name, ctype):
 	"""Qualify a C pointer variable so that it conforms to a type signature."""
 	pass
 
@@ -229,17 +234,17 @@ def __arg_to_c(args, i, arg_count):
 	global __header, __source
 
 	arg = args[i]  # argument to transform to C
-	type_info = get_type_info(arg.type)
+	ctype_info = get_ctype_info(arg.type)
 
 	arg_var = __get_arg_name(i)
 
-	if type_info['policy'] == 'by_value':
-		__source += '%s %s;\n' % (arg.type.unqualified_name, arg_var)
-		__source += __templates['arg_to_c'](args, i, arg_count, type_info['to_c'], '&' + arg_var)
+	if ctype_info['policy'] == 'by_value':
+		__source += '%s %s;\n' % (get_fully_qualified_ctype_name(arg.type), arg_var)
+		__source += __templates['arg_to_c'](args, i, arg_count, ctype_info['to_c'], '&' + arg_var)
 		qualified_arg_var = qualify_value_var(arg_var, arg.type)
-	elif type_info['policy'] == 'by_pointer':
-		__source += '%s *%s;\n' % (arg.type.unqualified_name, arg_var)
-		__source += __templates['arg_to_c'](args, i, arg_count, type_info['to_c'], arg_var)
+	elif ctype_info['policy'] == 'by_pointer':
+		__source += '%s *%s;\n' % (get_fully_qualified_ctype_name(arg.type), arg_var)
+		__source += __templates['arg_to_c'](args, i, arg_count, ctype_info['to_c'], arg_var)
 		qualified_arg_var = qualify_pointer_var(arg_var, arg.type)
 
 	__source += '\n'
@@ -280,12 +285,24 @@ def __rval_from_c(rvals):
 		__source += __templates['void_rval_from_c']() + '\n'
 		return
 
-	for i, type in enumerate(rvals):
-		type_info = get_type_info(type)
+	for i, ctype in enumerate(rvals):
+		type_info = get_ctype_info(ctype)
 		name = __get_rval_name(i)
 
-		# by value
-		__source += __templates['rval_from_c'](i, rval_count, '&' + name, decl['__from_c_func']) + '\n'
+		own_policy = 'NonOwning'
+		qualifier = ''
+
+		if hasattr(ctype, 'ref'):
+			if ctype.ref == '&':
+				qualifier = '&'  # reference to pointer
+				own_policy = 'NonOwning'
+			elif ctype.ref == '*':
+				own_policy = 'NonOwning'
+		else:
+			qualifier = '&'  # value to pointer
+			own_policy = 'ByValue'
+
+		__source += __templates['rval_from_c'](i, rval_count, qualifier + name, type_info['from_c'], own_policy) + '\n'
 
 
 def __declare_rval_var(rval):
@@ -294,16 +311,16 @@ def __declare_rval_var(rval):
 
 	global __header, __source
 
-	type = rval[0]
+	ctype = rval[0]
 	name = __get_rval_name(0)  # destination variable
 
-	if hasattr(type, 'ref'):
-		if type.ref == '*':
-			__source += '%s *%s = ' % (type.unqualified_name, name)
-		elif type.ref == '&':
-			__source += '%s &%s = ' % (type.unqualified_name, name)
+	if hasattr(ctype, 'ref'):
+		if ctype.ref == '*':
+			__source += '%s *%s = ' % (ctype.unqualified_name, name)
+		elif ctype.ref == '&':
+			__source += '%s &%s = ' % (ctype.unqualified_name, name)
 	else:
-		__source += '%s %s = ' % (type.unqualified_name, name)
+		__source += '%s %s = ' % (ctype.unqualified_name, name)
 
 
 
@@ -314,23 +331,23 @@ def __declare_rval_var(rval):
 
 
 #
-def __prepare_types(types, template):
-	if not type(types) is type([]):
-		types = [types]
-	return [parse(type, template) for type in types]
+def __prepare_ctypes(ctypes, template):
+	if not type(ctypes) is type([]):
+		ctypes = [ctypes]
+	return [parse(type, template) for type in ctypes]
 
 
 def prepare_args(args):
-	return __prepare_types(args, __CArg)
+	return __prepare_ctypes(args, __CArg)
 
 
 def prepare_rval(rval):
-	return __prepare_types(rval, __CType)
+	return __prepare_ctypes(rval, __CType)
 
 
 #
-def types_to_string(types):
-	return ','.join([repr(type) for type in types])
+def ctypes_to_string(ctypes):
+	return ','.join([repr(ctype) for ctype in ctypes])
 
 
 # --
@@ -343,7 +360,7 @@ def bind_function(name, rval, args):
 	args = prepare_args(args)
 
 	global __header, __source
-	insert_comment('%s %s(%s)' % (types_to_string(rval), name, types_to_string(args)), True, False)
+	insert_comment('%s %s(%s)' % (ctypes_to_string(rval), name, ctypes_to_string(args)), True, False)
 
 	__source += "static int " + get_bind_function_name(name) + "(lua_State *L) {\n"
 	qualified_args = __args_to_c(args)  # convert args
@@ -434,9 +451,9 @@ private:
 };
 '''
 
-	global __templates, __type_infos
+	global __templates, __ctype_infos
 	__templates = {}
-	__type_infos = {}
+	__ctype_infos = {}
 
 
 def get_output():

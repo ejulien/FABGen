@@ -21,9 +21,9 @@ def install(namespace = 'BindLua'):
 	def arg_to_c(args, arg_idx, arg_count, to_c, out_var_ptr):
 		return '%s(L, %d, %s);' % (to_c, arg_idx, out_var_ptr)
 
-	def rval_from_c(i, count, var, func):
+	def rval_from_c(i, count, var, func, own_policy):
 		src = 'int rval_count = 0;\n' if i == 0 else ''
-		src += 'rval_count += %s(L, %s);\n' % (func, var)
+		src += 'rval_count += %s(L, %s, %s);\n' % (func, var, own_policy)
 		if i == count - 1:
 			src += 'return rval_count'
 		return src
