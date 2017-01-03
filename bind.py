@@ -67,11 +67,11 @@ def set_namespace(ns):
 __templates = None
 
 
-def set_type_templates(check, to_c, from_c):
+def set_proto_templates(check, to_c, from_c):
 	global __templates
-	__templates['check'] = check
-	__templates['to_c'] = to_c
-	__templates['from_c'] = from_c
+	__templates['proto_check'] = check
+	__templates['proto_to_c'] = to_c
+	__templates['proto_from_c'] = from_c
 
 
 def set_call_templates(arg_to_c, rval_from_c, void_rval_from_c):
@@ -114,11 +114,17 @@ def __get_type_op_function_name(type, op):
 def __output_type_op_function(body, type, info, op):
 	name = __get_type_op_function_name(type, op)
 
-	proto = __templates[op](name, type, info)
+	proto = __templates['proto_' + op](name, type, info)
 
 	global __header, __source
 	__header += proto + ';\n'
-	__source += proto + ' { ' + body + ' }\n'
+
+	if callable(body):
+		body_src = body(type, info)
+	else:
+		body_src = body
+
+	__source += proto + ' { ' + body_src + ' }\n'
 
 	return name
 
@@ -126,26 +132,30 @@ def __output_type_op_function(body, type, info, op):
 def bind_common(type, info):
 	global __header, __source
 
-	insert_comment('typemap for ' + type)
+	insert_comment('type operators for ' + type)
 
-	info['type_cstr'] = '__%s_type_cstr' % type
-	insert_source_code('static const char *%s = "%s";\n\n' % (info['type_cstr'], type))
+	info['type_tag'] = '__%s_type_tag' % type
+	insert_source_code('static const char *%s = "%s";\n' % (info['type_tag'], type))
 
 
 def bind_type(type, check, to_c, from_c):
 	"""Declare a simple type natively supported by the VM"""
 	global __type_infos
 
-	info = {'type': 'simple', 'check': check, 'to_c': to_c, 'from_c': from_c}
+	info = {'policy': 'by_value'}
 	__type_infos[type] = info
 
 	global __header, __source
 	bind_common(type, info)
 
+	assert check, "'check' operator must be provided for simple type '%s'" % type
+	assert to_c, "'to_c' operator must be provided for simple type '%s'" % type
+	assert from_c, "'from_c' operator must be provided for simple type '%s'" % type
+
 	#
-	info['__check_func'] = __output_type_op_function(check, type, info, 'check')
-	info['__to_c_func'] = __output_type_op_function(to_c, type, info, 'to_c')
-	info['__from_c_func'] = __output_type_op_function(from_c, type, info, 'from_c')
+	info['check'] = __output_type_op_function(check, type, info, 'check')
+	info['to_c'] = __output_type_op_function(to_c, type, info, 'to_c')
+	info['from_c'] = __output_type_op_function(from_c, type, info, 'from_c')
 
 	__header += '\n'
 	__source += '\n'
@@ -160,16 +170,24 @@ def bind_class(type, check, to_c, from_c):
 	"""Declare a C++ struct/class"""
 	global __type_infos
 
-	info = {'type': 'class', 'check': check, 'to_c': to_c, 'from_c': from_c}
+	info = {'policy': 'by_pointer'}
 	__type_infos[type] = info
 
 	global __header, __source
 	bind_common(type, info)
 
+	# default to language conversion for complex objects
+	if not check:
+		check = __templates['class_check']
+	if not to_c:
+		to_c = __templates['class_to_c']
+	if not from_c:
+		from_c = __templates['class_from_c']
+
 	#
-	info['__check_func'] = __output_type_op_function(check, type, info, 'class_check')
-	info['__to_c_func'] = __output_type_op_function(to_c, type, info, 'class_to_c')
-	info['__from_c_func'] = __output_type_op_function(from_c, type, info, 'class_from_c')
+	info['check'] = __output_type_op_function(check, type, info, 'check')
+	info['to_c'] = __output_type_op_function(to_c, type, info, 'to_c')
+	info['from_c'] = __output_type_op_function(from_c, type, info, 'from_c')
 
 	__header += '\n'
 	__source += '\n'
@@ -185,33 +203,66 @@ def __get_arg_name(i):
 	return 'arg' + str(i)
 
 
-def __arg_to_c(args, i, args_count):
+def get_type_info(type):
+	"""Return the argument type information structure."""
+	return __type_infos[type.unqualified_name]
+
+
+def qualify_value_var(var_name, type):
+	"""Qualify a C value variable so that it conforms to a type signature."""
+	if hasattr(type, 'ref'):
+		if type.ref == '*':
+			return '&' + var_name
+		if type.ref == '&':
+			return var_name
+
+	return var_name
+
+
+def qualify_pointer_var(var_name, type):
+	"""Qualify a C pointer variable so that it conforms to a type signature."""
+	pass
+
+
+def __arg_to_c(args, i, arg_count):
 	"""Convert an argument from a list of arguments, return the update argument position."""
 	global __header, __source
 
 	arg = args[i]  # argument to transform to C
+	type_info = get_type_info(arg.type)
 
-	name = __get_arg_name(i)
-	decl = __type_infos[arg.type.unqualified_name]
+	arg_var = __get_arg_name(i)
 
-	# by value
-	__source += arg.type.unqualified_name + ' ' + name + ';\n'
-	__source += __templates['arg_to_c'](args, i, args_count, '&' + name, decl['__to_c_func']) + '\n'
+	if type_info['policy'] == 'by_value':
+		__source += '%s %s;\n' % (arg.type.unqualified_name, arg_var)
+		__source += __templates['arg_to_c'](args, i, arg_count, type_info['to_c'], '&' + arg_var)
+		qualified_arg_var = qualify_value_var(arg_var, arg.type)
+	elif type_info['policy'] == 'by_pointer':
+		__source += '%s *%s;\n' % (arg.type.unqualified_name, arg_var)
+		__source += __templates['arg_to_c'](args, i, arg_count, type_info['to_c'], arg_var)
+		qualified_arg_var = qualify_pointer_var(arg_var, arg.type)
 
-	return i + 1
+	__source += '\n'
 
+	return [qualified_arg_var]
 
 
 def __args_to_c(args):
 	"""Prepare arguments to a C function call."""
 
-	args_count = len(args)
-	if args_count == 1 and args[0] == 'void':
+	arg_count = len(args)
+	if arg_count == 1 and args[0] == 'void':
 		return  # no arguments expected
 
+	qualified_args = []
+
 	i = 0
-	while i < args_count:
-		i = __arg_to_c(args, i, args_count)
+	while i < arg_count:
+		qualified_arg = __arg_to_c(args, i, arg_count)
+		i += len(qualified_arg)
+		qualified_args.extend(qualified_arg)
+
+	return qualified_args
 
 
 #
@@ -225,17 +276,38 @@ def __rval_from_c(rvals):
 	rval_count = len(rvals)
 
 	# void return value
-	if rval_count == 1 and rvals[0] == 'void':
+	if rval_count == 1 and rvals[0].unqualified_name == 'void':
 		__source += __templates['void_rval_from_c']() + '\n'
 		return
 
-	for i, rval in enumerate(rvals):
-		decl = __type_infos[rval]
-
+	for i, type in enumerate(rvals):
+		type_info = get_type_info(type)
 		name = __get_rval_name(i)
 
 		# by value
 		__source += __templates['rval_from_c'](i, rval_count, '&' + name, decl['__from_c_func']) + '\n'
+
+
+def __declare_rval_var(rval):
+	if rval[0].unqualified_name == 'void':
+		return
+
+	global __header, __source
+
+	type = rval[0]
+	name = __get_rval_name(0)  # destination variable
+
+	if hasattr(type, 'ref'):
+		if type.ref == '*':
+			__source += '%s *%s = ' % (type.unqualified_name, name)
+		elif type.ref == '&':
+			__source += '%s &%s = ' % (type.unqualified_name, name)
+	else:
+		__source += '%s %s = ' % (type.unqualified_name, name)
+
+
+
+
 
 
 
@@ -274,18 +346,11 @@ def bind_function(name, rval, args):
 	insert_comment('%s %s(%s)' % (types_to_string(rval), name, types_to_string(args)), True, False)
 
 	__source += "static int " + get_bind_function_name(name) + "(lua_State *L) {\n"
-	__args_to_c(args)  # convert args
+	qualified_args = __args_to_c(args)  # convert args
 
-	if rval != 'void':
-		__source += "%s %s = " % (rval, __get_rval_name(0))
-
-
-
-
-	__source += name + '(' + ', '.join(args_to_c_cast) + ');\n'  # function call
-
-	rvals = [rval]  # implement *OUT (SWIG style) here
-	__rval_from_c(rvals)
+	__declare_rval_var(rval)
+	__source += name + '(' + ', '.join(qualified_args) + ');\n'  # perform C function call
+	__rval_from_c(rval)
 
 	__source += "}\n\n"
 
@@ -307,6 +372,8 @@ def reset_generator():
 	__source = ""
 
 	__source += '''
+#include <cstdint>
+
 // native object wrapper
 enum OwnershipPolicy { NonOwning, ByValue, ByAddress };
 
@@ -314,51 +381,56 @@ struct NativeObjectWrapper {
 	virtual ~NativeObjectWrapper() = 0
 
 	virtual void *GetObj() const = 0;
-	virtual const char *GetType() const = 0;
+	virtual const char *GetTypeTag() const = 0;
+
+	bool IsNativeObjectWrapper() const { return magic == 'fab!'; }
+
+private:
+	uint32_t magic = 'fab!';
 };
 
 template <typename T> struct NativeObjectValueWrapper : NativeObjectWrapper {
-	NativeObjectValueWrapper(T *obj_, const char *type_) : obj(*obj_), type(type_) {}
+	NativeObjectValueWrapper(T *obj_, const char *type_tag_) : obj(*obj_), type_tag(type_tag_) {}
 
 	void *GetObj() const override { return &obj; }
-	const char *GetType() const override { return type; }
+	const char *GetTypeTag() const override { return type; }
 
 private:
 	T obj;
-	const char *type;
+	const char *type_tag;
 };
 
 struct NativeObjectPtrWrapper : NativeObjectWrapper {
-	NativeObjectPtrWrapper(void *obj_, const char *type_) : obj(obj_), type(type_) {}
+	NativeObjectPtrWrapper(void *obj_, const char *type_tag_) : obj(obj_), type_tag(type_tag_) {}
 
-	void *GetObj() const { return obj; }
-	const char *GetType() const { return type; }
+	void *GetObj() const override { return obj; }
+	const char *GetType() const override { return type; }
 
 private:
 	void *obj;
-	const char *type;
+	const char *type_tag;
 };
 
 template <typename T> struct NativeObjectUniquePtrWrapper : NativeObjectWrapper {
-	NativeObjectUniquePtrWrapper(T *obj_, const char *type_) : obj(obj_), type(type_) {}
+	NativeObjectUniquePtrWrapper(T *obj_, const char *type_tag_) : obj(obj_), type_tag(type_tag_) {}
 
-	void *GetObj() const { return obj.get(); }
-	const char *GetType() const { return type; }
+	void *GetObj() const override { return obj.get(); }
+	const char *GetTypeTag() const override { return type; }
 
 private:
 	std::unique_ptr<T> obj;
-	const char *type;
+	const char *type_tag;
 };
 
 template <typename T> struct NativeObjectSharedPtrWrapper : NativeObjectWrapper {
-	NativeObjectSharedPtrWrapper(std::shared_ptr<T> *obj_, const char *type_) : obj(*obj_), type(type_) {}
+	NativeObjectSharedPtrWrapper(std::shared_ptr<T> *obj_, const char *type_tag_) : obj(*obj_), type_tag(type_tag_) {}
 
-	void *GetObj() const { return obj.get(); }
-	const char *GetType() const { return type; }
+	void *GetObj() const override { return obj.get(); }
+	const char *GetTypeTag() const override { return type; }
 
 private:
 	std::shared_ptr<T> obj;
-	const char *type;
+	const char *type_tag;
 };
 '''
 

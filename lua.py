@@ -6,20 +6,20 @@ def install(namespace = 'BindLua'):
 	bind.set_namespace(namespace)
 
 	# templates for basic type exchange
-	def check(funcname, type, info):
+	def check_proto(funcname, type, info):
 		return 'bool %s(lua_State *L, int idx)' % funcname
 
-	def to_c(funcname, type, info):
-		return 'void %s(lua_State *L, int idx, %s *val)' % (funcname, type)
+	def to_c_proto(funcname, type, info):
+		return 'void %s(lua_State *L, int idx, %s *obj)' % (funcname, type)
 
-	def from_c(funcname, type, info):
-		return 'int %s(lua_State *L, %s *val)' % (funcname, type)
+	def from_c_proto(funcname, type, info):
+		return 'int %s(lua_State *L, %s *obj, OwnershipPolicy own_policy)' % (funcname, type)
 
-	bind.set_type_templates(check, to_c, from_c)
+	bind.set_proto_templates(check_proto, to_c_proto, from_c_proto)
 
 	# templates for function calls
-	def arg_to_c(i, count, var, func):
-		return '%s(L, %d, %s);' % (func, i, var)
+	def arg_to_c(args, arg_idx, arg_count, to_c, out_var_ptr):
+		return '%s(L, %d, %s);' % (to_c, arg_idx, out_var_ptr)
 
 	def rval_from_c(i, count, var, func):
 		src = 'int rval_count = 0;\n' if i == 0 else ''
@@ -33,27 +33,52 @@ def install(namespace = 'BindLua'):
 
 	bind.set_call_templates(arg_to_c, rval_from_c, void_rval_from_c)
 
-	# templates for object type exchange
+	# templates for class type exchange
 	bind.insert_source_code('''
 // wrap a C object
-template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj, const char *type)
+template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj, const char *type_tag)
 {
 	auto p = lua_newuserdata(L, sizeof(NATIVE_OBJECT_WRAPPER_T));
 	if (!p)
 		return 0;
 
-	new (p) NATIVE_OBJECT_WRAPPER_T(obj, type);
+	new (p) NATIVE_OBJECT_WRAPPER_T(obj, type_tag);
 	return 1;
 }
-	''')
+''')
 
+	def class_check(type, info):
+		return '''
+	auto p = lua_touserdata(L, idx);
+	if (!p)
+		return false;
 
+	auto w = reinterpret_cast<NativeObjectWrapper *>(p);
+	return w->IsNativeObjectWrapper() && w->GetTypeTag() == %s;
+''' % info['type_tag']
 
+	def class_to_c(type, info):
+		return '''
+	auto p = lua_touserdata(L, idx);
+	auto w = reinterpret_cast<NativeObjectWrapper *>(p);
+	*val = reinterpret_cast<%s>(w->GetObj());
+''' % type
 
-#	bind.set_obj_templates(check_obj, obj_to_c, obj_from_c)
+	def class_from_c(type, info):
+		return '''
+	switch (own_policy) {
+		default:
+		case NonOwning:
+			return _wrap_obj<NativeObjectPtrWrapper<%s>>(L, obj, %s);
+		case ByValue:
+			return _wrap_obj<NativeObjectValueWrapper<%s>>(L, obj, %s);
+		case ByAddress:
+			return _wrap_obj<NativeObjectUniquePtrWrapper<%s>>(L, obj, %s);
+	}
+	return 0;
+''' % (type, info['type_tag'], type, info['type_tag'], type, info['type_tag'])
 
-
-
+	bind.set_class_templates(class_check, class_to_c, class_from_c)
 
 	# bind basic types
 	bind.bind_type('int',

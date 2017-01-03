@@ -22,7 +22,7 @@ lua.install()
 
 
 
-bind.bind_struct('simple_struct')
+bind.bind_class('simple_struct', None, None, None)
 
 
 bind.bind_function('add', 'int', ['int a', 'int'])
