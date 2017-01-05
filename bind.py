@@ -30,13 +30,13 @@ __CType.grammar = flag("const", K("const")), optional([flag("signed", K("signed"
 
 class __CArg:
 	def __repr__(self):
-		out = repr(self.type)
+		out = repr(self.ctype)
 		if hasattr(self, 'name'):
 			out += ' ' + str(self.name)
 		return out
 
 
-__CArg.grammar = attr("type", __CType), optional(name())
+__CArg.grammar = attr("ctype", __CType), optional(name())
 
 
 #
@@ -142,7 +142,7 @@ def bind_type(type, check, to_c, from_c):
 	"""Declare a simple type natively supported by the VM"""
 	global __ctype_infos
 
-	info = {'policy': 'by_value'}
+	info = {'policy': 'by_value', 'ctype': parse(type, __CType)}
 	__ctype_infos[type] = info
 
 	global __header, __source
@@ -170,7 +170,7 @@ def bind_class(type, check, to_c, from_c):
 	"""Declare a C++ struct/class"""
 	global __ctype_infos
 
-	info = {'policy': 'by_pointer'}
+	info = {'policy': 'by_pointer', 'ctype': parse(type, __CType)}
 	__ctype_infos[type] = info
 
 	global __header, __source
@@ -203,8 +203,8 @@ def __get_arg_name(i):
 	return 'arg' + str(i)
 
 
-def get_ctype_info(ctype):
-	"""Return the argument type information structure."""
+def select_ctype_info(ctype):
+	"""Select the type information structure."""
 	full_qualified_ctype_name = get_fully_qualified_ctype_name(ctype)
 
 	if full_qualified_ctype_name in __ctype_infos:
@@ -234,7 +234,7 @@ def __arg_to_c(args, i, arg_count):
 	global __header, __source
 
 	arg = args[i]  # argument to transform to C
-	ctype_info = get_ctype_info(arg.type)
+	ctype_info = select_ctype_info(arg.type)
 
 	arg_var = __get_arg_name(i)
 
@@ -252,20 +252,31 @@ def __arg_to_c(args, i, arg_count):
 	return [qualified_arg_var]
 
 
-def __args_to_c(args):
+def __args_to_c(args_ops):
 	"""Prepare arguments to a C function call."""
 
-	arg_count = len(args)
-	if arg_count == 1 and args[0] == 'void':
+	global __header, __source
+
+	arg_count = len(args_ops)
+	if arg_count == 1 and args_ops[0] == 'void':
 		return  # no arguments expected
 
 	qualified_args = []
 
-	i = 0
-	while i < arg_count:
-		qualified_arg = __arg_to_c(args, i, arg_count)
-		i += len(qualified_arg)
-		qualified_args.extend(qualified_arg)
+	for arg_op in args_ops:
+		info = arg_op['info']
+		vars = arg_op['vars']
+
+		for var in vars:
+			__source += '%s %s;\n' % (get_fully_qualified_ctype_name(var['ctype']), var['var'])
+			pass
+
+
+			#	i = 0
+#	while i < arg_count:
+#		qualified_arg = __arg_to_c(args, i, arg_count)
+#		i += len(qualified_arg)
+#		qualified_args.extend(qualified_arg)
 
 	return qualified_args
 
@@ -286,7 +297,7 @@ def __rval_from_c(rvals):
 		return
 
 	for i, ctype in enumerate(rvals):
-		type_info = get_ctype_info(ctype)
+		type_info = select_ctype_info(ctype)
 		name = __get_rval_name(i)
 
 		own_policy = 'NonOwning'
@@ -328,8 +339,6 @@ def __declare_rval_var(rval):
 
 
 
-
-
 #
 def __prepare_ctypes(ctypes, template):
 	if not type(ctypes) is type([]):
@@ -343,6 +352,11 @@ def prepare_args(args):
 
 def prepare_rval(rval):
 	return __prepare_ctypes(rval, __CType)
+
+
+#
+def select_args_operators(args):
+	return [{'info': select_ctype_info(arg.ctype), 'vars': [{'ctype': arg.ctype, 'var': __get_arg_name(i)}]} for i, arg in enumerate(args)]
 
 
 #
@@ -363,7 +377,9 @@ def bind_function(name, rval, args):
 	insert_comment('%s %s(%s)' % (ctypes_to_string(rval), name, ctypes_to_string(args)), True, False)
 
 	__source += "static int " + get_bind_function_name(name) + "(lua_State *L) {\n"
-	qualified_args = __args_to_c(args)  # convert args
+
+	args_ops = select_args_operators(args)
+	qualified_args = __args_to_c(args_ops)  # convert args
 
 	__declare_rval_var(rval)
 	__source += name + '(' + ', '.join(qualified_args) + ');\n'  # perform C function call
