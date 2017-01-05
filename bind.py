@@ -203,7 +203,7 @@ def __get_arg_name(i):
 	return 'arg' + str(i)
 
 
-def select_ctype_info(ctype):
+def get_ctype_info(ctype):
 	"""Select the type information structure."""
 	full_qualified_ctype_name = get_fully_qualified_ctype_name(ctype)
 
@@ -226,30 +226,7 @@ def qualify_value_var(var_name, ctype):
 
 def qualify_pointer_var(var_name, ctype):
 	"""Qualify a C pointer variable so that it conforms to a type signature."""
-	pass
-
-
-def __arg_to_c(args, i, arg_count):
-	"""Convert an argument from a list of arguments, return the update argument position."""
-	global __header, __source
-
-	arg = args[i]  # argument to transform to C
-	ctype_info = select_ctype_info(arg.type)
-
-	arg_var = __get_arg_name(i)
-
-	if ctype_info['policy'] == 'by_value':
-		__source += '%s %s;\n' % (get_fully_qualified_ctype_name(arg.type), arg_var)
-		__source += __templates['arg_to_c'](args, i, arg_count, ctype_info['to_c'], '&' + arg_var)
-		qualified_arg_var = qualify_value_var(arg_var, arg.type)
-	elif ctype_info['policy'] == 'by_pointer':
-		__source += '%s *%s;\n' % (get_fully_qualified_ctype_name(arg.type), arg_var)
-		__source += __templates['arg_to_c'](args, i, arg_count, ctype_info['to_c'], arg_var)
-		qualified_arg_var = qualify_pointer_var(arg_var, arg.type)
-
-	__source += '\n'
-
-	return [qualified_arg_var]
+	return var_name
 
 
 def __args_to_c(args_ops):
@@ -263,20 +240,13 @@ def __args_to_c(args_ops):
 
 	qualified_args = []
 
-	for arg_op in args_ops:
+	for i, arg_op in enumerate(args_ops):
 		info = arg_op['info']
-		vars = arg_op['vars']
+		var = arg_op['vars']
 
-		for var in vars:
-			__source += '%s %s;\n' % (get_fully_qualified_ctype_name(var['ctype']), var['var'])
-			pass
-
-
-			#	i = 0
-#	while i < arg_count:
-#		qualified_arg = __arg_to_c(args, i, arg_count)
-#		i += len(qualified_arg)
-#		qualified_args.extend(qualified_arg)
+		__source += '%s %s;\n' % (get_fully_qualified_ctype_name(info['ctype']), var)
+		__source += __templates['arg_to_c'](i, info['to_c'], '&' + var) + '\n'
+		qualified_args.append(qualify_pointer_var(var, info['ctype']))
 
 	return qualified_args
 
@@ -297,7 +267,7 @@ def __rval_from_c(rvals):
 		return
 
 	for i, ctype in enumerate(rvals):
-		type_info = select_ctype_info(ctype)
+		type_info = get_ctype_info(ctype)
 		name = __get_rval_name(i)
 
 		own_policy = 'NonOwning'
@@ -356,7 +326,7 @@ def prepare_rval(rval):
 
 #
 def select_args_operators(args):
-	return [{'info': select_ctype_info(arg.ctype), 'vars': [{'ctype': arg.ctype, 'var': __get_arg_name(i)}]} for i, arg in enumerate(args)]
+	return [{'info': get_ctype_info(arg.ctype), 'vars': __get_arg_name(i)} for i, arg in enumerate(args)]
 
 
 #

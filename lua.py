@@ -18,8 +18,8 @@ def install(namespace = 'BindLua'):
 	bind.set_proto_templates(check_proto, to_c_proto, from_c_proto)
 
 	# templates for function calls
-	def arg_to_c(args, arg_idx, arg_count, to_c, out_var_ptr):
-		return '%s(L, %d, %s);' % (to_c, arg_idx, out_var_ptr)
+	def arg_to_c(i, to_c, out_var_ptr):
+		return '%s(L, %d, %s);' % (to_c, i, out_var_ptr)
 
 	def rval_from_c(i, count, var, func, own_policy):
 		src = 'int rval_count = 0;\n' if i == 0 else ''
