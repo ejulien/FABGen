@@ -1,40 +1,41 @@
-import bind
+import gen
 
 
-def install(namespace = 'BindLua'):
-	bind.reset_generator()
-	bind.set_namespace(namespace)
+#
+class LuaTypeConverterCommon(gen.TypeConverter):
+	def __init__(self, type):
+		super().__init__(type)
 
-	# templates for basic type exchange
-	def check_proto(funcname, type, info):
-		return 'bool %s(lua_State *L, int idx)' % funcname
+	def return_void_from_c(self):
+		return 'return 0;'
 
-	def to_c_proto(funcname, type, info):
-		return 'void %s(lua_State *L, int idx, %s *obj)' % (funcname, type)
 
-	def from_c_proto(funcname, type, info):
-		return 'int %s(lua_State *L, %s *obj, OwnershipPolicy own_policy)' % (funcname, type)
+class LuaNativeTypeConverter(LuaTypeConverterCommon):
+	def __init__(self, type):
+		super().__init__(type)
 
-	bind.set_proto_templates(check_proto, to_c_proto, from_c_proto)
+	def new_var(self, name):
+		out = '%s %s;\n' % (gen.get_fully_qualified_ctype_name(self.ctype), name)
+		return (out, '&%s' % name)
 
-	# templates for function calls
-	def arg_to_c(i, to_c, out_var_ptr):
-		return '%s(L, %d, %s);' % (to_c, i, out_var_ptr)
+	def to_c_ptr(self, obj, var_p):
+		return '%s(L, %d, %s);\n' % (self.to_c, obj, var_p)
 
-	def rval_from_c(i, count, var, func, own_policy):
+	def rval_from_c(self, i, count, var, func, own_policy):
 		src = 'int rval_count = 0;\n' if i == 0 else ''
 		src += 'rval_count += %s(L, %s, %s);\n' % (func, var, own_policy)
 		if i == count - 1:
-			src += 'return rval_count'
+			src += 'return rval_count;'
 		return src
 
-	def void_rval_from_c():
-		return 'return 0;'
 
-	bind.set_call_templates(arg_to_c, rval_from_c, void_rval_from_c)
+#
+class LuaGenerator(gen.FABGen):
+	def start(self, namespace = None):
+		super().start(namespace)
 
-	# templates for class type exchange
-	bind.insert_source_code('''
+		# templates for class type exchange
+		self.insert_code('''
 // wrap a C object
 template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj, const char *type_tag)
 {
@@ -44,63 +45,41 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 
 	new (p) NATIVE_OBJECT_WRAPPER_T(obj, type_tag);
 	return 1;
-}
-''')
+}\n
+''', True, False)
 
-	def class_check(type, info):
-		return '''
-	auto p = lua_touserdata(L, idx);
-	if (!p)
-		return false;
+		# bind basic types
+		class LuaNumberConverter(LuaNativeTypeConverter):
+			def __init__(self, type):
+				super().__init__(type)
+				self.tmpl_check = "return lua_isnumber(L, idx) ? true : false;"
+				self.tmpl_to_c = "*val = lua_tonumber(L, idx);"
+				self.tmpl_from_c = "lua_pushinteger(L, *val); return 1;"
 
-	auto w = reinterpret_cast<NativeObjectWrapper *>(p);
-	return w->IsNativeObjectWrapper() && w->GetTypeTag() == %s;
-''' % info['type_tag']
+		self.bind_type('int', LuaNumberConverter('int'))
+		self.bind_type('float', LuaNumberConverter('float'))
 
-	def class_to_c(type, info):
-		return '''
-	auto p = lua_touserdata(L, idx);
-	auto w = reinterpret_cast<NativeObjectWrapper *>(p);
-	*val = reinterpret_cast<%s>(w->GetObj());
-''' % type
+		class LuaStringConverter(LuaNativeTypeConverter):
+			def __init__(self, type):
+				super().__init__(type)
+				self.tmpl_check = "return lua_isstring(L, idx) ? true : false;"
+				self.tmpl_to_c = "*val = lua_tostring(L, idx);"
+				self.tmpl_from_c = "lua_pushstring(L, val->c_str()); return 1;"
 
-	def class_from_c(type, info):
-		return '''
-	switch (own_policy) {
-		default:
-		case NonOwning:
-			return _wrap_obj<NativeObjectPtrWrapper<%s>>(L, obj, %s);
-		case ByValue:
-			return _wrap_obj<NativeObjectValueWrapper<%s>>(L, obj, %s);
-		case ByAddress:
-			return _wrap_obj<NativeObjectUniquePtrWrapper<%s>>(L, obj, %s);
-	}
-	return 0;
-''' % (type, info['type_tag'], type, info['type_tag'], type, info['type_tag'])
+		self.bind_type('std::string', LuaStringConverter('std::string'))
 
-	bind.set_class_templates(class_check, class_to_c, class_from_c)
+		class LuaConstCharPtrConverter(LuaNativeTypeConverter):
+			def __init__(self, type):
+				super().__init__(type)
+				self.tmpl_check = "return lua_isstring(L, idx) ? true : false;"
+				self.tmpl_to_c = "*val = lua_tostring(L, idx);"
+				self.tmpl_from_c = "lua_pushstring(L, *val); return 1;"
 
-	# bind basic types
-	bind.bind_type('int',
-		"return lua_isnumber(L, idx) ? true : false;",
-		"*val = lua_tonumber(L, idx);",
-		"lua_pushinteger(L, *val); return 1;"
-	)
+	def proto_check(self, name, ctype):
+		return 'bool %s(lua_State *L, int idx)' % (name)
 
-	bind.bind_type('float',
-		"return lua_isnumber(L, idx) ? true : false;",
-		"*val = float(lua_tonumber(L, idx));",
-		"lua_pushnumber(L, *val); return 1;"
-	)
+	def proto_to_c(self, name, ctype):
+		return 'void %s(lua_State *L, int idx, %s *obj)' % (name, gen.get_fully_qualified_ctype_name(ctype))
 
-	bind.bind_type('std::string',
-		"return lua_isstring(L, idx) ? true : false;",
-		"*val = lua_tostring(L, idx);",
-		"lua_pushstring(L, val->c_str()); return 1;"
-	)
-
-	bind.bind_type('const char *',
-		"return lua_isstring(L, idx) ? true : false;",
-		"*val = lua_tostring(L, idx);",
-		"lua_pushstring(L, *val); return 1;"
-	)
+	def proto_from_c(self, name, ctype):
+		return 'int %s(lua_State *L, %s *obj, OwnershipPolicy own_policy)' % (name, gen.get_fully_qualified_ctype_name(ctype))
