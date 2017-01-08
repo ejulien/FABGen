@@ -257,7 +257,7 @@ private:
 
 		self.insert_code('// %s %s(%s)\n' % (rval, name, ctypes_to_string(args)), True, False)
 
-		self.__source += "static int " + self.get_bind_function_name(name) + "(lua_State *L) {\n"
+		self.__source += self.new_function(self.get_bind_function_name(name), args)
 
 		# declare call arguments and convert them from the VM
 		args = self.select_args_convs(args)
@@ -268,7 +268,7 @@ private:
 
 			block, arg_p = conv.new_var('arg%d' % i)
 			self.__source += block
-			self.__source += conv.to_c_ptr(i, arg_p)  # convert from VM to C var pointer
+			self.__source += conv.to_c_ptr(i, 'arg%d_pyobj' % i, arg_p)  # convert from VM to C var pointer
 			c_call_args.append('arg%d' % i)  # FIXME transform to argument signature
 
 		# declare the return value
@@ -284,7 +284,7 @@ private:
 
 		# convert the return value
 		if rval:
-			self.__source += rval.from_c_ptr(rval_p)
+			self.__source += rval.from_c_ptr('rval_pyobj', rval_p)
 
 		# cleanup arguments
 
@@ -293,10 +293,12 @@ private:
 		# commit return values
 		if rval:
 			rvals = [rval]
+			rval_names = ['rval_pyobj']
 		else:
 			rvals = []
+			rval_names = []
 
-		self.__source += self.commit_rvals(rvals)
+		self.__source += self.commit_rvals(rvals, rval_names)
 		self.__source += "}\n\n"
 
 

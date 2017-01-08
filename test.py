@@ -1,18 +1,24 @@
 import lua
+import python
 
-lua = lua.LuaGenerator()
-lua.start("gs")
 
-lua.bind_function('add', 'int', ['int a', 'int'])
-lua.bind_function('set_name', 'void', ['const char *'])
-lua.bind_function('get_name', 'const char *', ['void'])
+def run_test(gen):
+	gen.start("gs")
 
-lua.bind_function('add_by_ref', 'int', ['int &', 'int &'])
-lua.bind_function('add_by_ptr', 'int', ['int *', 'int *'])
+	gen.bind_function('add', 'int', ['int a', 'int'])
+	gen.bind_function('set_name', 'void', ['const char *'])
+	gen.bind_function('get_name', 'const char *', ['void'])
 
-#lua.bind_class('simple_struct', None, None, None)
+	gen.bind_function('add_by_ref', 'int', ['int &', 'int &'])
+	gen.bind_function('add_by_ptr', 'int', ['int *', 'int *'])
 
-header, source = lua.get_output()
+	#lua.bind_class('simple_struct', None, None, None)
 
-print(header)
-print(source)
+	header, source = gen.get_output()
+
+	print(header)
+	print(source)
+
+
+#run_test(lua.LuaGenerator())
+run_test(python.PythonGenerator())
