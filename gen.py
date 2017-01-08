@@ -189,8 +189,9 @@ private:
 
 	#
 
-	def bind_type(self, type, conv):
+	def bind_type(self, conv):
 		"""Declare a converter for a type natively supported by the target VM."""
+		type = get_fully_qualified_ctype_name(conv.ctype)
 		self.__type_convs[type] = conv
 
 		# output type tag
@@ -243,6 +244,10 @@ private:
 
 	#
 	@staticmethod
+	def commit_rvals(rvals):
+		assert "missing return values template"
+
+	@staticmethod
 	def get_bind_function_name(name):
 		return '_' + name
 
@@ -279,19 +284,20 @@ private:
 
 		# convert the return value
 		if rval:
-			self.__source += "%s(L, %s, ByValue)" % (rval.from_c, rval_p)
+			self.__source += rval.from_c_ptr(rval_p)
 
 		# cleanup arguments
-		# ...
 
 		# cleanup return value
 
-		#	qualified_args = __args_to_c(args_infos)  # convert args
-		'''
-		__rvals_from_c(rval)
+		# commit return values
+		if rval:
+			rvals = [rval]
+		else:
+			rvals = []
 
-		__source += "}\n\n"
-		'''
+		self.__source += self.commit_rvals(rvals)
+		self.__source += "}\n\n"
 
 
 

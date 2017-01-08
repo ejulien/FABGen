@@ -21,12 +21,8 @@ class LuaNativeTypeConverter(LuaTypeConverterCommon):
 	def to_c_ptr(self, obj, var_p):
 		return '%s(L, %d, %s);\n' % (self.to_c, obj, var_p)
 
-	def rval_from_c(self, i, count, var, func, own_policy):
-		src = 'int rval_count = 0;\n' if i == 0 else ''
-		src += 'rval_count += %s(L, %s, %s);\n' % (func, var, own_policy)
-		if i == count - 1:
-			src += 'return rval_count;'
-		return src
+	def from_c_ptr(self, var_p):
+		return "%s(L, %s, ByValue);\n" % (self.from_c, var_p)
 
 
 #
@@ -56,8 +52,8 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 				self.tmpl_to_c = "*val = lua_tonumber(L, idx);"
 				self.tmpl_from_c = "lua_pushinteger(L, *val); return 1;"
 
-		self.bind_type('int', LuaNumberConverter('int'))
-		self.bind_type('float', LuaNumberConverter('float'))
+		self.bind_type(LuaNumberConverter('int'))
+		self.bind_type(LuaNumberConverter('float'))
 
 		class LuaStringConverter(LuaNativeTypeConverter):
 			def __init__(self, type):
@@ -66,7 +62,7 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 				self.tmpl_to_c = "*val = lua_tostring(L, idx);"
 				self.tmpl_from_c = "lua_pushstring(L, val->c_str()); return 1;"
 
-		self.bind_type('std::string', LuaStringConverter('std::string'))
+		self.bind_type(LuaStringConverter('std::string'))
 
 		class LuaConstCharPtrConverter(LuaNativeTypeConverter):
 			def __init__(self, type):
@@ -74,6 +70,8 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 				self.tmpl_check = "return lua_isstring(L, idx) ? true : false;"
 				self.tmpl_to_c = "*val = lua_tostring(L, idx);"
 				self.tmpl_from_c = "lua_pushstring(L, *val); return 1;"
+
+		self.bind_type(LuaStringConverter('const char *'))
 
 	def proto_check(self, name, ctype):
 		return 'bool %s(lua_State *L, int idx)' % (name)
@@ -83,3 +81,6 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 
 	def proto_from_c(self, name, ctype):
 		return 'int %s(lua_State *L, %s *obj, OwnershipPolicy own_policy)' % (name, gen.get_fully_qualified_ctype_name(ctype))
+
+	def commit_rvals(self, rvals):
+		return 'return %d;\n' % len(rvals)
