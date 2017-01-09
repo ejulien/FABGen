@@ -10,19 +10,62 @@ class LuaTypeConverterCommon(gen.TypeConverter):
 		return 'return 0;'
 
 
+#
 class LuaNativeTypeConverter(LuaTypeConverterCommon):
 	def __init__(self, type):
 		super().__init__(type)
-
-	def new_var(self, name):
-		out = '%s %s;\n' % (gen.get_fully_qualified_ctype_name(self.ctype), name)
-		return (out, '&%s' % name)
 
 	def to_c_ptr(self, var, var_p):
 		return '%s(L, %s, %s);\n' % (self.to_c, var, var_p)
 
 	def from_c_ptr(self, var, var_p):
 		return "%s(L, %s, ByValue);\n" % (self.from_c, var_p)
+
+
+#
+class LuaClassTypeDefaultConverter(LuaTypeConverterCommon):
+	def __init__(self, type):
+		super().__init__(type)
+
+	def new_var(self, name):  # class are always passed by pointer
+		out = '%s *%s;\n' % (self.fully_qualified_name, name)
+		return (out, name)
+
+	def to_c_ptr(self, var, var_p):
+		return '%s(L, %s, %s);\n' % (self.to_c, var, var_p)
+
+	def from_c_ptr(self, var, var_p):
+		return "%s(L, %s, ByValue);\n" % (self.from_c, var_p)
+
+	def tmpl_check(self):
+		return '''
+	auto p = lua_touserdata(L, idx);
+	if (!p)
+		return false;
+
+	auto w = reinterpret_cast<NativeObjectWrapper *>(p);
+	return w->IsNativeObjectWrapper() && w->GetTypeTag() == %s;
+''' % self.type_tag
+
+	def tmpl_to_c(self):
+		return '''
+	auto p = lua_touserdata(L, idx);
+	auto w = reinterpret_cast<NativeObjectWrapper *>(p);
+	*val = reinterpret_cast<%s>(w->GetObj());
+''' % self.fully_qualified_name
+
+	def tmpl_from_c(self):
+		return '''
+	switch (own_policy) {
+		default:
+		case NonOwning:
+			return _wrap_obj<NativeObjectPtrWrapper<%s>>(L, obj, %s);
+		case ByValue:
+			return _wrap_obj<NativeObjectValueWrapper<%s>>(L, obj, %s);
+		case ByAddress:
+			return _wrap_obj<NativeObjectUniquePtrWrapper<%s>>(L, obj, %s);
+	}
+''' % (self.fully_qualified_name, self.type_tag, self.fully_qualified_name, self.type_tag, self.fully_qualified_name, self.type_tag)
 
 
 #
@@ -50,7 +93,7 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 				super().__init__(type)
 				self.tmpl_check = "return lua_isnumber(L, idx) ? true : false;"
 				self.tmpl_to_c = "*val = lua_tonumber(L, idx);"
-				self.tmpl_from_c = "lua_pushinteger(L, *val); return 1;"
+				self.tmpl_from_c = "lua_pushinteger(L, *obj); return 1;"
 
 		self.bind_type(LuaNumberConverter('int'))
 		self.bind_type(LuaNumberConverter('float'))
@@ -60,7 +103,7 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 				super().__init__(type)
 				self.tmpl_check = "return lua_isstring(L, idx) ? true : false;"
 				self.tmpl_to_c = "*val = lua_tostring(L, idx);"
-				self.tmpl_from_c = "lua_pushstring(L, val->c_str()); return 1;"
+				self.tmpl_from_c = "lua_pushstring(L, obj->c_str()); return 1;"
 
 		self.bind_type(LuaStringConverter('std::string'))
 
@@ -69,9 +112,9 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 				super().__init__(type)
 				self.tmpl_check = "return lua_isstring(L, idx) ? true : false;"
 				self.tmpl_to_c = "*val = lua_tostring(L, idx);"
-				self.tmpl_from_c = "lua_pushstring(L, *val); return 1;"
+				self.tmpl_from_c = "lua_pushstring(L, *obj); return 1;"
 
-		self.bind_type(LuaStringConverter('const char *'))
+		self.bind_type(LuaConstCharPtrConverter('const char *'))
 
 	def proto_check(self, name, ctype):
 		return 'bool %s(lua_State *L, int idx)' % (name)
@@ -88,5 +131,16 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 	def get_arg(self, i, args):
 		return "%d" % i
 
+	# function call return values
+	def begin_convert_rvals(self):
+		self._source += 'int rval_count = 0;\n'
+
+	def rval_from_c_ptr(self, conv, var, rval_p):
+		self._source += 'rval_count += ' + conv.from_c_ptr(var, rval_p)
+
 	def commit_rvals(self, rvals, rval_names):
-		return 'return %d;\n' % len(rvals)
+		self._source += "return rval_count;\n"
+
+	#
+	def get_class_default_converter(self):
+		return LuaClassTypeDefaultConverter

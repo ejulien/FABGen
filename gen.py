@@ -34,6 +34,33 @@ def ctypes_to_string(ctypes):
 	return ','.join([repr(ctype) for ctype in ctypes])
 
 
+def transform_ctype(src_type, dst_type):
+	src_ref = src_type.get_ref()
+	dst_ref = dst_type.get_ref()
+
+	if src_ref == '&':
+		if dst_ref == '&':
+			return ''  # ref to ref
+		elif dst_ref == '*':
+			return '&'  # ref to ptr
+		else:
+			return ''  # ref to value
+	elif src_ref == '*':
+		if dst_ref == '&':
+			return '*'  # ptr to ref
+		elif dst_ref == '*':
+			return ''  # ptr to ptr
+		else:
+			return '*'  # ptr to value
+	else:
+		if dst_ref == '&':
+			return ''  # value to ref
+		elif dst_ref == '*':
+			return '&'  # value to ptr
+		else:
+			return ''  # value to value
+
+
 class _CType:
 	def __repr__(self):
 		return get_fully_qualified_ctype_name(self)
@@ -71,12 +98,37 @@ _CArg.grammar = attr("ctype", _CType), optional(name())
 
 
 #
+def substract_type_transform(less_qual, more_qual):
+	assert more_qual.startswith(less_qual)
+	return more_qual[len(less_qual):]
+
+
 class TypeConverter:
 	def __init__(self, type):
 		self.ctype = parse(type, _CType)
 
 		self.clean_name = get_type_clean_name(type)
+		self.fully_qualified_name = get_fully_qualified_ctype_name(self.ctype)
 		self.type_tag = '__%s_type_tag' % self.clean_name
+
+	def decl_arg(self, type, name):
+		out = '%s %s;\n' % (get_fully_qualified_ctype_name(self.ctype), name)
+		return (out, '&' + name)
+
+	def decl_rval(self, type, name):
+		# cast from rval type to the converter supported type
+		ref = substract_type_transform(self.ctype.get_ref(), type.get_ref())
+
+		if ref == '*':
+			var_p = name;
+		elif ref == '&':
+			var_p = '&' + name
+		else:
+			var_p = '&' + name
+
+		out = '%s %s%s = ' % (get_fully_qualified_ctype_name(self.ctype), ref, name)
+
+		return (out, var_p)
 
 	def check(self):
 		assert 'check not implemented'
@@ -92,18 +144,20 @@ class TypeConverter:
 #
 class FABGen:
 	def __init__(self):
-		self.__namespace = None
-		self.__header, self.__source = None, None
+		self._namespace = None
+		self._header, self._source = None, None
 
-		self.__ctype_convs = None
+		self.__type_convs = None
+		self.__function_templates = None
 
 	def start(self, namespace = None):
-		self.__namespace = namespace
-		self.__header, self.__source = "", ""
+		self._namespace = namespace
+		self._header, self._source = "", ""
 
 		self.__type_convs = {}
+		self.__function_templates = {}
 
-		self.__source += '''
+		self._source += '''
 #include <cstdint>
 
 // native object wrapper
@@ -118,7 +172,7 @@ struct NativeObjectWrapper {
 	bool IsNativeObjectWrapper() const { return magic == 'fab!'; }
 
 private:
-	uint32_t magic = 'fab!';
+	const uint32_t magic = 'fab!';
 };
 
 template <typename T> struct NativeObjectValueWrapper : NativeObjectWrapper {
@@ -168,9 +222,9 @@ private:
 
 	def insert_code(self, code, in_source=True, in_header=True):
 		if in_header:
-			self.__header += code
+			self._header += code
 		if in_source:
-			self.__source += code
+			self._source += code
 
 	#
 	def proto_check(self, name, ctype):
@@ -187,25 +241,25 @@ private:
 		if callable(proto):
 			proto = proto(name, conv.ctype)
 
-		self.__header += proto + ';\n'
+		self._header += proto + ';\n'
 
 		body = getattr(conv, 'tmpl_%s' % op)
 		if callable(body):
 			body = body()
 
-		self.__source += proto + ' { ' + body + ' }\n'
+		self._source += proto + ' { ' + body + ' }\n'
 		setattr(conv, op, name)
 
 	#
 
 	def bind_type(self, conv):
 		"""Declare a converter for a type natively supported by the target VM."""
-		type = get_fully_qualified_ctype_name(conv.ctype)
+		type = conv.fully_qualified_name
 		self.__type_convs[type] = conv
 
 		# output type tag
 		self.insert_code('// type operators for %s\n' % type)
-		self.__source += 'static const char *%s = "%s";\n\n' % (conv.type_tag, type)
+		self._source += 'static const char *%s = "%s";\n\n' % (conv.type_tag, type)
 
 		self.__output_type_op_function(conv, 'check')
 		self.__output_type_op_function(conv, 'to_c')
@@ -216,18 +270,18 @@ private:
 
 	def get_output(self):
 		header = "// FABGen - .h\n\n"
-		if self.__namespace:
-			header += "namespace " + self.__namespace + " {\n\n";
-		header += self.__header
-		if self.__namespace:
-			header += "} // " + self.__namespace + "\n";
+		if self._namespace:
+			header += "namespace " + self._namespace + " {\n\n";
+		header += self._header
+		if self._namespace:
+			header += "} // " + self._namespace + "\n";
 
 		source = "// FABGen - .cpp\n\n"
-		if self.__namespace:
-			source += "namespace " + self.__namespace + " {\n\n";
-		source += self.__source
-		if self.__namespace:
-			source += "} // " + self.__namespace + "\n";
+		if self._namespace:
+			source += "namespace " + self._namespace + " {\n\n";
+		source += self._source
+		if self._namespace:
+			source += "} // " + self._namespace + "\n";
 
 		return header, source
 
@@ -252,12 +306,15 @@ private:
 		return [{'conv': self.select_ctype_conv(ctype), 'ctype': ctype} for i, ctype in enumerate(rvals)]
 
 	#
-	@staticmethod
-	def commit_rvals(rvals):
+	def commit_rvals(self, rvals):
 		assert "missing return values template"
 
+	def cleanup_rvals(self, rvals, rval_names):
+		pass
+
+	#
 	@staticmethod
-	def get_bind_function_name(name):
+	def __get_bind_function_name(name):
 		return '_' + clean_c_symbol_name(name)
 
 	def bind_function(self, name, rval, args):
@@ -266,38 +323,10 @@ private:
 
 		self.insert_code('// %s %s(%s)\n' % (rval, name, ctypes_to_string(args)), True, False)
 
-		self.__source += self.new_function(self.get_bind_function_name(name), args)
+		self._source += self.new_function(self.__get_bind_function_name(name), args)
 
 		# declare call arguments and convert them from the VM
 		args = self.select_args_convs(args)
-
-
-		def transform_ctype(src_type, dst_type):
-			src_ref = src_type.get_ref()
-			dst_ref = dst_type.get_ref()
-
-			if src_ref == '&':
-				if dst_ref == '&':
-					return ''  # ref to ref
-				elif dst_ref == '*':
-					return '&'  # ref to ptr
-				else:
-					return ''  # ref to value
-			elif src_ref == '*':
-				if dst_ref == '&':
-					return '*'  # ptr to ref
-				elif dst_ref == '*':
-					return ''  # ptr to ptr
-				else:
-					return '*'  # ptr to value
-			else:
-				if dst_ref == '&':
-					return ''  # value to ref
-				elif dst_ref == '*':
-					return '&'  # value to ptr
-				else:
-					return ''  # value to value
-
 
 		c_call_args = []
 		for i, arg in enumerate(args):
@@ -305,96 +334,78 @@ private:
 			if not conv:
 				continue
 
-			block, arg_p = conv.new_var('arg%d' % i)
-			self.__source += block
-			self.__source += conv.to_c_ptr(self.get_arg(i, args), arg_p)  # convert from VM to C var pointer
+			block, arg_p = conv.decl_arg(arg, 'arg%d' % i)
+			self._source += block
+			self._source += conv.to_c_ptr(self.get_arg(i, args), arg_p)  # convert from VM to C var pointer
 
 			c_call_args.append('%sarg%d' % (transform_ctype(conv.ctype, arg['ctype']), i))
 
 		# declare the return value
+		rval_names = []
 		rval_conv = self.select_ctype_conv(rval)
 
 		if rval_conv:
-			block, rval_p = rval_conv.new_var('rval')
-			self.__source += block
-			self.__source += "rval = "
+			block, rval_p = rval_conv.decl_rval(rval, 'rval')
+			rval_names.append('rval')
+			self._source += block
 
 		# perform function call
 		if rval_conv:
-			self.__source += transform_ctype(rval, rval_conv.ctype)
+			self._source += transform_ctype(rval, rval_conv.ctype)
 
-		self.__source += '%s(%s);\n' % (name, ', '.join(c_call_args))  # perform C function call
-
-		# convert the return value
-		if rval_conv:
-			self.__source += rval_conv.from_c_ptr('rval_pyobj', rval_p)
+		self._source += '%s(%s);\n' % (name, ', '.join(c_call_args))  # perform C function call
 
 		# cleanup arguments
 
-		# cleanup return value
+		# convert the return value
+		self.begin_convert_rvals()
+		if rval_conv:
+			self.rval_from_c_ptr(rval_conv, 'rval', rval_p)
 
 		# commit return values
 		if rval_conv:
 			rvals = [rval_conv]
-			rval_names = ['rval_pyobj']
 		else:
 			rvals = []
-			rval_names = []
 
-		self.__source += self.commit_rvals(rvals, rval_names)
-		self.__source += "}\n\n"
+		self.commit_rvals(rvals, rval_names)
 
+		# cleanup return value
+		self.cleanup_rvals(rvals, rval_names)
 
+		self._source += "}\n\n"
 
+	def decl_function_template(self, tmpl_name, tmpl_args, rval, args):
+		self.__function_templates[tmpl_name] = {'tmpl_args': tmpl_args, 'rval': rval, 'args': args}
 
+	def bind_function_template(self, tmpl_name, bound_name, bind_args):
+		tmpl = self.__function_templates[tmpl_name]
+		tmpl_args = tmpl['tmpl_args']
 
+		assert len(tmpl_args) == len(bind_args)
 
+		def bind_tmpl_arg(arg):
+			return bind_args[tmpl_args.index(arg)] if arg in tmpl_args else arg
 
-'''
-#
-def bind_class(type, check, to_c, from_c):
-	"""Declare a converter for a C/C++ custom type."""
-	global __ctype_convs
+		bound_rval = bind_tmpl_arg(tmpl['rval'])
+		bound_args = [bind_tmpl_arg(arg) for arg in tmpl['args']]
 
-	info = {'policy': 'by_pointer', 'ctype': parse(type, __CType)}
-	__ctype_convs[type] = info
+		bound_named_args = ['%s arg%d' % (arg, idx) for idx, arg in enumerate(bound_args)]
 
-	global __header, __source
-	bind_common(type, info)
+		# output wrapper
+		self._source += '// %s<%s> wrapper\n' % (tmpl_name, ', '.join(bind_args))
+		self._source += 'static %s %s(%s) {\n' % (bound_rval, bound_name, ', '.join(bound_named_args))
+		if bound_rval != 'void':
+			self._source += 'return '
+		self._source += '%s<%s>(%s);\n' % (tmpl_name, ', '.join(bind_args), ', '.join(['arg%d' % i for i in range(len(bound_args))]))
+		self._source += '}\n\n'
 
-	# default to language conversion for complex objects
-	if not check:
-		check = __templates['class_check']
-	if not to_c:
-		to_c = __templates['class_to_c']
-	if not from_c:
-		from_c = __templates['class_from_c']
+		# bind wrapper
+		self.bind_function(bound_name, bound_rval, bound_args)
 
-	#
-	info['check'] = __output_type_op_function(check, type, info, 'check')
-	info['to_c'] = __output_type_op_function(to_c, type, info, 'to_c')
-	info['from_c'] = __output_type_op_function(from_c, type, info, 'from_c')
+	def get_class_default_converter(self):
+		assert "missing class type default converter"
 
-	__header += '\n'
-	__source += '\n'
-'''
-
-
-
-
-
-
-
-
-
-
-#
-
-
-
-
-
-
-
-
-
+	def bind_class(self, name):
+		class_default_conv = self.get_class_default_converter()
+		self.bind_type(class_default_conv(name))

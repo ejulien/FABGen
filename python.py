@@ -14,10 +14,6 @@ class PythonNativeTypeConverter(PythonTypeConverterCommon):
 	def __init__(self, type):
 		super().__init__(type)
 
-	def new_var(self, name):
-		out = '%s %s;\n' % (gen.get_fully_qualified_ctype_name(self.ctype), name)
-		return (out, '&%s' % name)
-
 	def to_c_ptr(self, var, var_p):
 		return '%s(%s, %s);\n' % (self.to_c, var, var_p)
 
@@ -113,12 +109,19 @@ private:
 	def get_arg(self, i, args):
 		return "arg_pyobj[%d]" % i
 
+	# function call return values
+	def begin_convert_rvals(self):
+		pass
+
+	def rval_from_c_ptr(self, conv, var, rval_p):
+		self._source += conv.from_c_ptr(var + '_pyobj', rval_p)
+
 	def commit_rvals(self, rvals, rval_names):
 		rval_count = len(rvals)
 
 		if rval_count == 0:
 			return 'return Py_None;\n'
 		if rval_count == 1:
-			return 'return %s;\n' % rval_names[0]
+			return 'return %s_pyobj;\n' % rval_names[0]
 
 		return 'FIXME make tuple, append rvals, return tuple'
