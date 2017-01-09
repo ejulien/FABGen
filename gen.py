@@ -38,8 +38,17 @@ class _CType:
 	def __repr__(self):
 		return get_fully_qualified_ctype_name(self)
 
+	def get_ref(self):
+		return self.ref if hasattr(self, 'ref') else ''
+
 
 _CType.grammar = flag("const", K("const")), optional([flag("signed", K("signed")), flag("unsigned", K("unsigned"))]), attr("unqualified_name", typename), optional(attr("ref", ref_re))
+
+
+#
+def clean_c_symbol_name(name):
+	name = name.replace('::', '__')
+	return name
 
 
 #
@@ -249,7 +258,7 @@ private:
 
 	@staticmethod
 	def get_bind_function_name(name):
-		return '_' + name
+		return '_' + clean_c_symbol_name(name)
 
 	def bind_function(self, name, rval, args):
 		rval = parse(rval, _CType)
@@ -262,37 +271,71 @@ private:
 		# declare call arguments and convert them from the VM
 		args = self.select_args_convs(args)
 
+
+		def transform_ctype(src_type, dst_type):
+			src_ref = src_type.get_ref()
+			dst_ref = dst_type.get_ref()
+
+			if src_ref == '&':
+				if dst_ref == '&':
+					return ''  # ref to ref
+				elif dst_ref == '*':
+					return '&'  # ref to ptr
+				else:
+					return ''  # ref to value
+			elif src_ref == '*':
+				if dst_ref == '&':
+					return '*'  # ptr to ref
+				elif dst_ref == '*':
+					return ''  # ptr to ptr
+				else:
+					return '*'  # ptr to value
+			else:
+				if dst_ref == '&':
+					return ''  # value to ref
+				elif dst_ref == '*':
+					return '&'  # value to ptr
+				else:
+					return ''  # value to value
+
+
 		c_call_args = []
 		for i, arg in enumerate(args):
 			conv = arg['conv']
+			if not conv:
+				continue
 
 			block, arg_p = conv.new_var('arg%d' % i)
 			self.__source += block
-			self.__source += conv.to_c_ptr(i, 'arg%d_pyobj' % i, arg_p)  # convert from VM to C var pointer
-			c_call_args.append('arg%d' % i)  # FIXME transform to argument signature
+			self.__source += conv.to_c_ptr(self.get_arg(i, args), arg_p)  # convert from VM to C var pointer
+
+			c_call_args.append('%sarg%d' % (transform_ctype(conv.ctype, arg['ctype']), i))
 
 		# declare the return value
-		rval = self.select_ctype_conv(rval)
+		rval_conv = self.select_ctype_conv(rval)
 
-		if rval:
-			block, rval_p = rval.new_var('rval')
+		if rval_conv:
+			block, rval_p = rval_conv.new_var('rval')
 			self.__source += block
 			self.__source += "rval = "
 
 		# perform function call
+		if rval_conv:
+			self.__source += transform_ctype(rval, rval_conv.ctype)
+
 		self.__source += '%s(%s);\n' % (name, ', '.join(c_call_args))  # perform C function call
 
 		# convert the return value
-		if rval:
-			self.__source += rval.from_c_ptr('rval_pyobj', rval_p)
+		if rval_conv:
+			self.__source += rval_conv.from_c_ptr('rval_pyobj', rval_p)
 
 		# cleanup arguments
 
 		# cleanup return value
 
 		# commit return values
-		if rval:
-			rvals = [rval]
+		if rval_conv:
+			rvals = [rval_conv]
 			rval_names = ['rval_pyobj']
 		else:
 			rvals = []

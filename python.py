@@ -18,7 +18,7 @@ class PythonNativeTypeConverter(PythonTypeConverterCommon):
 		out = '%s %s;\n' % (gen.get_fully_qualified_ctype_name(self.ctype), name)
 		return (out, '&%s' % name)
 
-	def to_c_ptr(self, idx, var, var_p):
+	def to_c_ptr(self, var, var_p):
 		return '%s(%s, %s);\n' % (self.to_c, var, var_p)
 
 	def from_c_ptr(self, var, var_p):
@@ -45,7 +45,20 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(void *obj, const char *
 
 	new (p) NATIVE_OBJECT_WRAPPER_T(obj, type_tag);
 	return 1;
-}\n
+}
+
+class PythonReference
+{
+public:
+	PythonReference(PyObject *o_) : o(o_) {}
+	~PythonReference() { Py_DECREF(o); }
+
+	operator PyObject *() const { return o; }
+
+private:
+	PyObject *o;
+};
+
 ''', True, False)
 
 		# bind basic types
@@ -95,8 +108,10 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(void *obj, const char *
 		return 'PyObject *%s(%s *obj, OwnershipPolicy own_policy)' % (name, gen.get_fully_qualified_ctype_name(ctype))
 
 	def new_function(self, name, args):
-		args = ', '.join(['PyObject *arg%d_pyobj' % i for i in range(len(args))])
-		return "static PyObject *%s(%s) {\n" % (name, args)
+		return "static PyObject *%s(PyObject **arg_pyobj) {\n" % name
+
+	def get_arg(self, i, args):
+		return "arg_pyobj[%d]" % i
 
 	def commit_rvals(self, rvals, rval_names):
 		rval_count = len(rvals)

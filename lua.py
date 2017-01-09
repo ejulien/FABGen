@@ -18,8 +18,8 @@ class LuaNativeTypeConverter(LuaTypeConverterCommon):
 		out = '%s %s;\n' % (gen.get_fully_qualified_ctype_name(self.ctype), name)
 		return (out, '&%s' % name)
 
-	def to_c_ptr(self, idx, var, var_p):
-		return '%s(L, %d, %s);\n' % (self.to_c, idx, var_p)
+	def to_c_ptr(self, var, var_p):
+		return '%s(L, %s, %s);\n' % (self.to_c, var, var_p)
 
 	def from_c_ptr(self, var, var_p):
 		return "%s(L, %s, ByValue);\n" % (self.from_c, var_p)
@@ -84,6 +84,9 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 
 	def new_function(self, name, args):
 		return "static int %s(lua_State *L) {\n" % name
+
+	def get_arg(self, i, args):
+		return "%d" % i
 
 	def commit_rvals(self, rvals, rval_names):
 		return 'return %d;\n' % len(rvals)
