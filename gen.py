@@ -120,6 +120,12 @@ class TypeConverter:
 	def from_c(self):
 		assert 'from_c not implemented'
 
+	def get_ownership_policy(self, ref):
+		"""Return the VM default ownership policy for a reference coming from C."""
+		if ref == '*' or ref == '&':
+			return 'NonOwning'
+		return 'ByValue'
+
 	def return_void_from_c(self):
 		assert 'return_void_from_c not implemented'
 
@@ -351,7 +357,7 @@ private:
 		# convert the return value
 		self.begin_convert_rvals()
 		if rval_conv:
-			self.rval_from_c_ptr(rval_conv, 'rval', ctype_ref_to(rval.get_ref(), rval_conv.ctype.get_ref() + '*') + 'rval')
+			self.rval_from_c_ptr(rval, 'rval', rval_conv, ctype_ref_to(rval.get_ref(), rval_conv.ctype.get_ref() + '*') + 'rval')
 
 		# commit return values
 		if rval_conv:

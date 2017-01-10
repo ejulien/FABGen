@@ -9,29 +9,24 @@ class LuaTypeConverterCommon(gen.TypeConverter):
 	def return_void_from_c(self):
 		return 'return 0;'
 
+	def to_c_ptr(self, var, var_p):
+		return '%s(L, %s, %s);\n' % (self.to_c, var, var_p)
+
+	def from_c_ptr(self, ctype, var, var_p):
+		own_policy = self.get_ownership_policy(ctype.get_ref())
+		return "%s(L, %s, %s);\n" % (self.from_c, var_p, own_policy)
+
 
 #
 class LuaNativeTypeConverter(LuaTypeConverterCommon):
 	def __init__(self, type):
 		super().__init__(type)
 
-	def to_c_ptr(self, var, var_p):
-		return '%s(L, %s, %s);\n' % (self.to_c, var, var_p)
-
-	def from_c_ptr(self, var, var_p):
-		return "%s(L, %s, ByValue);\n" % (self.from_c, var_p)
-
 
 #
 class LuaClassTypeDefaultConverter(LuaTypeConverterCommon):
 	def __init__(self, type):
 		super().__init__(type, '*')
-
-	def to_c_ptr(self, var, var_p):
-		return '%s(L, %s, %s);\n' % (self.to_c, var, var_p)
-
-	def from_c_ptr(self, var, var_p):
-		return "%s(L, %s, ByValue);\n" % (self.from_c, var_p)
 
 	def tmpl_check(self):
 		return '''
@@ -58,10 +53,8 @@ class LuaClassTypeDefaultConverter(LuaTypeConverterCommon):
 			return _wrap_obj<NativeObjectPtrWrapper<%s>>(L, obj, %s);
 		case ByValue:
 			return _wrap_obj<NativeObjectValueWrapper<%s>>(L, obj, %s);
-		case ByAddress:
-			return _wrap_obj<NativeObjectUniquePtrWrapper<%s>>(L, obj, %s);
 	}
-''' % (self.fully_qualified_name, self.type_tag, self.fully_qualified_name, self.type_tag, self.fully_qualified_name, self.type_tag)
+''' % (self.fully_qualified_name, self.type_tag, self.fully_qualified_name, self.type_tag)
 
 
 #
@@ -131,8 +124,8 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 	def begin_convert_rvals(self):
 		self._source += 'int rval_count = 0;\n'
 
-	def rval_from_c_ptr(self, conv, var, rval_p):
-		self._source += 'rval_count += ' + conv.from_c_ptr(var, rval_p)
+	def rval_from_c_ptr(self, ctype, var, conv, rval_p):
+		self._source += 'rval_count += ' + conv.from_c_ptr(ctype, var, rval_p)
 
 	def commit_rvals(self, rvals, rval_names):
 		self._source += "return rval_count;\n"
