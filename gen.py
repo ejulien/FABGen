@@ -34,33 +34,6 @@ def ctypes_to_string(ctypes):
 	return ','.join([repr(ctype) for ctype in ctypes])
 
 
-def transform_ctype(src_type, dst_type):
-	src_ref = src_type.get_ref()
-	dst_ref = dst_type.get_ref()
-
-	if src_ref == '&':
-		if dst_ref == '&':
-			return ''  # ref to ref
-		elif dst_ref == '*':
-			return '&'  # ref to ptr
-		else:
-			return ''  # ref to value
-	elif src_ref == '*':
-		if dst_ref == '&':
-			return '*'  # ptr to ref
-		elif dst_ref == '*':
-			return ''  # ptr to ptr
-		else:
-			return '*'  # ptr to value
-	else:
-		if dst_ref == '&':
-			return ''  # value to ref
-		elif dst_ref == '*':
-			return '&'  # value to ptr
-		else:
-			return ''  # value to value
-
-
 class _CType:
 	def __repr__(self):
 		return get_fully_qualified_ctype_name(self)
@@ -98,37 +71,47 @@ _CArg.grammar = attr("ctype", _CType), optional(name())
 
 
 #
-def substract_type_transform(less_qual, more_qual):
-	assert more_qual.startswith(less_qual)
-	return more_qual[len(less_qual):]
+def ctype_ref_to(src_ref, dst_ref):
+	i = 0
+	while i < len(src_ref) and i < len(dst_ref):
+		if src_ref[i] != dst_ref[i]:
+			break
+		i += 1
+
+	src_ref = src_ref[i:]
+	dst_ref = dst_ref[i:]
+
+	if src_ref == '&':
+		if dst_ref == '&':
+			return ''  # ref to ref
+		elif dst_ref == '*':
+			return '&'  # ref to ptr
+		else:
+			return ''  # ref to value
+	elif src_ref == '*':
+		if dst_ref == '&':
+			return '*'  # ptr to ref
+		elif dst_ref == '*':
+			return ''  # ptr to ptr
+		else:
+			return '*'  # ptr to value
+	else:
+		if dst_ref == '&':
+			return ''  # value to ref
+		elif dst_ref == '*':
+			return '&'  # value to ptr
+		else:
+			return ''  # value to value
 
 
 class TypeConverter:
-	def __init__(self, type):
+	def __init__(self, type, storage_ref=''):
 		self.ctype = parse(type, _CType)
+		self.storage_ctype = parse(type + storage_ref, _CType)
 
 		self.clean_name = get_type_clean_name(type)
 		self.fully_qualified_name = get_fully_qualified_ctype_name(self.ctype)
 		self.type_tag = '__%s_type_tag' % self.clean_name
-
-	def decl_arg(self, type, name):
-		out = '%s %s;\n' % (get_fully_qualified_ctype_name(self.ctype), name)
-		return (out, '&' + name)
-
-	def decl_rval(self, type, name):
-		# cast from rval type to the converter supported type
-		ref = substract_type_transform(self.ctype.get_ref(), type.get_ref())
-
-		if ref == '*':
-			var_p = name;
-		elif ref == '&':
-			var_p = '&' + name
-		else:
-			var_p = '&' + name
-
-		out = '%s %s%s = ' % (get_fully_qualified_ctype_name(self.ctype), ref, name)
-
-		return (out, var_p)
 
 	def check(self):
 		assert 'check not implemented'
@@ -239,7 +222,8 @@ private:
 
 		proto = getattr(self, 'proto_%s' % op)
 		if callable(proto):
-			proto = proto(name, conv.ctype)
+			ctype = conv.storage_ctype if op == 'to_c' else conv.ctype
+			proto = proto(name, ctype)
 
 		self._header += proto + ';\n'
 
@@ -305,9 +289,18 @@ private:
 	def select_rvals_convs(self, rvals):
 		return [{'conv': self.select_ctype_conv(ctype), 'ctype': ctype} for i, ctype in enumerate(rvals)]
 
+	def decl_arg(self, ctype, name):
+		return '%s %s;\n' % (get_fully_qualified_ctype_name(ctype), name)
+
+	def cleanup_args(self, args):
+		pass
+
 	#
 	def commit_rvals(self, rvals):
 		assert "missing return values template"
+
+	def decl_rval(self, type, name):
+		return '%s %s = ' % (get_fully_qualified_ctype_name(type), name)
 
 	def cleanup_rvals(self, rvals, rval_names):
 		pass
@@ -334,33 +327,31 @@ private:
 			if not conv:
 				continue
 
-			block, arg_p = conv.decl_arg(arg, 'arg%d' % i)
-			self._source += block
-			self._source += conv.to_c_ptr(self.get_arg(i, args), arg_p)  # convert from VM to C var pointer
+			arg_name = 'arg%d' % i
+			self._source += self.decl_arg(conv.storage_ctype, arg_name)
+			self._source += conv.to_c_ptr(self.get_arg(i, args), '&' + arg_name)
 
-			c_call_args.append('%sarg%d' % (transform_ctype(conv.ctype, arg['ctype']), i))
+			c_call_arg_transform = ctype_ref_to(conv.storage_ctype.get_ref(), arg['ctype'].get_ref())
+			c_call_args.append(c_call_arg_transform + arg_name)
 
 		# declare the return value
 		rval_names = []
 		rval_conv = self.select_ctype_conv(rval)
 
 		if rval_conv:
-			block, rval_p = rval_conv.decl_rval(rval, 'rval')
+			self._source += self.decl_rval(rval, 'rval')
 			rval_names.append('rval')
-			self._source += block
 
 		# perform function call
-		if rval_conv:
-			self._source += transform_ctype(rval, rval_conv.ctype)
-
 		self._source += '%s(%s);\n' % (name, ', '.join(c_call_args))  # perform C function call
 
 		# cleanup arguments
+		self.cleanup_args(args)
 
 		# convert the return value
 		self.begin_convert_rvals()
 		if rval_conv:
-			self.rval_from_c_ptr(rval_conv, 'rval', rval_p)
+			self.rval_from_c_ptr(rval_conv, 'rval', ctype_ref_to(rval.get_ref(), rval_conv.ctype.get_ref() + '*') + 'rval')
 
 		# commit return values
 		if rval_conv:

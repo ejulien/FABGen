@@ -62,8 +62,8 @@ private:
 			def __init__(self, type):
 				super().__init__(type)
 				self.tmpl_check = "return PyLong_Check(o) ? true : false;"
-				self.tmpl_to_c = "*val = PyLong_AsLong(o);"
-				self.tmpl_from_c = "return PyLong_FromLong(*val);"
+				self.tmpl_to_c = "*obj = PyLong_AsLong(o);"
+				self.tmpl_from_c = "return PyLong_FromLong(*obj);"
 
 		self.bind_type(PythonIntConverter('int'))
 
@@ -71,8 +71,8 @@ private:
 			def __init__(self, type):
 				super().__init__(type)
 				self.tmpl_check = "return PyFloat_Check(o) ? true : false;"
-				self.tmpl_to_c = "*val = PyFloat_AsDouble(o);"
-				self.tmpl_from_c = "return PyFloat_FromDouble(*val);"
+				self.tmpl_to_c = "*obj = PyFloat_AsDouble(o);"
+				self.tmpl_from_c = "return PyFloat_FromDouble(*obj);"
 
 		self.bind_type(PythonFloatConverter('float'))
 
@@ -80,8 +80,8 @@ private:
 			def __init__(self, type):
 				super().__init__(type)
 				self.tmpl_check = "return PyUnicode_Check(o) ? true : false;"
-				self.tmpl_to_c = "*val = PyUnicode_AS_DATA(o);"
-				self.tmpl_from_c = "return PyUnicode_FromString(val->c_str());"
+				self.tmpl_to_c = "*obj = PyUnicode_AS_DATA(o);"
+				self.tmpl_from_c = "return PyUnicode_FromString(obj->c_str());"
 
 		self.bind_type(PythonStringConverter('std::string'))
 
@@ -89,8 +89,8 @@ private:
 			def __init__(self, type):
 				super().__init__(type)
 				self.tmpl_check = "return PyUnicode_Check(o) ? true : false;"
-				self.tmpl_to_c = "*val = PyUnicode_AS_DATA(o);"
-				self.tmpl_from_c = "return PyUnicode_FromString(*val);"
+				self.tmpl_to_c = "*obj = PyUnicode_AS_DATA(o);"
+				self.tmpl_from_c = "return PyUnicode_FromString(*obj);"
 
 		self.bind_type(PythonConstCharPtrConverter('const char *'))
 

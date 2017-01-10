@@ -3,8 +3,8 @@ import gen
 
 #
 class LuaTypeConverterCommon(gen.TypeConverter):
-	def __init__(self, type):
-		super().__init__(type)
+	def __init__(self, type, storage_ref=''):
+		super().__init__(type, storage_ref)
 
 	def return_void_from_c(self):
 		return 'return 0;'
@@ -25,11 +25,7 @@ class LuaNativeTypeConverter(LuaTypeConverterCommon):
 #
 class LuaClassTypeDefaultConverter(LuaTypeConverterCommon):
 	def __init__(self, type):
-		super().__init__(type)
-
-	def new_var(self, name):  # class are always passed by pointer
-		out = '%s *%s;\n' % (self.fully_qualified_name, name)
-		return (out, name)
+		super().__init__(type, '*')
 
 	def to_c_ptr(self, var, var_p):
 		return '%s(L, %s, %s);\n' % (self.to_c, var, var_p)
@@ -51,7 +47,7 @@ class LuaClassTypeDefaultConverter(LuaTypeConverterCommon):
 		return '''
 	auto p = lua_touserdata(L, idx);
 	auto w = reinterpret_cast<NativeObjectWrapper *>(p);
-	*val = reinterpret_cast<%s>(w->GetObj());
+	*obj = reinterpret_cast<%s*>(w->GetObj());
 ''' % self.fully_qualified_name
 
 	def tmpl_from_c(self):
@@ -92,7 +88,7 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 			def __init__(self, type):
 				super().__init__(type)
 				self.tmpl_check = "return lua_isnumber(L, idx) ? true : false;"
-				self.tmpl_to_c = "*val = lua_tonumber(L, idx);"
+				self.tmpl_to_c = "*obj = lua_tonumber(L, idx);"
 				self.tmpl_from_c = "lua_pushinteger(L, *obj); return 1;"
 
 		self.bind_type(LuaNumberConverter('int'))
@@ -102,7 +98,7 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 			def __init__(self, type):
 				super().__init__(type)
 				self.tmpl_check = "return lua_isstring(L, idx) ? true : false;"
-				self.tmpl_to_c = "*val = lua_tostring(L, idx);"
+				self.tmpl_to_c = "*obj = lua_tostring(L, idx);"
 				self.tmpl_from_c = "lua_pushstring(L, obj->c_str()); return 1;"
 
 		self.bind_type(LuaStringConverter('std::string'))
@@ -111,7 +107,7 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 			def __init__(self, type):
 				super().__init__(type)
 				self.tmpl_check = "return lua_isstring(L, idx) ? true : false;"
-				self.tmpl_to_c = "*val = lua_tostring(L, idx);"
+				self.tmpl_to_c = "*obj = lua_tostring(L, idx);"
 				self.tmpl_from_c = "lua_pushstring(L, *obj); return 1;"
 
 		self.bind_type(LuaConstCharPtrConverter('const char *'))

@@ -5,7 +5,7 @@ import python
 def run_test(gen):
 	gen.start("gs")
 
-	gen.bind_function('add_basic_types', 'int', ['int a', 'int'])
+	# gen.bind_function('add_basic_types', 'int', ['int a', 'int'])
 	gen.bind_function('set_name_from_const_char_ptr', 'void', ['const char *'])
 	gen.bind_function('get_name_as_const_char_ptr', 'const char *', ['void'])
 
@@ -25,6 +25,9 @@ def run_test(gen):
 	gen.bind_function('return_simple_struct_by_pointer', 'simple_struct*', [])
 	gen.bind_function('return_simple_struct_by_ref', 'simple_struct&', [])
 
+	gen.bind_function('take_simple_struct_by_value', 'void', ['simple_struct'])
+	gen.bind_function('take_simple_struct_by_pointer', 'void', ['simple_struct*'])
+	gen.bind_function('take_simple_struct_by_ref', 'void', ['simple_struct&'])
 
 	header, source = gen.get_output()
 
