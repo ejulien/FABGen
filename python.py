@@ -3,19 +3,26 @@ import gen
 
 #
 class PythonTypeConverterCommon(gen.TypeConverter):
+	def __init__(self, type, storage_type=None):
+		super().__init__(type, storage_type)
+
+	def output_type_api(self):
+		return '// type API for %s\n' % self.fully_qualified_name +\
+		'bool check_%s(PyObject *o);\n' % self.clean_name +\
+		'void to_c_%s(PyObject *o, void *obj);\n' % self.clean_name +\
+		'PyObject *from_c_%s(void *obj, OwnershipPolicy);\n' % self.clean_name
+
+	def to_c_call(self, var, var_p):
+		return 'to_c_%s(L, %s, %s);\n' % (self.clean_name, var, var_p)
+
+	def from_c_call(self, ctype, var, var_p):
+		return "from_c_%s(L, %s, %s);\n" % (self.clean_name, var_p, self.get_ownership_policy(ctype.get_ref()))
+
+
+#
+class PythonClassTypeDefaultConverter(gen.TypeConverter):
 	def __init__(self, type):
-		super().__init__(type)
-
-
-class PythonNativeTypeConverter(PythonTypeConverterCommon):
-	def __init__(self, type):
-		super().__init__(type)
-
-	def to_c_ptr(self, var, var_p):
-		return '%s(%s, %s);\n' % (self.to_c, var, var_p)
-
-	def from_c_ptr(self, var, var_p):
-		return "PyObject *%s = %s(%s, ByValue);\n" % (var, self.from_c, var_p)
+		super().__init__(type, type + '*')
 
 
 #
@@ -31,67 +38,50 @@ class PythonGenerator(gen.FABGen):
 		super().start(module_name, namespace)
 
 		# templates for class type exchange
-		self.insert_code('''
-// wrap a C object
-template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(void *obj, const char *type_tag)
-{
-	auto p = lua_newuserdata(L, sizeof(NATIVE_OBJECT_WRAPPER_T));
-	if (!p)
-		return 0;
-
-	new (p) NATIVE_OBJECT_WRAPPER_T(obj, type_tag);
-	return 1;
-}
-
-// wrap an owned reference to a PyObject
-class OwnedPyObject
-{
-public:
-	OwnedPyObject(PyObject *o_) : o(o_) {}
-	~OwnedPyObject() { Py_DECREF(o); }
-
-	operator PyObject *() const { return o; }
-
-private:
-	PyObject *o;
-};
-
-''', True, False)
+		self.insert_code('''''', True, False)
 
 		# bind basic types
-		class PythonIntConverter(PythonNativeTypeConverter):
+		class PythonIntConverter(PythonTypeConverterCommon):
 			def __init__(self, type):
 				super().__init__(type)
-				self.tmpl_check = "return PyLong_Check(o) ? true : false;"
-				self.tmpl_to_c = "*obj = PyLong_AsLong(o);"
-				self.tmpl_from_c = "return PyLong_FromLong(*obj);"
+
+			def output_type_glue(self):
+				return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.clean_name +\
+				'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyLong_AsLong(o); }\n' % (self.clean_name, self.ctype) +\
+				'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromLong(*((%s*)obj)); }\n' % (self.clean_name, self.ctype)
 
 		self.bind_type(PythonIntConverter('int'))
 
-		class PythonFloatConverter(PythonNativeTypeConverter):
+		class PythonFloatConverter(PythonTypeConverterCommon):
 			def __init__(self, type):
 				super().__init__(type)
-				self.tmpl_check = "return PyFloat_Check(o) ? true : false;"
-				self.tmpl_to_c = "*obj = PyFloat_AsDouble(o);"
-				self.tmpl_from_c = "return PyFloat_FromDouble(*obj);"
+
+			def output_type_glue(self):
+				return 'bool check_%s(PyObject *o) { return PyFloat_Check(o) ? true : false; }\n' % self.clean_name +\
+				'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyFloat_AsDouble(o); }\n' % (self.clean_name, self.ctype) +\
+				'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyFloat_FromDouble(*((%s*)obj)); }\n' % (self.clean_name, self.ctype)
 
 		self.bind_type(PythonFloatConverter('float'))
 
-		class PythonStringConverter(PythonNativeTypeConverter):
+		class PythonStringConverter(PythonTypeConverterCommon):
 			def __init__(self, type):
 				super().__init__(type)
-				self.tmpl_check = "return PyUnicode_Check(o) ? true : false;"
-				self.tmpl_to_c = "*obj = PyUnicode_AS_DATA(o);"
-				self.tmpl_from_c = "return PyUnicode_FromString(obj->c_str());"
+
+			def output_type_glue(self):
+				return 'bool check_%s(PyObject *o) { return PyUnicode_Check(o) ? true : false; }\n' % self.clean_name +\
+				'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyUnicode_AS_DATA(o); }\n' % (self.clean_name, self.ctype) +\
+				'PyObject *from_c_%s(void *obj) { return PyUnicode_FromString(((%s*)obj)->c_str()); }\n' % (self.clean_name, self.ctype)
 
 		self.bind_type(PythonStringConverter('std::string'))
 
-		class PythonConstCharPtrConverter(PythonNativeTypeConverter):
+		class PythonConstCharPtrConverter(PythonTypeConverterCommon):
 			def __init__(self, type):
 				super().__init__(type)
-				self.tmpl_check = "return PyUnicode_Check(o) ? true : false;"
-				self.tmpl_to_c = "*obj = PyUnicode_AS_DATA(o);"
-				self.tmpl_from_c = "return PyUnicode_FromString(*obj);"
+
+			def output_type_glue(self):
+				return 'bool check_%s(PyObject *o) { return PyUnicode_Check(o) ? true : false; }\n' % self.clean_name +\
+				'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyUnicode_AS_DATA(o); }\n' % (self.clean_name, self.ctype) +\
+				'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyUnicode_FromString(*((%s*)obj)); }\n' % (self.clean_name, self.ctype)
 
 		self.bind_type(PythonConstCharPtrConverter('const char *'))
 
@@ -100,17 +90,12 @@ private:
 		self._source += 'PyErr_SetString(PyExc_RuntimeError, "%s");\n' % reason
 
 	#
-	def proto_check(self, name, ctype):
-		return 'bool %s(PyObject *o)' % (name)
-
-	def proto_to_c(self, name, ctype):
-		return 'void %s(PyObject *o, %s *obj)' % (name, gen.get_fully_qualified_ctype_name(ctype))
-
-	def proto_from_c(self, name, ctype):
-		return 'PyObject *%s(%s *obj, OwnershipPolicy own_policy)' % (name, gen.get_fully_qualified_ctype_name(ctype))
-
 	def new_function(self, name, args):
 		return "static PyObject *%s(PyObject *self, PyObject *args) {\n" % name
+
+	#
+	def get_class_default_converter(self):
+		return PythonClassTypeDefaultConverter
 
 	#
 	def get_arg(self, i, args):
@@ -131,8 +116,11 @@ private:
 			self._source += '\n'
 
 	# function call return values
-	def rval_from_c_ptr(self, rval, var, conv, rval_p):
-		self._source += conv.from_c_ptr(var + '_pyobj', rval_p)
+	def return_void_from_c(self):
+		return 'return 0;'
+
+	def rval_from_c_ptr(self, ctype, var, conv, rval_p):
+		self._source += conv.from_c_call(ctype, var + '_pyobj', rval_p)
 
 	def commit_rvals(self, rval):
 		rval_count = 1 if repr(rval) != 'void' else 0

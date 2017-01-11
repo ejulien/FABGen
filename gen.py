@@ -105,29 +105,25 @@ def ctype_ref_to(src_ref, dst_ref):
 
 
 class TypeConverter:
-	def __init__(self, type, storage_ref=''):
+	def __init__(self, type, storage_type=None):
+		if not storage_type:
+			storage_type = type
+
 		self.ctype = parse(type, _CType)
-		self.storage_ctype = parse(type + storage_ref, _CType)
+		self.storage_ctype = parse(storage_type, _CType)
 
 		self.clean_name = get_type_clean_name(type)
 		self.fully_qualified_name = get_fully_qualified_ctype_name(self.ctype)
 		self.type_tag = '__%s_type_tag' % self.clean_name
 
-	def check(self):
-		assert 'check not implemented'
-	def to_c(self):
-		assert 'to_c not implemented'
-	def from_c(self):
-		assert 'from_c not implemented'
+	def output_type_api(self):
+		pass
 
 	def get_ownership_policy(self, ref):
 		"""Return the VM default ownership policy for a reference coming from C."""
 		if ref == '*' or ref == '&':
 			return 'NonOwning'
 		return 'ByValue'
-
-	def return_void_from_c(self):
-		assert 'return_void_from_c not implemented'
 
 
 #
@@ -176,66 +172,6 @@ class FABGen:
 			self._header += 'namespace %s {\n\n' % self._namespace
 			self._source += 'namespace %s {\n\n' % self._namespace
 
-		self._source += '''// native object wrapper
-enum OwnershipPolicy { NonOwning, ByValue, ByAddress };
-
-struct NativeObjectWrapper {
-	virtual ~NativeObjectWrapper() = 0
-
-	virtual void *GetObj() const = 0;
-	virtual const char *GetTypeTag() const = 0;
-
-	bool IsNativeObjectWrapper() const { return magic == 'fab!'; }
-
-private:
-	const uint32_t magic = 'fab!';
-};
-
-template <typename T> struct NativeObjectValueWrapper : NativeObjectWrapper {
-	NativeObjectValueWrapper(T *obj_, const char *type_tag_) : obj(*obj_), type_tag(type_tag_) {}
-
-	void *GetObj() const override { return &obj; }
-	const char *GetTypeTag() const override { return type; }
-
-private:
-	T obj;
-	const char *type_tag;
-};
-
-struct NativeObjectPtrWrapper : NativeObjectWrapper {
-	NativeObjectPtrWrapper(void *obj_, const char *type_tag_) : obj(obj_), type_tag(type_tag_) {}
-
-	void *GetObj() const override { return obj; }
-	const char *GetType() const override { return type; }
-
-private:
-	void *obj;
-	const char *type_tag;
-};
-
-template <typename T> struct NativeObjectUniquePtrWrapper : NativeObjectWrapper {
-	NativeObjectUniquePtrWrapper(T *obj_, const char *type_tag_) : obj(obj_), type_tag(type_tag_) {}
-
-	void *GetObj() const override { return obj.get(); }
-	const char *GetTypeTag() const override { return type; }
-
-private:
-	std::unique_ptr<T> obj;
-	const char *type_tag;
-};
-
-template <typename T> struct NativeObjectSharedPtrWrapper : NativeObjectWrapper {
-	NativeObjectSharedPtrWrapper(std::shared_ptr<T> *obj_, const char *type_tag_) : obj(*obj_), type_tag(type_tag_) {}
-
-	void *GetObj() const override { return obj.get(); }
-	const char *GetTypeTag() const override { return type; }
-
-private:
-	std::shared_ptr<T> obj;
-	const char *type_tag;
-};
-'''
-
 	def add_include(self, path, is_system_include = False):
 		if is_system_include:
 			self.__system_includes.append(path)
@@ -260,43 +196,25 @@ private:
 	def proto_from_c(self, name, ctype):
 		assert 'proto_check not implemented in generator'
 
-	def __output_type_op_function(self, conv, op):
-		name = '_%s_%s' % (conv.clean_name, op)
-
-		proto = getattr(self, 'proto_%s' % op)
-		if callable(proto):
-			ctype = conv.storage_ctype if op == 'to_c' else conv.ctype
-			proto = proto(name, ctype)
-
-		self._header += proto + ';\n'
-
-		body = getattr(conv, 'tmpl_%s' % op)
-		if callable(body):
-			body = body()
-
-		self._source += proto + ' { ' + body + ' }\n'
-		setattr(conv, op, name)
-
 	#
-
 	def bind_type(self, conv):
 		"""Declare a converter for a type natively supported by the target VM."""
 		type = conv.fully_qualified_name
 		self.__type_convs[type] = conv
 
-		# output type tag
-		self.insert_code('// type operators for %s\n' % type)
+		self._header += conv.output_type_api()
 		self._source += 'static const char *%s = "%s";\n\n' % (conv.type_tag, type)
+		self._source += conv.output_type_glue()
 
-		self.__output_type_op_function(conv, 'check')
-		self.__output_type_op_function(conv, 'to_c')
-		self.__output_type_op_function(conv, 'from_c')
-
-		#
 		self.insert_code('\n')
 
-	def get_output(self):
-		return self._header, self._source
+	#
+	def get_class_default_converter(self):
+		assert "missing class type default converter"
+
+	def bind_class(self, name):
+		class_default_conv = self.get_class_default_converter()
+		self.bind_type(class_default_conv(name))
 
 	#
 	def select_ctype_conv(self, ctype):
@@ -365,7 +283,7 @@ private:
 
 			arg_name = 'arg%d' % i
 			self._source += self.decl_arg(conv.storage_ctype, arg_name)
-			self._source += conv.to_c_ptr(self.get_arg(i, args), '&' + arg_name)
+			self._source += conv.to_c_call(self.get_arg(i, args), '&' + arg_name)
 
 			c_call_arg_transform = ctype_ref_to(conv.storage_ctype.get_ref(), arg['ctype'].get_ref())
 			c_call_args.append(c_call_arg_transform + arg_name)
@@ -422,13 +340,6 @@ private:
 		# bind wrapper
 		self.bind_function(bound_name, bound_rval, bound_args)
 
-	def get_class_default_converter(self):
-		assert "missing class type default converter"
-
-	def bind_class(self, name):
-		class_default_conv = self.get_class_default_converter()
-		self.bind_type(class_default_conv(name))
-
 	#
 	def output_summary(self):
 		self._source += '// Bound %d global functions:\n' % len(self._bound_functions)
@@ -449,3 +360,6 @@ private:
 		if self._namespace:
 			self._header += '} // %s\n\n' % self._namespace
 			self._source += '} // %s\n\n' % self._namespace
+
+	def get_output(self):
+		return self._header, self._source
