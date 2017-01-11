@@ -5,6 +5,8 @@ import python
 def run_test(gen):
 	gen.start('test', 'binding')
 
+	gen.add_include('test.h')
+
 	gen.bind_function('add_basic_types', 'int', ['int a', 'int'])
 	gen.bind_function('set_name_from_const_char_ptr', 'void', ['const char *'])
 	gen.bind_function('get_name_as_const_char_ptr', 'const char *', ['void'])
@@ -38,5 +40,5 @@ def run_test(gen):
 	print(source)
 
 
-#run_test(lua.LuaGenerator())
+run_test(lua.LuaGenerator())
 run_test(python.PythonGenerator())

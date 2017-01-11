@@ -43,11 +43,12 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(void *obj, const char *
 	return 1;
 }
 
-class PythonReference
+// wrap an owned reference to a PyObject
+class OwnedPyObject
 {
 public:
-	PythonReference(PyObject *o_) : o(o_) {}
-	~PythonReference() { Py_DECREF(o); }
+	OwnedPyObject(PyObject *o_) : o(o_) {}
+	~OwnedPyObject() { Py_DECREF(o); }
 
 	operator PyObject *() const { return o; }
 
@@ -94,6 +95,11 @@ private:
 
 		self.bind_type(PythonConstCharPtrConverter('const char *'))
 
+	#
+	def raise_exception(self, type, reason):
+		self._source += 'PyErr_SetString(PyExc_RuntimeError, "%s");\n' % reason
+
+	#
 	def proto_check(self, name, ctype):
 		return 'bool %s(PyObject *o)' % (name)
 
@@ -106,23 +112,35 @@ private:
 	def new_function(self, name, args):
 		return "static PyObject *%s(PyObject *self, PyObject *args) {\n" % name
 
+	#
 	def get_arg(self, i, args):
-		return "arg_pyobj[%d]" % i
+		return "arg_pyobj_%d" % i
+
+	def begin_convert_args(self, args):
+		arg_count = len(args)
+
+		if arg_count > 0:
+			self._source += "if (!PyTuple_Check(args) || (PyTuple_GET_SIZE(args) != %d)) {\n" % arg_count
+			self.raise_exception(None, 'invalid arguments object')
+			self._source += "	return NULL;\n"
+			self._source += "}\n"
+
+			for i in range(arg_count):
+				self._source += "PyObject *%s = PyTuple_GET_ITEM(args, %d);\n" % (self.get_arg(i, args), i)
+
+			self._source += '\n'
 
 	# function call return values
-	def begin_convert_rvals(self):
-		pass
-
 	def rval_from_c_ptr(self, rval, var, conv, rval_p):
 		self._source += conv.from_c_ptr(var + '_pyobj', rval_p)
 
-	def commit_rvals(self, rvals, rval_names):
-		rval_count = len(rvals)
+	def commit_rvals(self, rval):
+		rval_count = 1 if repr(rval) != 'void' else 0
 
 		if rval_count == 0:
 			self._source += 'Py_INCREF(Py_None);\nreturn Py_None;\n'
 		elif rval_count == 1:
-			self._source += 'return %s_pyobj;\n' % rval_names[0]
+			self._source += 'return rval_pyobj;\n'
 		else:
 			self._source += '// TODO make tuple, append rvals, return tuple\n'
 

@@ -137,6 +137,8 @@ class FABGen:
 		self._namespace = None
 		self._header, self._source = None, None
 
+		self.__system_includes, self.__user_includes = None, None
+
 		self.__type_convs = None
 		self.__function_templates = None
 
@@ -151,12 +153,16 @@ class FABGen:
 		self._header += common
 
 	def output_includes(self):
-		self._source += '#include <cstdint>\n\n'
+		self.add_include('cstdint', True)
+
+		self._source += '{{{__WRAPPER_INCLUDES__}}}\n'
 
 	def start(self, name, namespace = None):
 		self._name = name
 		self._namespace = namespace
 		self._header, self._source = "", ""
+
+		self.__system_includes, self.__user_includes = [], []
 
 		self.__type_convs = {}
 		self.__function_templates = {}
@@ -230,11 +236,21 @@ private:
 };
 '''
 
+	def add_include(self, path, is_system_include = False):
+		if is_system_include:
+			self.__system_includes.append(path)
+		else:
+			self.__user_includes.append(path)
+
 	def insert_code(self, code, in_source=True, in_header=True):
 		if in_header:
 			self._header += code
 		if in_source:
 			self._source += code
+
+	#
+	def raise_exception(self, type, reason):
+		assert 'raise_exception not implemented in generator'
 
 	#
 	def proto_check(self, name, ctype):
@@ -299,8 +315,8 @@ private:
 	def select_args_convs(self, args):
 		return [{'conv': self.select_ctype_conv(arg.ctype), 'ctype': arg.ctype} for i, arg in enumerate(args)]
 
-	def select_rvals_convs(self, rvals):
-		return [{'conv': self.select_ctype_conv(ctype), 'ctype': ctype} for i, ctype in enumerate(rvals)]
+	def begin_convert_args(self, args):
+		pass
 
 	def decl_arg(self, ctype, name):
 		return '%s %s;\n' % (get_fully_qualified_ctype_name(ctype), name)
@@ -309,13 +325,16 @@ private:
 		pass
 
 	#
-	def commit_rvals(self, rvals):
-		assert "missing return values template"
+	def begin_convert_rvals(self, rval):
+		pass
 
 	def decl_rval(self, type, name):
 		return '%s %s = ' % (get_fully_qualified_ctype_name(type), name)
 
-	def cleanup_rvals(self, rvals, rval_names):
+	def commit_rvals(self, rval):
+		assert "missing return values template"
+
+	def cleanup_rvals(self, rval):
 		pass
 
 	#
@@ -336,6 +355,7 @@ private:
 
 		# declare call arguments and convert them from the VM
 		args = self.select_args_convs(args)
+		self.begin_convert_args(args)
 
 		c_call_args = []
 		for i, arg in enumerate(args):
@@ -350,13 +370,10 @@ private:
 			c_call_arg_transform = ctype_ref_to(conv.storage_ctype.get_ref(), arg['ctype'].get_ref())
 			c_call_args.append(c_call_arg_transform + arg_name)
 
-		# declare the return value
-		rval_names = []
+		# declare return values
 		rval_conv = self.select_ctype_conv(rval)
-
 		if rval_conv:
 			self._source += self.decl_rval(rval, 'rval')
-			rval_names.append('rval')
 
 		# perform function call
 		self._source += '%s(%s);\n' % (name, ', '.join(c_call_args))  # perform C function call
@@ -364,21 +381,16 @@ private:
 		# cleanup arguments
 		self.cleanup_args(args)
 
-		# convert the return value
-		self.begin_convert_rvals()
+		# convert return values
+		self.begin_convert_rvals(rval)
 		if rval_conv:
 			self.rval_from_c_ptr(rval, 'rval', rval_conv, ctype_ref_to(rval.get_ref(), rval_conv.ctype.get_ref() + '*') + 'rval')
 
 		# commit return values
-		if rval_conv:
-			rvals = [rval_conv]
-		else:
-			rvals = []
-
-		self.commit_rvals(rvals, rval_names)
+		self.commit_rvals(rval)
 
 		# cleanup return value
-		self.cleanup_rvals(rvals, rval_names)
+		self.cleanup_rvals(rval)
 
 		self._source += "}\n\n"
 
@@ -425,6 +437,15 @@ private:
 		self._source += '\n'
 
 	def finalize(self):
+		# insert includes
+		if len(self.__system_includes) > 0:
+			system_includes = ''.join(['#include <%s>\n' % path for path in self.__system_includes])
+		if len(self.__user_includes) > 0:
+			user_includes = ''.join(['#include "%s"\n' % path for path in self.__user_includes])
+
+		self._source = self._source.replace('{{{__WRAPPER_INCLUDES__}}}', system_includes + user_includes)
+
+		# close namespace
 		if self._namespace:
 			self._header += '} // %s\n\n' % self._namespace
 			self._source += '} // %s\n\n' % self._namespace

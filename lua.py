@@ -59,8 +59,8 @@ class LuaClassTypeDefaultConverter(LuaTypeConverterCommon):
 
 #
 class LuaGenerator(gen.FABGen):
-	def start(self, namespace = None):
-		super().start(namespace)
+	def start(self, module_name, namespace = None):
+		super().start(module_name, namespace)
 
 		# templates for class type exchange
 		self.insert_code('''
@@ -105,6 +105,10 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 
 		self.bind_type(LuaConstCharPtrConverter('const char *'))
 
+	def raise_exception(self, type, reason):
+		self.__source += 'return 0; // FIXME'
+
+	#
 	def proto_check(self, name, ctype):
 		return 'bool %s(lua_State *L, int idx)' % (name)
 
@@ -121,13 +125,13 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 		return "%d" % i
 
 	# function call return values
-	def begin_convert_rvals(self):
+	def begin_convert_rvals(self, rval):
 		self._source += 'int rval_count = 0;\n'
 
 	def rval_from_c_ptr(self, ctype, var, conv, rval_p):
 		self._source += 'rval_count += ' + conv.from_c_ptr(ctype, var, rval_p)
 
-	def commit_rvals(self, rvals, rval_names):
+	def commit_rvals(self, rval):
 		self._source += "return rval_count;\n"
 
 	#
