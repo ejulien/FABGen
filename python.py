@@ -6,7 +6,7 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 	def __init__(self, type, storage_type=None):
 		super().__init__(type, storage_type)
 
-	def output_type_api(self):
+	def output_type_api(self, module_name):
 		return '// type API for %s\n' % self.fully_qualified_name +\
 		'bool check_%s(PyObject *o);\n' % self.clean_name +\
 		'void to_c_%s(PyObject *o, void *obj);\n' % self.clean_name +\
@@ -24,6 +24,58 @@ class PythonClassTypeDefaultConverter(gen.TypeConverter):
 	def __init__(self, type):
 		super().__init__(type, type + '*')
 
+	def output_type_glue(self, module_name):
+		out = '''typedef struct {
+	PyObject_HEAD
+} %s_PyObject;
+''' % self.clean_name
+
+		out += '''
+static PyTypeObject %s_PyType = {
+	PyVarObject_HEAD_INIT(NULL, 0)
+	"%s.%s", /* tp_name */
+	sizeof(%s_PyObject), /* tp_basicsize */
+	0,  /* tp_itemsize */
+	0, /* tp_dealloc */
+	0, /* tp_print */
+	0, /* tp_getattr */
+	0, /* tp_setattr */
+	0, /* tp_as_async */
+	0, /* tp_repr */
+	0, /* tp_as_number */
+	0, /* tp_as_sequence */
+	0, /* tp_as_mapping */
+	0, /* tp_hash  */
+	0, /* tp_call */
+	0, /* tp_str */
+	0, /* tp_getattro */
+	0, /* tp_setattro */
+	0, /* tp_as_buffer */
+	Py_TPFLAGS_DEFAULT, /* tp_flags */
+	"FIXME DOC", /* tp_doc */
+};
+''' % (self.clean_name, module_name, self.bound_name, self.clean_name)
+
+		out += '''
+static bool Finalize_%s_Type() {
+	%s_PyType.tp_new = PyType_GenericNew;
+	return PyType_Ready(&%s_PyType) >= 0;
+}
+''' % (self.clean_name, self.clean_name, self.clean_name)
+
+		return out
+
+	def finalize_type(self):
+		out = '''\
+	%s_PyType.tp_new = PyType_GenericNew;
+	if (PyType_Ready(&%s_PyType) < 0)
+		return NULL;
+	Py_INCREF(&%s_PyType);
+	PyModule_AddObject(m, "%s", (PyObject *)&%s_PyType);
+
+''' % (self.clean_name, self.clean_name, self.clean_name, self.bound_name, self.clean_name)
+		return out
+
 
 #
 class PythonGenerator(gen.FABGen):
@@ -34,8 +86,8 @@ class PythonGenerator(gen.FABGen):
 #include "Python.h"
 \n'''
 
-	def start(self, module_name, namespace = None):
-		super().start(module_name, namespace)
+	def start(self, module_name):
+		super().start(module_name)
 
 		# templates for class type exchange
 		self.insert_code('''''', True, False)
@@ -45,7 +97,7 @@ class PythonGenerator(gen.FABGen):
 			def __init__(self, type):
 				super().__init__(type)
 
-			def output_type_glue(self):
+			def output_type_glue(self, module_name):
 				return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.clean_name +\
 				'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyLong_AsLong(o); }\n' % (self.clean_name, self.ctype) +\
 				'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromLong(*((%s*)obj)); }\n' % (self.clean_name, self.ctype)
@@ -56,7 +108,7 @@ class PythonGenerator(gen.FABGen):
 			def __init__(self, type):
 				super().__init__(type)
 
-			def output_type_glue(self):
+			def output_type_glue(self, module_name):
 				return 'bool check_%s(PyObject *o) { return PyFloat_Check(o) ? true : false; }\n' % self.clean_name +\
 				'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyFloat_AsDouble(o); }\n' % (self.clean_name, self.ctype) +\
 				'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyFloat_FromDouble(*((%s*)obj)); }\n' % (self.clean_name, self.ctype)
@@ -67,7 +119,7 @@ class PythonGenerator(gen.FABGen):
 			def __init__(self, type):
 				super().__init__(type)
 
-			def output_type_glue(self):
+			def output_type_glue(self, module_name):
 				return 'bool check_%s(PyObject *o) { return PyUnicode_Check(o) ? true : false; }\n' % self.clean_name +\
 				'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyUnicode_AS_DATA(o); }\n' % (self.clean_name, self.ctype) +\
 				'PyObject *from_c_%s(void *obj) { return PyUnicode_FromString(((%s*)obj)->c_str()); }\n' % (self.clean_name, self.ctype)
@@ -78,7 +130,7 @@ class PythonGenerator(gen.FABGen):
 			def __init__(self, type):
 				super().__init__(type)
 
-			def output_type_glue(self):
+			def output_type_glue(self, module_name):
 				return 'bool check_%s(PyObject *o) { return PyUnicode_Check(o) ? true : false; }\n' % self.clean_name +\
 				'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyUnicode_AS_DATA(o); }\n' % (self.clean_name, self.ctype) +\
 				'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyUnicode_FromString(*((%s*)obj)); }\n' % (self.clean_name, self.ctype)
@@ -159,8 +211,24 @@ class PythonGenerator(gen.FABGen):
 
 	def output_module_init_function(self, module_def):
 		self._source += 'PyMODINIT_FUNC PyInit_%s(void) {\n' % self._name
-		self._source += '	return PyModule_Create(&%s);\n' % module_def
-		self._source += '}\n\n'
+		self._source += '	PyObject *m;\n'
+
+		self._source += '''
+	m = PyModule_Create(&%s);
+	if (m == NULL)
+		return NULL;
+
+''' % module_def
+
+		# finalize bound types
+		self._source += '	// custom types finalization\n'
+		for conv in self._bound_types:
+			self._source += conv.finalize_type()
+
+		self._source += '''\
+	return m;
+}
+\n'''
 
 	def finalize(self):
 		self._source += '// Module definitions starts here.\n\n'
@@ -171,8 +239,5 @@ class PythonGenerator(gen.FABGen):
 		module_def = self.output_module_definition(methods_table)
 
 		super().finalize()
-
-		if self._namespace:
-			module_def = '%s::%s' % (self._namespace, module_def)
 
 		self.output_module_init_function(module_def)

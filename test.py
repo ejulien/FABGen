@@ -3,7 +3,7 @@ import python
 
 
 def run_test(gen):
-	gen.start('test', 'binding')
+	gen.start('test')
 
 	gen.add_include('test.h')
 
@@ -22,7 +22,7 @@ def run_test(gen):
 	gen.bind_function_template('add3', 'add3_float_float', ['float', 'float'])
 	gen.bind_function_template('add3', 'add3_float_string', ['float', 'std::string *'])
 
-#	gen.bind_class('simple_struct')
+	gen.bind_class('simple_struct')
 
 	#gen.bind_function('return_simple_struct_by_value', 'simple_struct', [])
 	#gen.bind_function('return_simple_struct_by_pointer', 'simple_struct*', [])
