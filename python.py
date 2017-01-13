@@ -13,10 +13,10 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 		'PyObject *from_c_%s(void *obj, OwnershipPolicy);\n' % self.clean_name
 
 	def to_c_call(self, var, var_p):
-		return 'to_c_%s(L, %s, %s);\n' % (self.clean_name, var, var_p)
+		return 'to_c_%s(%s, %s);\n' % (self.clean_name, var, var_p)
 
 	def from_c_call(self, ctype, var, var_p):
-		return "from_c_%s(L, %s, %s);\n" % (self.clean_name, var_p, self.get_ownership_policy(ctype.get_ref()))
+		return "PyObject *%s = from_c_%s(%s, %s);\n" % (var, self.clean_name, var_p, self.get_ownership_policy(ctype.get_ref()))
 
 
 #
@@ -121,7 +121,12 @@ class PythonGenerator(gen.FABGen):
 
 			def output_type_glue(self, module_name):
 				return 'bool check_%s(PyObject *o) { return PyUnicode_Check(o) ? true : false; }\n' % self.clean_name +\
-				'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyUnicode_AS_DATA(o); }\n' % (self.clean_name, self.ctype) +\
+				'''void to_c_%s(PyObject *o, void *obj) {
+	PyObject *utf8_pyobj = PyUnicode_AsUTF8String(o);
+	*((%s*)obj) = PyBytes_AsString(utf8_pyobj);
+	Py_DECREF(utf8_pyobj);
+}
+''' % (self.clean_name, self.ctype) +\
 				'PyObject *from_c_%s(void *obj) { return PyUnicode_FromString(((%s*)obj)->c_str()); }\n' % (self.clean_name, self.ctype)
 
 		self.bind_type(PythonStringConverter('std::string'))
@@ -132,7 +137,12 @@ class PythonGenerator(gen.FABGen):
 
 			def output_type_glue(self, module_name):
 				return 'bool check_%s(PyObject *o) { return PyUnicode_Check(o) ? true : false; }\n' % self.clean_name +\
-				'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyUnicode_AS_DATA(o); }\n' % (self.clean_name, self.ctype) +\
+				'''void to_c_%s(PyObject *o, void *obj) {
+	PyObject *utf8_pyobj = PyUnicode_AsUTF8String(o);
+	*((%s*)obj) = PyBytes_AsString(utf8_pyobj);
+	Py_DECREF(utf8_pyobj);
+}
+''' % (self.clean_name, self.ctype) +\
 				'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyUnicode_FromString(*((%s*)obj)); }\n' % (self.clean_name, self.ctype)
 
 		self.bind_type(PythonConstCharPtrConverter('const char *'))
@@ -157,13 +167,13 @@ class PythonGenerator(gen.FABGen):
 		arg_count = len(args)
 
 		if arg_count > 0:
-			self._source += "if (!PyTuple_Check(args) || (PyTuple_GET_SIZE(args) != %d)) {\n" % arg_count
+			self._source += "if (!PyTuple_Check(args) || (PyTuple_Size(args) != %d)) {\n" % arg_count
 			self.raise_exception(None, 'invalid arguments object')
 			self._source += "	return NULL;\n"
 			self._source += "}\n"
 
 			for i in range(arg_count):
-				self._source += "PyObject *%s = PyTuple_GET_ITEM(args, %d);\n" % (self.get_arg(i, args), i)
+				self._source += "PyObject *%s = PyTuple_GetItem(args, %d);\n" % (self.get_arg(i, args), i)
 
 			self._source += '\n'
 

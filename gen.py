@@ -160,6 +160,8 @@ class FABGen:
 		self.output_header()
 		self.output_includes()
 
+		self._source += 'enum OwnershipPolicy { NonOwning, ByValue };\n\n'
+
 	def add_include(self, path, is_system_include = False):
 		if is_system_include:
 			self.__system_includes.append(path)
@@ -339,8 +341,11 @@ class FABGen:
 
 	def finalize(self):
 		# insert includes
+		system_includes = ''
 		if len(self.__system_includes) > 0:
 			system_includes = ''.join(['#include <%s>\n' % path for path in self.__system_includes])
+
+		user_includes = ''
 		if len(self.__user_includes) > 0:
 			user_includes = ''.join(['#include "%s"\n' % path for path in self.__user_includes])
 
