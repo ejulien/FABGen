@@ -32,7 +32,7 @@ failed_test_list = []
 def run_test(gen, name, testbed):
 	try:
 		with tempfile.TemporaryDirectory() as work_path:
-			print('Work path is ' + work_path)
+			print('Working directory is ' + work_path)
 
 			test_module = importlib.import_module(name)
 
@@ -57,7 +57,7 @@ def run_test(gen, name, testbed):
 				failed_test_list.append(name)
 
 	except PermissionError as e:
-		print('\nWARNING: Failed to cleanup temporary directory ("%s").' % e.filename)
+		print('\nWARNING: Failed to remove working directory ("%s").' % e.filename)
 
 
 def run_tests(gen, names, testbed):
