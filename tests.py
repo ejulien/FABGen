@@ -1,8 +1,8 @@
 import importlib
 import tempfile
 import subprocess
+import argparse
 import shutil
-import time
 import sys
 import os
 
@@ -12,11 +12,16 @@ import python
 start_path = os.path.dirname(__file__)
 
 
+parser = argparse.ArgumentParser(description='Run generator unit tests.')
+parser.add_argument('--pybase', dest='python_base_path', help='Specify the base path of the Python interpreter location')
+
+args = parser.parse_args()
+
 # -- interpreter settings
-python_include_dir = 'c:/Python35-32/include'
-python_library = 'c:/Python35-32/libs/python3.lib'
-python_site_package = 'c:/Python35-32/Lib/site-packages'
-python_interpreter = 'c:/Python35-32/python.exe'
+python_include_dir = args.python_base_path + '/' + 'include'
+python_library = args.python_base_path + '/' + 'libs/python3.lib'
+python_site_package = args.python_base_path + '/' + 'Lib/site-packages'
+python_interpreter = args.python_base_path + '/' + 'python.exe'
 
 
 # --
@@ -27,6 +32,8 @@ failed_test_list = []
 def run_test(gen, name, testbed):
 	try:
 		with tempfile.TemporaryDirectory() as work_path:
+			print('Work path is ' + work_path)
+
 			test_module = importlib.import_module(name)
 
 			# generate the interface file
@@ -94,9 +101,18 @@ target_link_libraries(my_test "%s")
 		os.chdir(build_path)
 
 		print("Generating build system...")
-		subprocess.check_output('cmake .. -G "Visual Studio 12 2013')
+		try:
+			subprocess.check_output('cmake .. -G "Visual Studio 12 2013')
+		except subprocess.CalledProcessError as e:
+			print(e.output.decode('utf-8'))
+			return False
+
 		print("Building extension...")
-		subprocess.check_output('cmake --build . --config Release')
+		try:
+			subprocess.check_output('cmake --build . --config Release')
+		except subprocess.CalledProcessError as e:
+			print(e.output.decode('utf-8'))
+			return False
 
 		# deploy extension to target interpreter
 		ext_path = os.path.join(python_site_package, 'my_test.pyd')
@@ -114,7 +130,8 @@ target_link_libraries(my_test "%s")
 		success = True
 		try:
 			subprocess.check_output('%s -m test' % python_interpreter)
-		except subprocess.CalledProcessError:
+		except subprocess.CalledProcessError as e:
+			print(e.output.decode('utf-8'))
 			success = False
 
 		print("Cleanup...")
