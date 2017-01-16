@@ -14,6 +14,7 @@ start_path = os.path.dirname(__file__)
 
 parser = argparse.ArgumentParser(description='Run generator unit tests.')
 parser.add_argument('--pybase', dest='python_base_path', help='Specify the base path of the Python interpreter location')
+parser.add_argument('--debug', dest='debug_test', help='Generate a working solution to debug a test')
 
 args = parser.parse_args()
 
@@ -30,37 +31,40 @@ failed_test_list = []
 
 
 def run_test(gen, name, testbed):
-	try:
-		with tempfile.TemporaryDirectory() as work_path:
-			print('Working directory is ' + work_path)
+	work_path = tempfile.mkdtemp()
+	print('Working directory is ' + work_path)
 
-			test_module = importlib.import_module(name)
+	test_module = importlib.import_module(name)
 
-			# generate the interface file
-			header, source = test_module.bind_test(gen)
+	# generate the interface file
+	header, source = test_module.bind_test(gen)
 
-			header_path = os.path.join(work_path, 'test_module.h')
-			source_path = os.path.join(work_path, 'test_module.cpp')
+	header_path = os.path.join(work_path, 'test_module.h')
+	source_path = os.path.join(work_path, 'test_module.cpp')
 
-			with open(header_path, 'w') as file:
-				file.write(header)
-			with open(source_path, 'w') as file:
-				file.write(source)
+	with open(header_path, 'w') as file:
+		file.write(header)
+	with open(source_path, 'w') as file:
+		file.write(source)
 
-			run_test_list.append(name)
-			result = testbed.build_and_test_extension(work_path, test_module)
+	run_test_list.append(name)
+	result = testbed.build_and_test_extension(work_path, test_module)
 
-			if result:
-				print("[OK]")
-			else:
-				print("[FAILED]")
-				failed_test_list.append(name)
+	if result:
+		print("[OK]")
+	else:
+		print("[FAILED]")
+		failed_test_list.append(name)
 
-	except PermissionError as e:
-		print('\nWARNING: Failed to remove working directory ("%s").' % e.filename)
+	if args.debug_test:
+		subprocess.Popen('explorer "%s"' % work_path)
+	else:
+		shutil.rmtree(work_path, ignore_errors=True)
 
 
 def run_tests(gen, names, testbed):
+	print("Starting tests with generator %s" % gen.get_langage())
+
 	test_count = len(names)
 	print("Running %d tests\n" % test_count)
 
@@ -73,6 +77,7 @@ def run_tests(gen, names, testbed):
 	failed_test_count = len(failed_test_list)
 
 	print("[Test summary: %d run, %d failed]" % (run_test_count, failed_test_count))
+	print("Done with generator %s" % gen.get_langage())
 
 
 # --
@@ -143,8 +148,9 @@ target_link_libraries(my_test "%s")
 # --
 sys.path.append(os.path.join(start_path, 'tests'))
 
-test_names = [
-	'test_basic_type_exchange',
-]
+if args.debug_test:
+	test_names = [args.debug_test]
+else:
+	test_names = [file[:-3] for file in os.listdir('./tests') if file.endswith('.py')]
 
 run_tests(python.PythonGenerator(), test_names, PythonTestBed())

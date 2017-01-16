@@ -1,4 +1,6 @@
 import gen
+import lib.python.std as std
+import lib.python.stl as stl
 
 
 #
@@ -18,67 +20,69 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 	def from_c_call(self, ctype, var, var_p):
 		return "PyObject *%s = from_c_%s(%s, %s);\n" % (var, self.clean_name, var_p, self.get_ownership_policy(ctype.get_ref()))
 
+	def output_type_glue(self, module_name):
+		check = '''bool check_%s(PyObject *o) {
+	return PyFloat_Check(o) ? true : false;
+}''' % (self.clean_name)
+
+		to_c = '''void to_c_%s(PyObject *o, void *obj) {
+*((%s*)obj) = PyFloat_AsDouble(o);
+}''' % (self.clean_name, self.ctype)
+
+		from_c = '''PyObject *from_c_%s(void *obj, OwnershipPolicy) {
+return PyFloat_FromDouble(*((%s*)obj));
+}''' % (self.clean_name, self.ctype)
+
+		return check + to_c + from_c + '\n'
+
 
 #
-class PythonClassTypeDefaultConverter(gen.TypeConverter):
+class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	def __init__(self, type):
 		super().__init__(type, type + '*')
 
 	def output_type_glue(self, module_name):
-		out = '''typedef struct {
-	PyObject_HEAD
-} %s_PyObject;
-''' % self.clean_name
+		out = 'static PyTypeObject *%s_type;\n\n' % self.clean_name
 
-		out += '''
-static PyTypeObject %s_PyType = {
-	PyVarObject_HEAD_INIT(NULL, 0)
-	"%s.%s", /* tp_name */
-	sizeof(%s_PyObject), /* tp_basicsize */
-	0,  /* tp_itemsize */
-	0, /* tp_dealloc */
-	0, /* tp_print */
-	0, /* tp_getattr */
-	0, /* tp_setattr */
-	0, /* tp_as_async */
-	0, /* tp_repr */
-	0, /* tp_as_number */
-	0, /* tp_as_sequence */
-	0, /* tp_as_mapping */
-	0, /* tp_hash  */
-	0, /* tp_call */
-	0, /* tp_str */
-	0, /* tp_getattro */
-	0, /* tp_setattro */
-	0, /* tp_as_buffer */
-	Py_TPFLAGS_DEFAULT, /* tp_flags */
-	"FIXME DOC", /* tp_doc */
-};
-''' % (self.clean_name, module_name, self.bound_name, self.clean_name)
+		out += 'static PyType_Slot %s_slots[] = {\n' % self.clean_name
+		out += '	{ Py_tp_new, PyType_GenericNew },\n'
+		out += '''	{ 0, NULL }
+};\n\n'''
 
-		out += '''
-static bool Finalize_%s_Type() {
-	%s_PyType.tp_new = PyType_GenericNew;
-	return PyType_Ready(&%s_PyType) >= 0;
-}
-''' % (self.clean_name, self.clean_name, self.clean_name)
+		out += '''static PyType_Spec simple_struct_spec = {
+	"%s.%s", /* name */
+	sizeof(wrapped_PyObject), /* basicsize */
+	0, /* itemsize*/
+	Py_TPFLAGS_DEFAULT, /* flags */
+	%s_slots
+};\n\n''' % (module_name, self.bound_name, self.clean_name)
+
+		out += '''void to_c_%s(PyObject *o, void *obj) {
+	wrapped_PyObject *pyobj = (wrapped_PyObject *)o;
+	*(%s **)obj = (%s *)pyobj->obj;
+}\n''' % (self.clean_name, self.clean_name, self.clean_name)
+
+		out += '''PyObject *from_c_%s(void *obj, OwnershipPolicy own) {
+	wrapped_PyObject *pyobj = PyObject_New(wrapped_PyObject, %s_type);
+	Init_wrapped_PyObject(pyobj, __%s_type_tag, obj);
+	return (PyObject *)pyobj;
+}\n''' % (self.clean_name, self.clean_name, self.clean_name)
 
 		return out
 
 	def finalize_type(self):
 		out = '''\
-	%s_PyType.tp_new = PyType_GenericNew;
-	if (PyType_Ready(&%s_PyType) < 0)
-		return NULL;
-	Py_INCREF(&%s_PyType);
-	PyModule_AddObject(m, "%s", (PyObject *)&%s_PyType);
-
-''' % (self.clean_name, self.clean_name, self.clean_name, self.bound_name, self.clean_name)
+	%s_type = (PyTypeObject *)PyType_FromSpec(&%s_spec);
+	PyModule_AddObject(m, "%s", (PyObject *)&%s_type);
+''' % (self.clean_name, self.clean_name, self.bound_name, self.clean_name)
 		return out
 
 
 #
 class PythonGenerator(gen.FABGen):
+	def get_langage(self):
+		return "Python"
+
 	def output_includes(self):
 		super().output_includes()
 
@@ -89,63 +93,34 @@ class PythonGenerator(gen.FABGen):
 	def start(self, module_name):
 		super().start(module_name)
 
-		# templates for class type exchange
-		self.insert_code('''''', True, False)
+		self._source += '''\
+typedef struct {
+	PyObject_HEAD
 
-		# bind basic types
-		class PythonIntConverter(PythonTypeConverterCommon):
-			def __init__(self, type):
-				super().__init__(type)
+	char magic[4]; // ensure PyObject is a wrapped_PyObject
+	const char *type_tag; // wrapped pointer type tag
 
-			def output_type_glue(self, module_name):
-				return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.clean_name +\
-				'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyLong_AsLong(o); }\n' % (self.clean_name, self.ctype) +\
-				'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromLong(*((%s*)obj)); }\n' % (self.clean_name, self.ctype)
+	void *obj;
 
-		self.bind_type(PythonIntConverter('int'))
+	void (*on_get_ownership)(void *);
+	void (*on_release_ownership)(void *);
+} wrapped_PyObject;
 
-		class PythonFloatConverter(PythonTypeConverterCommon):
-			def __init__(self, type):
-				super().__init__(type)
+void Init_wrapped_PyObject(wrapped_PyObject *o, const char *type_tag, void *obj) {
+	o->magic[0] = 'F';
+	o->magic[1] = 'A';
+	o->magic[2] = 'B';
+	o->magic[3] = '!';
+	o->type_tag = type_tag;
 
-			def output_type_glue(self, module_name):
-				return 'bool check_%s(PyObject *o) { return PyFloat_Check(o) ? true : false; }\n' % self.clean_name +\
-				'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyFloat_AsDouble(o); }\n' % (self.clean_name, self.ctype) +\
-				'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyFloat_FromDouble(*((%s*)obj)); }\n' % (self.clean_name, self.ctype)
+	o->obj = obj;
 
-		self.bind_type(PythonFloatConverter('float'))
+	o->on_get_ownership = NULL;
+	o->on_release_ownership = NULL;
+}\n\n'''
 
-		class PythonStringConverter(PythonTypeConverterCommon):
-			def __init__(self, type):
-				super().__init__(type)
-
-			def output_type_glue(self, module_name):
-				return 'bool check_%s(PyObject *o) { return PyUnicode_Check(o) ? true : false; }\n' % self.clean_name +\
-				'''void to_c_%s(PyObject *o, void *obj) {
-	PyObject *utf8_pyobj = PyUnicode_AsUTF8String(o);
-	*((%s*)obj) = PyBytes_AsString(utf8_pyobj);
-	Py_DECREF(utf8_pyobj);
-}
-''' % (self.clean_name, self.ctype) +\
-				'PyObject *from_c_%s(void *obj) { return PyUnicode_FromString(((%s*)obj)->c_str()); }\n' % (self.clean_name, self.ctype)
-
-		self.bind_type(PythonStringConverter('std::string'))
-
-		class PythonConstCharPtrConverter(PythonTypeConverterCommon):
-			def __init__(self, type):
-				super().__init__(type)
-
-			def output_type_glue(self, module_name):
-				return 'bool check_%s(PyObject *o) { return PyUnicode_Check(o) ? true : false; }\n' % self.clean_name +\
-				'''void to_c_%s(PyObject *o, void *obj) {
-	PyObject *utf8_pyobj = PyUnicode_AsUTF8String(o);
-	*((%s*)obj) = PyBytes_AsString(utf8_pyobj);
-	Py_DECREF(utf8_pyobj);
-}
-''' % (self.clean_name, self.ctype) +\
-				'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyUnicode_FromString(*((%s*)obj)); }\n' % (self.clean_name, self.ctype)
-
-		self.bind_type(PythonConstCharPtrConverter('const char *'))
+		std.bind_std(self, PythonTypeConverterCommon)
+		stl.bind_stl(self, PythonTypeConverterCommon)
 
 	#
 	def raise_exception(self, type, reason):

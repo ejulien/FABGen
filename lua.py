@@ -55,6 +55,9 @@ class LuaClassTypeDefaultConverter(LuaTypeConverterCommon):
 
 #
 class LuaGenerator(gen.FABGen):
+	def get_langage(self):
+		return "Lua"
+
 	def start(self, module_name, namespace = None):
 		super().start(module_name, namespace)
 
