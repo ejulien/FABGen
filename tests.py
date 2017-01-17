@@ -96,9 +96,10 @@ project(test)
 enable_language(C CXX)
 
 add_library(my_test SHARED test_module.cpp)
+set_target_properties(my_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "%s" SUFFIX .pyd)
 target_include_directories(my_test PRIVATE "%s")
 target_link_libraries(my_test "%s")
-''' % (python_include_dir, python_library))
+''' % (python_site_package, python_include_dir, python_library))
 
 		build_path = os.path.join(work_path, 'build')
 
@@ -112,16 +113,25 @@ target_link_libraries(my_test "%s")
 			print(e.output.decode('utf-8'))
 			return False
 
+		if args.debug_test:
+			with open(os.path.join(build_path, 'my_test.vcxproj.user'), 'w') as file:
+				file.write('''\
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">
+    <LocalDebuggerCommand>%s</LocalDebuggerCommand>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArguments>test.py</LocalDebuggerCommandArguments>
+    <LocalDebuggerWorkingDirectory>%s</LocalDebuggerWorkingDirectory>
+  </PropertyGroup>
+</Project>''' % (python_interpreter, work_path))
+
 		print("Building extension...")
 		try:
 			subprocess.check_output('cmake --build . --config Release')
 		except subprocess.CalledProcessError as e:
 			print(e.output.decode('utf-8'))
 			return False
-
-		# deploy extension to target interpreter
-		ext_path = os.path.join(python_site_package, 'my_test.pyd')
-		shutil.copy(os.path.join(build_path, 'Release', 'my_test.dll'), ext_path)
 
 		# assert extension correctness
 		test_path = os.path.join(work_path, 'test.py')
@@ -140,7 +150,6 @@ target_link_libraries(my_test "%s")
 			success = False
 
 		print("Cleanup...")
-		os.unlink(ext_path)
 
 		return success
 

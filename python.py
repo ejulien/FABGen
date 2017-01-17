@@ -102,7 +102,7 @@ typedef struct {
 
 	void *obj;
 
-	void (*on_get_ownership)(void *);
+	void (*on_acquire_ownership)(void *);
 	void (*on_release_ownership)(void *);
 } wrapped_PyObject;
 
@@ -115,7 +115,7 @@ void Init_wrapped_PyObject(wrapped_PyObject *o, const char *type_tag, void *obj)
 
 	o->obj = obj;
 
-	o->on_get_ownership = NULL;
+	o->on_acquire_ownership = NULL;
 	o->on_release_ownership = NULL;
 }\n\n'''
 
