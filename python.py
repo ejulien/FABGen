@@ -227,7 +227,7 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 		return 'return 0;'
 
 	def rval_from_c_ptr(self, ctype, var, conv, rval_p):
-		self._source += conv.from_c_call(var + '_pyobj', rval_p, conv.get_ownership_policy(ctype))
+		self._source += conv.from_c_call(var + '_pyobj', rval_p, conv.get_ownership_policy(ctype.get_ref()))
 
 	def commit_rvals(self, rval):
 		rval_count = 1 if repr(rval) != 'void' else 0
