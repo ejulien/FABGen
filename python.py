@@ -20,7 +20,7 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 	def from_c_call(self, ctype, var, var_p):
 		return "PyObject *%s = from_c_%s(%s, %s);\n" % (var, self.clean_name, var_p, self.get_ownership_policy(ctype.get_ref()))
 
-	def output_type_glue(self, module_name):
+	def output_type_glue(self, module_name, members, methods):
 		check = '''bool check_%s(PyObject *o) {
 	return PyFloat_Check(o) ? true : false;
 }''' % (self.clean_name)
@@ -41,14 +41,27 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	def __init__(self, type):
 		super().__init__(type, type + '*')
 
-	def output_type_glue(self, module_name):
+	def output_type_glue(self, module_name, members, methods):
+		# type
 		out = 'static PyObject *%s_type;\n\n' % self.clean_name
 
+		# members
+		for member in members:
+			getter = '''\
+static PyObject *_%s_%s_get(PyObject *self, void */*closure*/) {
+	wrapped_PyObject *pyobj = (wrapped_PyObject *)o;
+}
+\n'''
+
+
+		# slots
 		out += 'static PyType_Slot %s_slots[] = {\n' % self.clean_name
-		out += '	{ Py_tp_del, &wrapped_PyObject_tp_del },\n'
+		out += '	{ Py_tp_doc, "TODO doc" },\n'
+		out += '	{ Py_tp_dealloc, &wrapped_PyObject_tp_dealloc },\n'
 		out += '''	{ 0, NULL }
 };\n\n'''
 
+		# specification
 		out += '''static PyType_Spec simple_struct_spec = {
 	"%s.%s", /* name */
 	sizeof(wrapped_PyObject), /* basicsize */
@@ -57,8 +70,10 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	%s_slots
 };\n\n''' % (module_name, self.bound_name, self.clean_name)
 
+		# delete delegate
 		out += 'static void delete_%s(void *o) { delete (%s *)o; }\n\n' % (self.clean_name, self.clean_name)
 
+		# to/from C
 		out += '''void to_c_%s(PyObject *o, void *obj) {
 	wrapped_PyObject *pyobj = (wrapped_PyObject *)o;
 	*(%s **)obj = (%s *)pyobj->obj;
@@ -123,11 +138,13 @@ static void Init_wrapped_PyObject(wrapped_PyObject *o, const char *type_tag, voi
 	o->on_delete = NULL;
 }
 
-static void wrapped_PyObject_tp_del(PyObject *obj) {
-	wrapped_PyObject *wo = (wrapped_PyObject *)obj;
+static void wrapped_PyObject_tp_dealloc(PyObject *self) {
+	wrapped_PyObject *w = (wrapped_PyObject *)self;
 
-	if (wo->on_delete)
-		wo->on_delete(wo->obj);
+	if (w->on_delete)
+		w->on_delete(w->obj);
+
+	PyObject_Del(self); // tp_free should be used but PyType_GetSlot is 3.4+
 }
 \n'''
 

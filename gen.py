@@ -187,16 +187,20 @@ class FABGen:
 		assert 'proto_check not implemented in generator'
 
 	#
-	def bind_type(self, conv):
+	def bind_type(self, conv, members=None, methods=None):
 		"""Declare a new type converter."""
 		self._bound_types.append(conv)
 
 		type = conv.fully_qualified_name
 		self.__type_convs[type] = conv
 
+		if members:
+			members = [parse(member, _CArg) for member in members]
+
 		self._header += conv.output_type_api(self._name)
+		self._source += '// %s type glue\n' % type
 		self._source += 'static const char *%s = "%s";\n\n' % (conv.type_tag, type)
-		self._source += conv.output_type_glue(self._name)
+		self._source += conv.output_type_glue(self._name, members, methods)
 
 		self.insert_code('\n')
 
@@ -204,9 +208,9 @@ class FABGen:
 	def get_class_default_converter(self):
 		assert "missing class type default converter"
 
-	def bind_class(self, name):
+	def bind_class(self, name, members=None, methods=None):
 		class_default_conv = self.get_class_default_converter()
-		self.bind_type(class_default_conv(name))
+		self.bind_type(class_default_conv(name), members, methods)
 
 	#
 	def select_ctype_conv(self, ctype):
