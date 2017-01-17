@@ -96,10 +96,10 @@ project(test)
 enable_language(C CXX)
 
 add_library(my_test SHARED test_module.cpp)
-set_target_properties(my_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "%s" SUFFIX .pyd)
+set_target_properties(my_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "%s" RUNTIME_OUTPUT_DIRECTORY_RELEASE "%s" SUFFIX .pyd)
 target_include_directories(my_test PRIVATE "%s")
 target_link_libraries(my_test "%s")
-''' % (python_site_package, python_include_dir, python_library))
+''' % (python_site_package, python_site_package, python_include_dir, python_library))
 
 		build_path = os.path.join(work_path, 'build')
 

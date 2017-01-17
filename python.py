@@ -42,10 +42,10 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		super().__init__(type, type + '*')
 
 	def output_type_glue(self, module_name):
-		out = 'static PyTypeObject *%s_type;\n\n' % self.clean_name
+		out = 'static PyObject *%s_type;\n\n' % self.clean_name
 
 		out += 'static PyType_Slot %s_slots[] = {\n' % self.clean_name
-		out += '	{ Py_tp_new, PyType_GenericNew },\n'
+		out += '	{ Py_tp_del, &wrapped_PyObject_tp_del },\n'
 		out += '''	{ 0, NULL }
 };\n\n'''
 
@@ -57,23 +57,29 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	%s_slots
 };\n\n''' % (module_name, self.bound_name, self.clean_name)
 
+		out += 'static void delete_%s(void *o) { delete (%s *)o; }\n\n' % (self.clean_name, self.clean_name)
+
 		out += '''void to_c_%s(PyObject *o, void *obj) {
 	wrapped_PyObject *pyobj = (wrapped_PyObject *)o;
 	*(%s **)obj = (%s *)pyobj->obj;
 }\n''' % (self.clean_name, self.clean_name, self.clean_name)
 
 		out += '''PyObject *from_c_%s(void *obj, OwnershipPolicy own) {
-	wrapped_PyObject *pyobj = PyObject_New(wrapped_PyObject, %s_type);
+	wrapped_PyObject *pyobj = PyObject_New(wrapped_PyObject, (PyTypeObject *)%s_type);
+	if (own == ByValue)
+		obj = new %s(*(%s *)obj);
 	Init_wrapped_PyObject(pyobj, __%s_type_tag, obj);
+	if (own == ByValue)
+		pyobj->on_delete = &delete_%s;
 	return (PyObject *)pyobj;
-}\n''' % (self.clean_name, self.clean_name, self.clean_name)
+}\n''' % (self.clean_name, self.clean_name, self.clean_name, self.clean_name, self.clean_name, self.clean_name)
 
 		return out
 
 	def finalize_type(self):
 		out = '''\
-	%s_type = (PyTypeObject *)PyType_FromSpec(&%s_spec);
-	PyModule_AddObject(m, "%s", (PyObject *)&%s_type);
+	%s_type = PyType_FromSpec(&%s_spec);
+	PyModule_AddObject(m, "%s", %s_type);
 ''' % (self.clean_name, self.clean_name, self.bound_name, self.clean_name)
 		return out
 
@@ -102,11 +108,10 @@ typedef struct {
 
 	void *obj;
 
-	void (*on_acquire_ownership)(void *);
-	void (*on_release_ownership)(void *);
+	void (*on_delete)(void *);
 } wrapped_PyObject;
 
-void Init_wrapped_PyObject(wrapped_PyObject *o, const char *type_tag, void *obj) {
+static void Init_wrapped_PyObject(wrapped_PyObject *o, const char *type_tag, void *obj) {
 	o->magic[0] = 'F';
 	o->magic[1] = 'A';
 	o->magic[2] = 'B';
@@ -115,9 +120,16 @@ void Init_wrapped_PyObject(wrapped_PyObject *o, const char *type_tag, void *obj)
 
 	o->obj = obj;
 
-	o->on_acquire_ownership = NULL;
-	o->on_release_ownership = NULL;
-}\n\n'''
+	o->on_delete = NULL;
+}
+
+static void wrapped_PyObject_tp_del(PyObject *obj) {
+	wrapped_PyObject *wo = (wrapped_PyObject *)obj;
+
+	if (wo->on_delete)
+		wo->on_delete(wo->obj);
+}
+\n'''
 
 		std.bind_std(self, PythonTypeConverterCommon)
 		stl.bind_stl(self, PythonTypeConverterCommon)
