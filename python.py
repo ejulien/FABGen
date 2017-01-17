@@ -14,11 +14,11 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 		'void to_c_%s(PyObject *o, void *obj);\n' % self.clean_name +\
 		'PyObject *from_c_%s(void *obj, OwnershipPolicy);\n' % self.clean_name
 
-	def to_c_call(self, var, var_p):
-		return 'to_c_%s(%s, %s);\n' % (self.clean_name, var, var_p)
+	def to_c_call(self, in_var, out_var_p):
+		return 'to_c_%s(%s, %s);\n' % (self.clean_name, in_var, out_var_p)
 
-	def from_c_call(self, ctype, var, var_p):
-		return "PyObject *%s = from_c_%s(%s, %s);\n" % (var, self.clean_name, var_p, self.get_ownership_policy(ctype.get_ref()))
+	def from_c_call(self, out_var, in_var_p, ownership_policy):
+		return "PyObject *%s = from_c_%s(%s, %s);\n" % (out_var, self.clean_name, in_var_p, ownership_policy)
 
 	def output_type_glue(self, module_name, members, methods):
 		check = '''bool check_%s(PyObject *o) {
@@ -41,27 +41,56 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	def __init__(self, type):
 		super().__init__(type, type + '*')
 
+	def output_members(self, members):
+		out = ''
+		for member, conv in members:
+			out += '// get/set %s %s::%s\n' % (member.ctype, self.clean_name, member.name)
+
+			getset_var = '((%s *)w->obj)->%s' % (self.clean_name, member.name)  # pointer to variable to get
+			getset_var_conv = conv.prepare_var_for_conv(getset_var, member.ctype.get_ref())  # pointer to the converter supported type
+
+			out += 'static PyObject *_%s_get_%s(PyObject *self, void */*closure*/) {\n' % (self.clean_name, member.name)
+			out += '''\
+	if (!test_wrapped_PyObject(self, %s))
+		return NULL;
+	wrapped_PyObject *w = (wrapped_PyObject *)self;\n''' % (self.type_tag)
+			out += '\t' + conv.from_c_call('out', getset_var_conv, self.get_ownership_policy(member.ctype))
+			out += '	return out;\n'
+			out += '}\n'
+
+			out += 'static int _%s_set_%s(PyObject *self, PyObject *value, void */*closure*/) {\n' % (self.clean_name, member.name)
+			out += '''\
+	if (!test_wrapped_PyObject(self, %s))
+		return NULL;
+	wrapped_PyObject *w = (wrapped_PyObject *)self;\n''' % (self.type_tag)
+			out += '\t' + conv.to_c_call('value', getset_var_conv)
+			out += '	return 0;\n'
+			out += '}\n'
+
+			out += '\n'
+
+		out += 'static PyGetSetDef %s_tp_getset[] = {\n' % self.clean_name
+		for member, conv in members:
+			out += '	{"%s", (getter)%s, (setter)%s, "TODO doc"},\n' % (member.name, '_%s_get_%s' % (self.clean_name, member.name), '_%s_set_%s' % (self.clean_name, member.name))
+		out += '	{NULL} /* Sentinel */'
+		out += '};\n\n'
+
+		return out
+
 	def output_type_glue(self, module_name, members, methods):
 		# type
 		out = 'static PyObject *%s_type;\n\n' % self.clean_name
 
 		# members
-		for member in members:
-			getter = 'static PyObject *_%s_get_%s(PyObject *self, void */*closure*/) {\n' % (self.clean_name, member.name)
-			getter += '''\
-	if (!test_wrapped_PyObject(self, %s))
-		return NULL;
-	wrapped_PyObject *w = (wrapped_PyObject *)self;\n''' % (self.type_tag)
-
-			getter_var_p = '&((%s *)(w->obj))->%s' % (self.clean_name, member.name)  # pointer to variable to get
-
-			out += getter
+		out += self.output_members(members)
 
 		# slots
 		out += 'static PyType_Slot %s_slots[] = {\n' % self.clean_name
-		out += '	{ Py_tp_doc, "TODO doc" },\n'
-		out += '	{ Py_tp_dealloc, &wrapped_PyObject_tp_dealloc },\n'
-		out += '''	{ 0, NULL }
+		out += '	{Py_tp_doc, "TODO doc"},\n'
+		out += '	{Py_tp_dealloc, &wrapped_PyObject_tp_dealloc},\n'
+		if members:
+			out += '	{Py_tp_getset, &%s_tp_getset},\n' % self.clean_name
+		out += '''	{0, NULL}
 };\n\n'''
 
 		# specification
@@ -80,7 +109,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		out += '''void to_c_%s(PyObject *o, void *obj) {
 	wrapped_PyObject *pyobj = (wrapped_PyObject *)o;
 	*(%s **)obj = (%s *)pyobj->obj;
-}\n''' % (self.clean_name, self.clean_name, self.clean_name)
+}\n\n''' % (self.clean_name, self.clean_name, self.clean_name)
 
 		out += '''PyObject *from_c_%s(void *obj, OwnershipPolicy own) {
 	wrapped_PyObject *pyobj = PyObject_New(wrapped_PyObject, (PyTypeObject *)%s_type);
@@ -198,7 +227,7 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 		return 'return 0;'
 
 	def rval_from_c_ptr(self, ctype, var, conv, rval_p):
-		self._source += conv.from_c_call(ctype, var + '_pyobj', rval_p)
+		self._source += conv.from_c_call(var + '_pyobj', rval_p, conv.get_ownership_policy(ctype))
 
 	def commit_rvals(self, rval):
 		rval_count = 1 if repr(rval) != 'void' else 0

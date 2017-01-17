@@ -38,8 +38,8 @@ class _CType:
 	def __repr__(self):
 		return get_fully_qualified_ctype_name(self)
 
-	def get_ref(self):
-		return self.ref if hasattr(self, 'ref') else ''
+	def get_ref(self, extra_transform=''):
+		return (self.ref if hasattr(self, 'ref') else '') + extra_transform
 
 
 _CType.grammar = flag("const", K("const")), optional([flag("signed", K("signed")), flag("unsigned", K("unsigned"))]), attr("unqualified_name", typename), optional(attr("ref", ref_re))
@@ -104,6 +104,10 @@ def ctype_ref_to(src_ref, dst_ref):
 			return ''  # value to value
 
 
+def transform_var_ref_to(var, from_ref, to_ref):
+	return ctype_ref_to(from_ref, to_ref) + var
+
+
 class TypeConverter:
 	def __init__(self, type, storage_type=None):
 		if not storage_type:
@@ -123,11 +127,21 @@ class TypeConverter:
 	def finalize_type(self):
 		return ''
 
+	def to_c_call(self, out_var, in_var_p):
+		assert 'to_c_call not implemented in converter'
+
+	def from_c_call(self, ctype, out_var, in_var_p):
+		assert 'from_c_call not implemented in converter'
+
 	def get_ownership_policy(self, ref):
 		"""Return the VM default ownership policy for a reference coming from C."""
 		if ref == '*' or ref == '&':
 			return 'NonOwning'
 		return 'ByValue'
+
+	def prepare_var_for_conv(self, var, var_ref):
+		"""Prepare a variable for use with the converter from_c/to_c methods."""
+		return transform_var_ref_to(var, var_ref, self.ctype.get_ref('*'))
 
 
 #
@@ -195,7 +209,12 @@ class FABGen:
 		self.__type_convs[type] = conv
 
 		if members:
-			members = [parse(member, _CArg) for member in members]
+			out = []
+			for member in members:
+				member_arg = parse(member, _CArg)
+				member_conv = self.select_ctype_conv(member_arg.ctype)
+				out.append((member_arg, member_conv))
+			members = out
 
 		self._header += conv.output_type_api(self._name)
 		self._source += '// %s type glue\n' % type
