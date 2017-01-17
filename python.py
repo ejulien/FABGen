@@ -47,12 +47,15 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 		# members
 		for member in members:
-			getter = '''\
-static PyObject *_%s_%s_get(PyObject *self, void */*closure*/) {
-	wrapped_PyObject *pyobj = (wrapped_PyObject *)o;
-}
-\n'''
+			getter = 'static PyObject *_%s_get_%s(PyObject *self, void */*closure*/) {\n' % (self.clean_name, member.name)
+			getter += '''\
+	if (!test_wrapped_PyObject(self, %s))
+		return NULL;
+	wrapped_PyObject *w = (wrapped_PyObject *)self;\n''' % (self.type_tag)
 
+			getter_var_p = '&((%s *)(w->obj))->%s' % (self.clean_name, member.name)  # pointer to variable to get
+
+			out += getter
 
 		# slots
 		out += 'static PyType_Slot %s_slots[] = {\n' % self.clean_name
@@ -83,7 +86,7 @@ static PyObject *_%s_%s_get(PyObject *self, void */*closure*/) {
 	wrapped_PyObject *pyobj = PyObject_New(wrapped_PyObject, (PyTypeObject *)%s_type);
 	if (own == ByValue)
 		obj = new %s(*(%s *)obj);
-	Init_wrapped_PyObject(pyobj, __%s_type_tag, obj);
+	init_wrapped_PyObject(pyobj, __%s_type_tag, obj);
 	if (own == ByValue)
 		pyobj->on_delete = &delete_%s;
 	return (PyObject *)pyobj;
@@ -126,7 +129,7 @@ typedef struct {
 	void (*on_delete)(void *);
 } wrapped_PyObject;
 
-static void Init_wrapped_PyObject(wrapped_PyObject *o, const char *type_tag, void *obj) {
+static void init_wrapped_PyObject(wrapped_PyObject *o, const char *type_tag, void *obj) {
 	o->magic[0] = 'F';
 	o->magic[1] = 'A';
 	o->magic[2] = 'B';
@@ -136,6 +139,15 @@ static void Init_wrapped_PyObject(wrapped_PyObject *o, const char *type_tag, voi
 	o->obj = obj;
 
 	o->on_delete = NULL;
+}
+
+static bool test_wrapped_PyObject(PyObject *o, const char *type_tag) {
+	wrapped_PyObject *w = (wrapped_PyObject *)o;
+
+	if (w->magic[0] != 'F' || w->magic[1] != 'A' || w->magic[2] != 'B' || w->magic[3] != '!')
+		return false;
+
+	return w->type_tag == type_tag;
 }
 
 static void wrapped_PyObject_tp_dealloc(PyObject *self) {
