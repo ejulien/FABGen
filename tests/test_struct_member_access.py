@@ -31,4 +31,12 @@ s = my_test.return_simple_struct_by_pointer()
 expect_eq(s.a, 7)
 expect_eq(s.b, 17.5)
 expect_eq(s.c, True)
+
+s.a = -2
+s.b = -4.5
+s.c = False
+
+expect_eq(s.a, -2)
+expect_eq(s.b, -4.5)
+expect_eq(s.c, False)
 '''
