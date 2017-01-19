@@ -3,7 +3,7 @@ def bind_std(gen, PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
-		def output_type_glue(self, module_name, members, methods):
+		def get_type_glue(self, module_name):
 			return 'bool check_%s(PyObject *o) { return PyBool_Check(o) ? true : false; }\n' % self.clean_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = o == Py_True; }\n' % (self.clean_name, self.ctype) +\
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyBool_FromLong(*((%s*)obj)); }\n' % (self.clean_name, self.ctype)
@@ -14,7 +14,7 @@ def bind_std(gen, PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
-		def output_type_glue(self, module_name, members, methods):
+		def get_type_glue(self, module_name):
 			return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.clean_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyLong_AsLong(o); }\n' % (self.clean_name, self.ctype) +\
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromLong(*((%s*)obj)); }\n' % (self.clean_name, self.ctype)
@@ -25,7 +25,7 @@ def bind_std(gen, PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
-		def output_type_glue(self, module_name, members, methods):
+		def get_type_glue(self, module_name):
 			return 'bool check_%s(PyObject *o) { return PyFloat_Check(o) ? true : false; }\n' % self.clean_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyFloat_AsDouble(o); }\n' % (self.clean_name, self.ctype) +\
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyFloat_FromDouble(*((%s*)obj)); }\n' % (self.clean_name, self.ctype)
@@ -36,7 +36,7 @@ def bind_std(gen, PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
-		def output_type_glue(self, module_name, members, methods):
+		def get_type_glue(self, module_name):
 			return 'bool check_%s(PyObject *o) { return PyUnicode_Check(o) ? true : false; }\n' % self.clean_name +\
 			'''void to_c_%s(PyObject *o, void *obj) {
 PyObject *utf8_pyobj = PyUnicode_AsUTF8String(o);

@@ -121,7 +121,10 @@ class TypeConverter:
 		self.fully_qualified_name = get_fully_qualified_ctype_name(self.ctype)
 		self.type_tag = '__%s_type_tag' % self.clean_name
 
-	def output_type_api(self, module_name):
+		self.members = []
+		self.methods = []
+
+	def get_type_api(self, module_name):
 		return ''
 
 	def finalize_type(self):
@@ -201,34 +204,39 @@ class FABGen:
 		assert 'proto_check not implemented in generator'
 
 	#
-	def bind_type(self, conv, members=[], methods=[]):
+	def _begin_type(self, conv):
 		"""Declare a new type converter."""
 		self._bound_types.append(conv)
+		self.__type_convs[conv.fully_qualified_name] = conv
+		return conv
 
-		type = conv.fully_qualified_name
-		self.__type_convs[type] = conv
-
-		def _prepare_member(member):
-			member_arg = parse(member, _CArg)
-			member_conv = self.select_ctype_conv(member_arg.ctype)
-			return (member_arg, member_conv)
-
-		members = [_prepare_member(member) for member in members]
-
-		self._header += conv.output_type_api(self._name)
-		self._source += '// %s type glue\n' % type
-		self._source += 'static const char *%s = "%s";\n\n' % (conv.type_tag, type)
-		self._source += conv.output_type_glue(self._name, members, methods)
-
+	def _end_type(self, conv):
+		self._header += conv.get_type_api(self._name)
+		self._source += '// %s type glue\n' % conv.fully_qualified_name
+		self._source += 'static const char *%s = "%s";\n\n' % (conv.type_tag, conv.fully_qualified_name)
+		self._source += conv.get_type_glue(self._name)
 		self.insert_code('\n')
+
+	#
+	def bind_type(self, conv):
+		self._begin_type(conv)
+		self._end_type(conv)
 
 	#
 	def get_class_default_converter(self):
 		assert "missing class type default converter"
 
-	def bind_class(self, name, members=[], methods=[]):
+	def begin_class(self, name):
 		class_default_conv = self.get_class_default_converter()
-		self.bind_type(class_default_conv(name), members, methods)
+
+		conv = class_default_conv(name)
+		api = conv.get_type_api(self._name)
+		self._source += api + '\n'
+
+		return self._begin_type(conv)
+
+	def end_class(self, conv):
+		self._end_type(conv)
 
 	#
 	def select_ctype_conv(self, ctype):
@@ -244,25 +252,17 @@ class FABGen:
 		return self.__type_convs[ctype.unqualified_name]
 
 	#
+	def decl_var(self, ctype, name, end_of_expr=';\n'):
+		return '%s %s%s' % (get_fully_qualified_ctype_name(ctype), name, end_of_expr)
+
+	#
 	def select_args_convs(self, args):
 		return [{'conv': self.select_ctype_conv(arg.ctype), 'ctype': arg.ctype} for i, arg in enumerate(args)]
-
-	def begin_convert_args(self, args):
-		pass
-
-	def decl_arg(self, ctype, name):
-		return '%s %s;\n' % (get_fully_qualified_ctype_name(ctype), name)
 
 	def cleanup_args(self, args):
 		pass
 
 	#
-	def begin_convert_rvals(self, rval):
-		pass
-
-	def decl_rval(self, type, name):
-		return '%s %s = ' % (get_fully_qualified_ctype_name(type), name)
-
 	def commit_rvals(self, rval):
 		assert "missing return values template"
 
@@ -271,23 +271,11 @@ class FABGen:
 
 	#
 	@staticmethod
-	def __get_bind_function_name(name):
+	def __get_proxy_function_name(name):
 		return '_' + clean_c_symbol_name(name)
 
-	def bind_function(self, name, rval, args):
-		rval = parse(rval, _CType)
-		args = _prepare_ctypes(args, _CArg)
-
-		self.insert_code('// %s %s(%s)\n' % (rval, name, ctypes_to_string(args)), True, False)
-
-		bound_name = self.__get_bind_function_name(name)
-		self._source += self.new_function(bound_name, args)
-
-		self._bound_functions.append({'name': name, 'bound_name': bound_name, 'rval': rval, 'args': args})
-
-		# declare call arguments and convert them from the VM
+	def _declare_and_convert_function_call_args(self, args, arg_vars):
 		args = self.select_args_convs(args)
-		self.begin_convert_args(args)
 
 		c_call_args = []
 		for i, arg in enumerate(args):
@@ -296,25 +284,25 @@ class FABGen:
 				continue
 
 			arg_name = 'arg%d' % i
-			self._source += self.decl_arg(conv.storage_ctype, arg_name)
-			self._source += conv.to_c_call(self.get_arg(i, args), '&' + arg_name)
+			self._source += self.decl_var(conv.storage_ctype, arg_name)
+			self._source += conv.to_c_call(arg_vars[i], '&' + arg_name)
 
 			c_call_arg_transform = ctype_ref_to(conv.storage_ctype.get_ref(), arg['ctype'].get_ref())
 			c_call_args.append(c_call_arg_transform + arg_name)
 
-		# declare return values
+		return c_call_args
+
+	def _declare_return_value(self, rval):
 		rval_conv = self.select_ctype_conv(rval)
 		if rval_conv:
-			self._source += self.decl_rval(rval, 'rval')
+			self._source += self.decl_var(rval, 'rval', ' = ')
+		return rval_conv
 
-		# perform function call
-		self._source += '%s(%s);\n' % (name, ', '.join(c_call_args))  # perform C function call
+	def _declare_and_convert_self(self, obj, var_in, var_out):
+		self._source += '\t' + self.decl_var(obj.storage_ctype, var_out)
+		self._source += '\t' + obj.to_c_call(var_in, '&' + var_out)
 
-		# cleanup arguments
-		self.cleanup_args(args)
-
-		# convert return values
-		self.begin_convert_rvals(rval)
+	def _convert_rval(self, rval, rval_conv):
 		if rval_conv:
 			self.rval_from_c_ptr(rval, 'rval', rval_conv, ctype_ref_to(rval.get_ref(), rval_conv.ctype.get_ref() + '*') + 'rval')
 
@@ -324,7 +312,95 @@ class FABGen:
 		# cleanup return value
 		self.cleanup_rvals(rval)
 
-		self._source += "}\n\n"
+	def bind_function(self, name, rval, args):
+		rval = parse(rval, _CType)
+		args = _prepare_ctypes(args, _CArg)
+
+		self.insert_code('// %s %s(%s)\n' % (rval, name, ctypes_to_string(args)), True, False)
+
+		proxy_name = self.__get_proxy_function_name(name)
+		arg_vars = self.open_function(proxy_name, args)
+
+		self._bound_functions.append({'name': name, 'proxy_name': proxy_name, 'rval': rval, 'args': args})
+
+		# declare and convert args
+		c_call_args = self._declare_and_convert_function_call_args(args, arg_vars)
+
+		# declare rval
+		rval_conv = self._declare_return_value(rval)
+
+		# perform function call
+		self._source += '%s(%s);\n' % (name, ', '.join(c_call_args))
+
+		# cleanup arguments
+		self.cleanup_args(args)
+
+		# convert return values
+		self._convert_rval(rval, rval_conv)
+
+		self.close_function()
+		self._source += '\n'
+
+	def bind_method(self, obj, name, rval, args):
+		rval = parse(rval, _CType)
+		args = _prepare_ctypes(args, _CArg)
+
+		self.insert_code('// %s %s::%s(%s)\n' % (rval, obj.fully_qualified_name, name, ctypes_to_string(args)), True, False)
+
+		proxy_name = self.__get_proxy_function_name(name)
+		arg_vars = self.open_method(proxy_name, args)
+
+		# declare and convert self and args
+		self._declare_and_convert_self(obj, arg_vars[0], 'self')
+		c_call_args = self._declare_and_convert_function_call_args(args, arg_vars[1:])  # note: drop self from arg_vars
+
+		# declare rval
+		rval_conv = self._declare_return_value(rval)
+
+		# perform method call
+		self._source += 'self->%s(%s);\n' % (name, ', '.join(c_call_args))
+
+		# cleanup arguments
+		self.cleanup_args(args)
+
+		# convert return values
+		self._convert_rval(rval, rval_conv)
+
+		self.close_method()
+		self._source += '\n'
+
+		obj.methods.append({'name': name, 'proxy_name': proxy_name, 'rval': rval, 'args': args})
+
+	def bind_member(self, obj, member):
+		member = parse(member, _CArg)
+		member_conv = self.select_ctype_conv(member.ctype)
+
+		getset_expr = member_conv.prepare_var_for_conv('self->%s' % member.name, member.ctype.get_ref())  # pointer to the converter supported type
+
+		#
+		self._source += '// get/set %s %s::%s\n' % (member.ctype, member_conv.clean_name, member.name)
+
+		# getter
+		arg_vars = self.open_getter_function('_%s_get_%s' % (obj.clean_name, member.name))
+
+		self._declare_and_convert_self(obj, arg_vars[0], 'self')
+
+		rval = [member.ctype]
+		self.rval_from_c_ptr(member.ctype, 'rval', member_conv, getset_expr)
+		self.commit_rvals(rval)
+		self.cleanup_rvals(rval)
+		self.close_getter_function()
+
+		# setter
+		arg_vars = self.open_setter_function('_%s_set_%s' % (obj.clean_name, member.name))
+
+		self._declare_and_convert_self(obj, arg_vars[0], 'self')
+		self._source += member_conv.to_c_call(arg_vars[1], getset_expr)
+		self.close_setter_function()
+
+		self._source += '\n'
+
+		obj.members.append(member)
 
 	def decl_function_template(self, tmpl_name, tmpl_args, rval, args):
 		self.__function_templates[tmpl_name] = {'tmpl_args': tmpl_args, 'rval': rval, 'args': args}

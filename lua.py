@@ -6,7 +6,7 @@ class LuaTypeConverterCommon(gen.TypeConverter):
 	def __init__(self, type, storage_type=None):
 		super().__init__(type, storage_type)
 
-	def output_type_api(self, module_name):
+	def get_type_api(self, module_name):
 		return '// type API for %s\n' % self.fully_qualified_name +\
 		'bool check_%s(lua_State *L, int idx);\n' % self.clean_name +\
 		'void to_c_%s(lua_State *L, int idx, void *obj);\n' % self.clean_name +\

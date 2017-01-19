@@ -8,9 +8,8 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 	def __init__(self, type, storage_type=None):
 		super().__init__(type, storage_type)
 
-	def output_type_api(self, module_name):
-		return '// type API for %s\n' % self.fully_qualified_name +\
-		'bool check_%s(PyObject *o);\n' % self.clean_name +\
+	def get_type_api(self, module_name):
+		return 'bool check_%s(PyObject *o);\n' % self.clean_name +\
 		'void to_c_%s(PyObject *o, void *obj);\n' % self.clean_name +\
 		'PyObject *from_c_%s(void *obj, OwnershipPolicy);\n' % self.clean_name
 
@@ -20,76 +19,36 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 	def from_c_call(self, out_var, in_var_p, ownership_policy):
 		return "PyObject *%s = from_c_%s(%s, %s);\n" % (out_var, self.clean_name, in_var_p, ownership_policy)
 
-	def output_type_glue(self, module_name, members, methods):
-		check = '''bool check_%s(PyObject *o) {
-	return PyFloat_Check(o) ? true : false;
-}''' % (self.clean_name)
-
-		to_c = '''void to_c_%s(PyObject *o, void *obj) {
-*((%s*)obj) = PyFloat_AsDouble(o);
-}''' % (self.clean_name, self.ctype)
-
-		from_c = '''PyObject *from_c_%s(void *obj, OwnershipPolicy) {
-return PyFloat_FromDouble(*((%s*)obj));
-}''' % (self.clean_name, self.ctype)
-
-		return check + to_c + from_c + '\n'
-
 
 #
 class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	def __init__(self, type):
 		super().__init__(type, type + '*')
 
-	def output_members(self, members):
-		out = ''
-		for member, conv in members:
-			out += '// get/set %s %s::%s\n' % (member.ctype, self.clean_name, member.name)
-
-			getset_var = '((%s *)w->obj)->%s' % (self.clean_name, member.name)  # pointer to variable to get
-			getset_var_conv = conv.prepare_var_for_conv(getset_var, member.ctype.get_ref())  # pointer to the converter supported type
-
-			out += 'static PyObject *_%s_get_%s(PyObject *self, void */*closure*/) {\n' % (self.clean_name, member.name)
-			out += '''\
-	if (!test_wrapped_PyObject(self, %s))
-		return NULL;
-	wrapped_PyObject *w = (wrapped_PyObject *)self;\n''' % (self.type_tag)
-			out += '\t' + conv.from_c_call('out', getset_var_conv, self.get_ownership_policy(member.ctype))
-			out += '	return out;\n'
-			out += '}\n'
-
-			out += 'static int _%s_set_%s(PyObject *self, PyObject *value, void */*closure*/) {\n' % (self.clean_name, member.name)
-			out += '''\
-	if (!test_wrapped_PyObject(self, %s))
-		return NULL;
-	wrapped_PyObject *w = (wrapped_PyObject *)self;\n''' % (self.type_tag)
-			out += '\t' + conv.to_c_call('value', getset_var_conv)
-			out += '	return 0;\n'
-			out += '}\n'
-
-			out += '\n'
-
-		out += 'static PyGetSetDef %s_tp_getset[] = {\n' % self.clean_name
-		for member, conv in members:
-			out += '	{"%s", (getter)%s, (setter)%s, "TODO doc"},\n' % (member.name, '_%s_get_%s' % (self.clean_name, member.name), '_%s_set_%s' % (self.clean_name, member.name))
-		out += '	{NULL} /* Sentinel */'
-		out += '};\n\n'
-
-		return out
-
-	def output_type_glue(self, module_name, members, methods):
+	def get_type_glue(self, module_name):
 		# type
 		out = 'static PyObject *%s_type;\n\n' % self.clean_name
 
 		# members
-		out += self.output_members(members)
+		out += 'static PyGetSetDef %s_tp_getset[] = {\n' % self.clean_name
+		for member in self.members:
+			out += '	{"%s", (getter)%s, (setter)%s, "TODO doc"},\n' % (member.name, '_%s_get_%s' % (self.clean_name, member.name), '_%s_set_%s' % (self.clean_name, member.name))
+		out += '	{NULL} /* Sentinel */\n'
+		out += '};\n\n'
+
+		# methods
+		out += 'static PyMethodDef %s_tp_methods[] = {\n' % self.clean_name
+		for method in self.methods:
+			out += '	{"%s", (PyCFunction)%s, METH_VARARGS},\n' % (method['name'], method['proxy_name'])
+		out += '	{NULL} /* Sentinel */\n'
+		out += '};\n\n'
 
 		# slots
 		out += 'static PyType_Slot %s_slots[] = {\n' % self.clean_name
 		out += '	{Py_tp_doc, "TODO doc"},\n'
 		out += '	{Py_tp_dealloc, &wrapped_PyObject_tp_dealloc},\n'
-		if members:
-			out += '	{Py_tp_getset, &%s_tp_getset},\n' % self.clean_name
+		out += '	{Py_tp_getset, &%s_tp_getset},\n' % self.clean_name
+		out += '	{Py_tp_methods, &%s_tp_methods},\n' % self.clean_name
 		out += '''	{0, NULL}
 };\n\n'''
 
@@ -170,15 +129,6 @@ static void init_wrapped_PyObject(wrapped_PyObject *o, const char *type_tag, voi
 	o->on_delete = NULL;
 }
 
-static bool test_wrapped_PyObject(PyObject *o, const char *type_tag) {
-	wrapped_PyObject *w = (wrapped_PyObject *)o;
-
-	if (w->magic[0] != 'F' || w->magic[1] != 'A' || w->magic[2] != 'B' || w->magic[3] != '!')
-		return false;
-
-	return w->type_tag == type_tag;
-}
-
 static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 	wrapped_PyObject *w = (wrapped_PyObject *)self;
 
@@ -197,18 +147,32 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 		self._source += 'PyErr_SetString(PyExc_RuntimeError, "%s");\n' % reason
 
 	#
-	def new_function(self, name, args):
-		return "static PyObject *%s(PyObject *self, PyObject *args) {\n" % name
+	def open_getter_function(self, name):
+		self._source += "static PyObject *%s(PyObject *_self, void *closure) {\n" % name
+		return ['_self']
 
-	#
-	def get_class_default_converter(self):
-		return PythonClassTypeDefaultConverter
+	def close_getter_function(self):
+		self._source += '''\
+FAB_error:
+	return NULL;
+}
+'''
 
-	#
-	def get_arg(self, i, args):
-		return "arg_pyobj_%d" % i
+	def open_setter_function(self, name):
+		self._source += "static int %s(PyObject *_self, PyObject *_val, void *closure) {\n" % name
+		return ['_self', '_val']
 
-	def begin_convert_args(self, args):
+	def close_setter_function(self):
+		self._source += '''\
+	return 0;
+FAB_error:;
+	return -1;
+}
+'''
+
+	def open_function(self, name, args):
+		self._source += "static PyObject *%s(PyObject *_self, PyObject *args) {\n" % name
+
 		arg_count = len(args)
 
 		if arg_count > 0:
@@ -217,10 +181,38 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 			self._source += "	return NULL;\n"
 			self._source += "}\n"
 
+			arg_vars = []
 			for i in range(arg_count):
-				self._source += "PyObject *%s = PyTuple_GetItem(args, %d);\n" % (self.get_arg(i, args), i)
+				arg_var = "_arg%d" % i
+				self._source += "PyObject *%s = PyTuple_GetItem(args, %d);\n" % (arg_var, i)
+				arg_vars.append(arg_var)
 
 			self._source += '\n'
+		else:
+			arg_vars = []
+
+		return arg_vars
+
+	def close_function(self):
+		self._source += '''\
+FAB_error:;
+	return NULL;
+}
+'''
+
+	def open_method(self, name, args):
+		# function and methods share the same signature in C Python API...
+		arg_vars = self.open_function(name, args)
+		# ...but the generator expects self as the first argument variable in the returned list.
+		arg_vars.insert(0, '_self')
+		return arg_vars
+
+	def close_method(self):
+		self.close_function()
+
+	#
+	def get_class_default_converter(self):
+		return PythonClassTypeDefaultConverter
 
 	# function call return values
 	def return_void_from_c(self):
@@ -246,7 +238,7 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 
 		rows = []
 		for f in self._bound_functions:
-			rows.append('	{"%s", %s, METH_VARARGS, "TODO doc"}' % (f['bound_name'][1:], f['bound_name']))
+			rows.append('	{"%s", %s, METH_VARARGS, "TODO doc"}' % (f['name'], f['proxy_name']))
 		rows.append('	{NULL, NULL, 0, NULL} /* Sentinel */')
 
 		self._source += ',\n'.join(rows) + '\n'
