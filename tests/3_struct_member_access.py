@@ -16,7 +16,8 @@ simple_struct *return_simple_struct_by_pointer() { return &return_instance; }
 ''', True, False)
 
 	simple_struct = gen.begin_class('simple_struct')
-	gen.bind_members(simple_struct, ['int a', 'float b', 'bool c', 'const char *text_field'])
+	for member in ['int a', 'float b', 'bool c', 'const char *text_field']:
+		gen.bind_member(simple_struct, member)
 	gen.end_class(simple_struct)
 
 	gen.bind_function('return_simple_struct_by_pointer', 'simple_struct*', [])
