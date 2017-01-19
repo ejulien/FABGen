@@ -1,4 +1,5 @@
 from pypeg2 import re, flag, name, Plain, optional, attr, K, parse
+import copy
 
 
 #
@@ -124,6 +125,8 @@ class TypeConverter:
 		self.members = []
 		self.methods = []
 
+		self.bases = []  # type derives from the following types
+
 	def get_type_api(self, module_name):
 		return ''
 
@@ -145,6 +148,23 @@ class TypeConverter:
 	def prepare_var_for_conv(self, var, var_ref):
 		"""Prepare a variable for use with the converter from_c/to_c methods."""
 		return transform_var_ref_to(var, var_ref, self.ctype.get_ref('*'))
+
+	def get_all_methods(self):
+		"""Return a list of all the type methods (including inherited methods)."""
+		all_methods = copy.copy(self.methods)
+
+		def collect_base_methods(base):
+			for method in base.methods:
+				if not any(m['name'] == method['name'] for m in all_methods):
+					all_methods.append(method)
+
+			for _base in base.bases:
+				collect_base_methods(_base)
+
+		for base in self.bases:
+			collect_base_methods(base)
+
+		return all_methods
 
 
 #
@@ -239,6 +259,11 @@ class FABGen:
 		self._end_type(conv)
 
 	#
+	def add_class_base(self, obj, base):
+		base_conv = self.__type_convs[base]
+		obj.bases.append(base_conv)
+
+	#
 	def select_ctype_conv(self, ctype):
 		"""Select a type converter."""
 		full_qualified_ctype_name = get_fully_qualified_ctype_name(ctype)
@@ -271,8 +296,8 @@ class FABGen:
 
 	#
 	@staticmethod
-	def __get_proxy_function_name(name):
-		return '_' + clean_c_symbol_name(name)
+	def __get_proxy_function_name(name, prefix=''):
+		return '_' + prefix + clean_c_symbol_name(name)
 
 	def _declare_and_convert_function_call_args(self, args, arg_vars):
 		args = self.select_args_convs(args)
@@ -341,13 +366,14 @@ class FABGen:
 		self.close_function()
 		self._source += '\n'
 
-	def bind_method(self, obj, name, rval, args):
+	# class member/method
+	def bind_class_method(self, obj, name, rval, args):
 		rval = parse(rval, _CType)
 		args = _prepare_ctypes(args, _CArg)
 
 		self.insert_code('// %s %s::%s(%s)\n' % (rval, obj.fully_qualified_name, name, ctypes_to_string(args)), True, False)
 
-		proxy_name = self.__get_proxy_function_name(name)
+		proxy_name = self.__get_proxy_function_name(name, obj.clean_name + '_')
 		arg_vars = self.open_method(proxy_name, args)
 
 		# declare and convert self and args
@@ -371,7 +397,7 @@ class FABGen:
 
 		obj.methods.append({'name': name, 'proxy_name': proxy_name, 'rval': rval, 'args': args})
 
-	def bind_member(self, obj, member):
+	def bind_class_member(self, obj, member):
 		member = parse(member, _CArg)
 		member_conv = self.select_ctype_conv(member.ctype)
 
@@ -402,6 +428,7 @@ class FABGen:
 
 		obj.members.append(member)
 
+	# global function template
 	def decl_function_template(self, tmpl_name, tmpl_args, rval, args):
 		self.__function_templates[tmpl_name] = {'tmpl_args': tmpl_args, 'rval': rval, 'args': args}
 

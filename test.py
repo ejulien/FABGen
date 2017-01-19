@@ -5,10 +5,16 @@ import python
 def run_test(gen):
 	gen.start('test')
 
-	simple_struct = gen.begin_class('simple_struct')
-	gen.bind_member(simple_struct, 'int a')
-	gen.bind_method(simple_struct, 'set_a', 'bool', ['int v0', 'int v1'])
-	gen.end_class(simple_struct)
+	base_class = gen.begin_class('base_class')
+	gen.bind_class_method(base_class, 'base_method', 'int', [])
+	gen.bind_class_method(base_class, 'base_method_override', 'int', [])
+	gen.end_class(base_class)
+
+	derived_class = gen.begin_class('derived_class')
+	gen.add_class_base(derived_class, 'base_class')
+	gen.bind_class_method(derived_class, 'derived_method', 'int', [])
+	gen.bind_class_method(derived_class, 'base_method_override', 'int', [])
+	gen.end_class(derived_class)
 
 	gen.finalize()
 

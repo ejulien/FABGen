@@ -38,7 +38,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 		# methods
 		out += 'static PyMethodDef %s_tp_methods[] = {\n' % self.clean_name
-		for method in self.methods:
+		for method in self.get_all_methods():
 			out += '	{"%s", (PyCFunction)%s, METH_VARARGS},\n' % (method['name'], method['proxy_name'])
 		out += '	{NULL} /* Sentinel */\n'
 		out += '};\n\n'
