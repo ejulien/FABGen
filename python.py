@@ -109,7 +109,7 @@ class PythonGenerator(gen.FABGen):
 typedef struct {
 	PyObject_HEAD
 
-	char magic[4]; // ensure PyObject is a wrapped_PyObject
+	char magic[4]; // wrapped_PyObject marker
 	const char *type_tag; // wrapped pointer type tag
 
 	void *obj;
