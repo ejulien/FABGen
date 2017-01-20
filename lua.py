@@ -15,8 +15,8 @@ class LuaTypeConverterCommon(gen.TypeConverter):
 	def to_c_call(self, var, var_p):
 		return 'to_c_%s(L, %s, %s);\n' % (self.clean_name, var, var_p)
 
-	def from_c_call(self, ctype, var, var_p):
-		return "from_c_%s(L, %s, %s);\n" % (self.clean_name, var_p, self.get_ownership_policy(ctype.get_ref()))
+	def from_c_call(self, ctype, var, var_p, ownership_policy):
+		return "from_c_%s(L, %s, %s);\n" % (self.clean_name, var_p, ownership_policy)
 
 
 #
@@ -47,7 +47,7 @@ class LuaClassTypeDefaultConverter(LuaTypeConverterCommon):
 		default:
 		case NonOwning:
 			return _wrap_obj<NativeObjectPtrWrapper<%s>>(L, obj, %s);
-		case ByValue:
+		case Owning:
 			return _wrap_obj<NativeObjectValueWrapper<%s>>(L, obj, %s);
 	}
 ''' % (self.fully_qualified_name, self.type_tag, self.fully_qualified_name, self.type_tag)

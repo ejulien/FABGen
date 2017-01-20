@@ -6,6 +6,11 @@ def run_test(gen):
 	gen.start('test')
 
 	base_class = gen.begin_class('base_class')
+	gen.bind_class_constructor(base_class, ['int v0', 'int v1'])
+	gen.end_class(base_class)
+
+	'''
+	base_class = gen.begin_class('base_class')
 	gen.bind_class_method(base_class, 'base_method', 'int', [])
 	gen.bind_class_method(base_class, 'base_method_override', 'int', [])
 	gen.end_class(base_class)
@@ -15,6 +20,7 @@ def run_test(gen):
 	gen.bind_class_method(derived_class, 'derived_method', 'int', [])
 	gen.bind_class_method(derived_class, 'base_method_override', 'int', [])
 	gen.end_class(derived_class)
+	'''
 
 	gen.finalize()
 

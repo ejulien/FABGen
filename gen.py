@@ -139,12 +139,6 @@ class TypeConverter:
 	def from_c_call(self, ctype, out_var, in_var_p):
 		assert 'from_c_call not implemented in converter'
 
-	def get_ownership_policy(self, ref):
-		"""Return the VM default ownership policy for a reference coming from C."""
-		if ref == '*' or ref == '&':
-			return 'NonOwning'
-		return 'ByValue'
-
 	def prepare_var_for_conv(self, var, var_ref):
 		"""Prepare a variable for use with the converter from_c/to_c methods."""
 		return transform_var_ref_to(var, var_ref, self.ctype.get_ref('*'))
@@ -165,6 +159,18 @@ class TypeConverter:
 			collect_base_methods(base)
 
 		return all_methods
+
+	def can_upcast_to(self, type):
+		clean_name = get_type_clean_name(type)
+
+		if self.clean_name == clean_name:
+			return True
+
+		for base in self.bases:
+			if base.can_upcast_to(type):
+				return True
+
+		return False
 
 
 #
@@ -197,7 +203,8 @@ class FABGen:
 		self.output_header()
 		self.output_includes()
 
-		self._source += 'enum OwnershipPolicy { NonOwning, ByValue };\n\n'
+		self._source += 'enum OwnershipPolicy { NonOwning, Copy, Owning };\n\n'
+		self._source += 'void *_type_tag_upcast(void *in_p, const char *in_type_tag, const char *out_type_tag);\n\n'
 
 	def add_include(self, path, is_system_include = False):
 		if is_system_include:
@@ -327,9 +334,12 @@ class FABGen:
 		self._source += '\t' + self.decl_var(obj.storage_ctype, var_out)
 		self._source += '\t' + obj.to_c_call(var_in, '&' + var_out)
 
+	def __ref_to_ownership_policy(self, ctype):
+		return 'Copy' if ctype.get_ref() == '' else 'NonOwning'
+
 	def _convert_rval(self, rval, rval_conv):
 		if rval_conv:
-			self.rval_from_c_ptr(rval, 'rval', rval_conv, ctype_ref_to(rval.get_ref(), rval_conv.ctype.get_ref() + '*') + 'rval')
+			self.rval_from_c_ptr(rval, 'rval', rval_conv, ctype_ref_to(rval.get_ref(), rval_conv.ctype.get_ref() + '*') + 'rval', self.__ref_to_ownership_policy(rval))
 
 		# commit return values
 		self.commit_rvals(rval)
@@ -365,6 +375,10 @@ class FABGen:
 
 		self.close_function()
 		self._source += '\n'
+
+	# class constructor
+	def bind_class_constructor(self, obj, args):
+		pass
 
 	# class member/method
 	def bind_class_method(self, obj, name, rval, args):
@@ -412,7 +426,7 @@ class FABGen:
 		self._declare_and_convert_self(obj, arg_vars[0], 'self')
 
 		rval = [member.ctype]
-		self.rval_from_c_ptr(member.ctype, 'rval', member_conv, getset_expr)
+		self.rval_from_c_ptr(member.ctype, 'rval', member_conv, getset_expr, self.__ref_to_ownership_policy(member.ctype))
 		self.commit_rvals(rval)
 		self.cleanup_rvals(rval)
 		self.close_getter_function()
@@ -464,6 +478,49 @@ class FABGen:
 			self._source += '//	- %s bound as %s\n' % (f['name'], f['bound_name'])
 		self._source += '\n'
 
+	def get_type_tag_cast_function(self):
+		downcasts = {}
+		for type in self._bound_types:
+			downcasts[type] = []
+
+		def register_upcast(type, bases):
+			for base in bases:
+				downcasts[base].append(type)
+				register_upcast(type, base.bases)
+
+		for type in self._bound_types:
+			register_upcast(type, type.bases)
+
+		#
+		out = '// type_tag based cast system\n'
+		out += 'void *_type_tag_upcast(void *in_p, const char *in_type_tag, const char *out_type_tag) {\n'
+		out += '	if (out_type_tag == in_type_tag)\n'
+		out += '		return in_p;\n\n'
+
+		out += '	void *out_p = NULL;\n\n'
+
+		i = 0
+		for base in self._bound_types:
+			if len(downcasts[base]) == 0:
+				continue
+
+			out += '	' if i == 0 else ' else '
+			out += 'if (out_type_tag == %s) {\n' % base.type_tag
+
+			for j, downcast in enumerate(downcasts[base]):
+				out += '		' if j == 0 else '		else '
+				out += 'if (in_type_tag == %s)\n' % downcast.type_tag
+				out += '			out_p = (%s *)((%s *)in_p);\n' % (get_fully_qualified_ctype_name(base.ctype), get_fully_qualified_ctype_name(downcast.ctype))
+
+			out += '	}'
+			i += 1
+
+		out += '''
+
+	return out_p;
+}\n\n'''
+		return out
+
 	def finalize(self):
 		# insert includes
 		system_includes = ''
@@ -475,6 +532,9 @@ class FABGen:
 			user_includes = ''.join(['#include "%s"\n' % path for path in self.__user_includes])
 
 		self._source = self._source.replace('{{{__WRAPPER_INCLUDES__}}}', system_includes + user_includes)
+
+		# cast to
+		self._source += self.get_type_tag_cast_function()
 
 	def get_output(self):
 		return self._header, self._source

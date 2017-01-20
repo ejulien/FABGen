@@ -66,16 +66,16 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 		# to/from C
 		out += '''void to_c_%s(PyObject *o, void *obj) {
-	wrapped_PyObject *pyobj = (wrapped_PyObject *)o;
-	*(%s **)obj = (%s *)pyobj->obj;
-}\n\n''' % (self.clean_name, self.clean_name, self.clean_name)
+	wrapped_PyObject *w = cast_to_wrapped_PyObject(o);
+	*(%s **)obj = (%s *)_type_tag_upcast(w->obj, w->type_tag, %s);
+}\n\n''' % (self.clean_name, self.clean_name, self.clean_name, self.type_tag)
 
 		out += '''PyObject *from_c_%s(void *obj, OwnershipPolicy own) {
 	wrapped_PyObject *pyobj = PyObject_New(wrapped_PyObject, (PyTypeObject *)%s_type);
-	if (own == ByValue)
+	if (own == Copy)
 		obj = new %s(*(%s *)obj);
 	init_wrapped_PyObject(pyobj, __%s_type_tag, obj);
-	if (own == ByValue)
+	if (own != NonOwning)
 		pyobj->on_delete = &delete_%s;
 	return (PyObject *)pyobj;
 }\n''' % (self.clean_name, self.clean_name, self.clean_name, self.clean_name, self.clean_name, self.clean_name)
@@ -127,6 +127,13 @@ static void init_wrapped_PyObject(wrapped_PyObject *o, const char *type_tag, voi
 	o->obj = obj;
 
 	o->on_delete = NULL;
+}
+
+static wrapped_PyObject *cast_to_wrapped_PyObject(PyObject *o) {
+	wrapped_PyObject *w = (wrapped_PyObject *)o;
+	if (w->magic[0] != 'F' || w->magic[1] != 'A' || w->magic[2] != 'B' || w->magic[3] != '!')
+		return NULL;
+	return w;
 }
 
 static void wrapped_PyObject_tp_dealloc(PyObject *self) {
@@ -218,8 +225,8 @@ FAB_error:;
 	def return_void_from_c(self):
 		return 'return 0;'
 
-	def rval_from_c_ptr(self, ctype, var, conv, rval_p):
-		self._source += conv.from_c_call(var + '_pyobj', rval_p, conv.get_ownership_policy(ctype.get_ref()))
+	def rval_from_c_ptr(self, ctype, var, conv, rval_p, ownership_policy):
+		self._source += conv.from_c_call(var + '_pyobj', rval_p, ownership_policy)
 
 	def commit_rvals(self, rval):
 		rval_count = 1 if repr(rval) != 'void' else 0
