@@ -42,6 +42,14 @@ class _CType:
 	def get_ref(self, extra_transform=''):
 		return (self.ref if hasattr(self, 'ref') else '') + extra_transform
 
+	def add_ref(self, ref):
+		t = copy.deepcopy(self)
+		if hasattr(self, 'ref'):
+			t.ref += ref
+		else:
+			setattr(t, 'ref', ref)
+		return t
+
 
 _CType.grammar = flag("const", K("const")), optional([flag("signed", K("signed")), flag("unsigned", K("unsigned"))]), attr("unqualified_name", typename), optional(attr("ref", ref_re))
 
@@ -122,6 +130,7 @@ class TypeConverter:
 		self.fully_qualified_name = get_fully_qualified_ctype_name(self.ctype)
 		self.type_tag = '__%s_type_tag' % self.clean_name
 
+		self.constructor = None
 		self.members = []
 		self.methods = []
 
@@ -337,14 +346,11 @@ class FABGen:
 	def __ref_to_ownership_policy(self, ctype):
 		return 'Copy' if ctype.get_ref() == '' else 'NonOwning'
 
-	def _convert_rval(self, rval, rval_conv):
+	def _convert_rval(self, rval, rval_conv, ownership):
 		if rval_conv:
-			self.rval_from_c_ptr(rval, 'rval', rval_conv, ctype_ref_to(rval.get_ref(), rval_conv.ctype.get_ref() + '*') + 'rval', self.__ref_to_ownership_policy(rval))
+			self.rval_from_c_ptr(rval, 'rval', rval_conv, ctype_ref_to(rval.get_ref(), rval_conv.ctype.get_ref() + '*') + 'rval', ownership)
 
-		# commit return values
 		self.commit_rvals(rval)
-
-		# cleanup return value
 		self.cleanup_rvals(rval)
 
 	def bind_function(self, name, rval, args):
@@ -371,14 +377,10 @@ class FABGen:
 		self.cleanup_args(args)
 
 		# convert return values
-		self._convert_rval(rval, rval_conv)
+		self._convert_rval(rval, rval_conv, self.__ref_to_ownership_policy(rval))
 
 		self.close_function()
 		self._source += '\n'
-
-	# class constructor
-	def bind_class_constructor(self, obj, args):
-		pass
 
 	# class member/method
 	def bind_class_method(self, obj, name, rval, args):
@@ -404,7 +406,7 @@ class FABGen:
 		self.cleanup_args(args)
 
 		# convert return values
-		self._convert_rval(rval, rval_conv)
+		self._convert_rval(rval, rval_conv, self.__ref_to_ownership_policy(rval))
 
 		self.close_method()
 		self._source += '\n'
@@ -441,6 +443,35 @@ class FABGen:
 		self._source += '\n'
 
 		obj.members.append(member)
+
+	def bind_class_constructor(self, obj, args):
+		rval = obj.ctype
+		args = _prepare_ctypes(args, _CArg)
+
+		self.insert_code('// %s(%s)\n' % (obj.fully_qualified_name, ctypes_to_string(args)), True, False)
+
+		proxy_name = self.__get_proxy_function_name("constructor_proxy", obj.clean_name + '_')
+		arg_vars = self.open_method(proxy_name, args)
+
+		# declare and convert args
+		c_call_args = self._declare_and_convert_function_call_args(args, arg_vars[1:])  # note: drop self from arg_vars
+
+		# declare rval
+		rval_conv = self._declare_return_value(rval.add_ref('*'))
+
+		# perform method call
+		self._source += 'new %s(%s);\n' % (obj.fully_qualified_name, ', '.join(c_call_args))
+
+		# cleanup arguments
+		self.cleanup_args(args)
+
+		# convert return values
+		self._convert_rval(rval, rval_conv, "Owning")
+
+		self.close_method()
+		self._source += '\n'
+
+		obj.constructor = {'proxy_name': proxy_name, 'args': args}
 
 	# global function template
 	def decl_function_template(self, tmpl_name, tmpl_args, rval, args):
