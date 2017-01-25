@@ -315,7 +315,7 @@ class FABGen:
 	def __get_proxy_function_name(name, prefix=''):
 		return '_' + prefix + clean_c_symbol_name(name)
 
-	def _declare_and_convert_function_call_args(self, args, arg_vars):
+	def _declare_and_convert_function_call_args(self, args):
 		args = self.select_args_convs(args)
 
 		c_call_args = []
@@ -326,7 +326,7 @@ class FABGen:
 
 			arg_name = 'arg%d' % i
 			self._source += self.decl_var(conv.storage_ctype, arg_name)
-			self._source += conv.to_c_call(arg_vars[i], '&' + arg_name)
+			self._source += conv.to_c_call(self.get_arg(i), '&' + arg_name)
 
 			c_call_arg_transform = ctype_ref_to(conv.storage_ctype.get_ref(), arg['ctype'].get_ref())
 			c_call_args.append(c_call_arg_transform + arg_name)
@@ -353,6 +353,7 @@ class FABGen:
 		self.commit_rvals(rval)
 		self.cleanup_rvals(rval)
 
+	#
 	def bind_function(self, name, rval, args):
 		rval = parse(rval, _CType)
 		args = _prepare_ctypes(args, _CArg)
@@ -360,12 +361,12 @@ class FABGen:
 		self.insert_code('// %s %s(%s)\n' % (rval, name, ctypes_to_string(args)), True, False)
 
 		proxy_name = self.__get_proxy_function_name(name)
-		arg_vars = self.open_function(proxy_name, args)
+		self.open_function(proxy_name, args)
 
 		self._bound_functions.append({'name': name, 'proxy_name': proxy_name, 'rval': rval, 'args': args})
 
 		# declare and convert args
-		c_call_args = self._declare_and_convert_function_call_args(args, arg_vars)
+		c_call_args = self._declare_and_convert_function_call_args(args)
 
 		# declare rval
 		rval_conv = self._declare_return_value(rval)
@@ -382,17 +383,16 @@ class FABGen:
 		self.close_function()
 		self._source += '\n'
 
-	def bind_function_with_overload(self, name, protos):
+	def bind_function_with_overloads(self, name, protos):
 		self.insert_code('// %s dispatcher\n' % name, True, False)
 
 		proxy_name = self.__get_proxy_function_name(name)
-
-		self.open_dispatcher(proxy_name)
+		self.open_function(proxy_name)
 
 		for proto in protos:
 			rval, args = proto
 
-		self.close_dispatcher()
+		self.close_function()
 		self._source += '\n'
 
 	# class member/method
@@ -426,6 +426,37 @@ class FABGen:
 
 		obj.methods.append({'name': name, 'proxy_name': proxy_name, 'rval': rval, 'args': args})
 
+	#
+	def bind_class_constructor(self, obj, args):
+		rval = obj.ctype
+		args = _prepare_ctypes(args, _CArg)
+
+		self.insert_code('// %s(%s)\n' % (obj.fully_qualified_name, ctypes_to_string(args)), True, False)
+
+		proxy_name = self.__get_proxy_function_name("constructor_proxy", obj.clean_name + '_')
+		arg_vars = self.open_method(proxy_name, args)
+
+		# declare and convert args
+		c_call_args = self._declare_and_convert_function_call_args(args, arg_vars[1:])  # note: drop self from arg_vars
+
+		# declare rval
+		rval_conv = self._declare_return_value(rval.add_ref('*'))
+
+		# perform method call
+		self._source += 'new %s(%s);\n' % (obj.fully_qualified_name, ', '.join(c_call_args))
+
+		# cleanup arguments
+		self.cleanup_args(args)
+
+		# convert return values
+		self._convert_rval(rval, rval_conv, "Owning")
+
+		self.close_method()
+		self._source += '\n'
+
+		obj.constructor = {'proxy_name': proxy_name, 'args': args}
+
+	#
 	def bind_class_member(self, obj, member):
 		member = parse(member, _CArg)
 		member_conv = self.select_ctype_conv(member.ctype)
@@ -456,35 +487,6 @@ class FABGen:
 		self._source += '\n'
 
 		obj.members.append(member)
-
-	def bind_class_constructor(self, obj, args):
-		rval = obj.ctype
-		args = _prepare_ctypes(args, _CArg)
-
-		self.insert_code('// %s(%s)\n' % (obj.fully_qualified_name, ctypes_to_string(args)), True, False)
-
-		proxy_name = self.__get_proxy_function_name("constructor_proxy", obj.clean_name + '_')
-		arg_vars = self.open_method(proxy_name, args)
-
-		# declare and convert args
-		c_call_args = self._declare_and_convert_function_call_args(args, arg_vars[1:])  # note: drop self from arg_vars
-
-		# declare rval
-		rval_conv = self._declare_return_value(rval.add_ref('*'))
-
-		# perform method call
-		self._source += 'new %s(%s);\n' % (obj.fully_qualified_name, ', '.join(c_call_args))
-
-		# cleanup arguments
-		self.cleanup_args(args)
-
-		# convert return values
-		self._convert_rval(rval, rval_conv, "Owning")
-
-		self.close_method()
-		self._source += '\n'
-
-		obj.constructor = {'proxy_name': proxy_name, 'args': args}
 
 	# global function template
 	def decl_function_template(self, tmpl_name, tmpl_args, rval, args):

@@ -190,6 +190,11 @@ FAB_error:;
 }
 '''
 
+	def get_arg(self, i):
+		name = 'arg%d_pyobj' % i
+		self._source += "PyObject *%s = PyTuple_GetItem(args, %d);\n" % (name, i)
+		return name
+
 	def open_function(self, name, args):
 		self._source += "static PyObject *%s(PyObject *_self, PyObject *args) {\n" % name
 
@@ -200,19 +205,10 @@ FAB_error:;
 	if (!PyTuple_Check(args)) {\n\
 		PyErr_SetString(PyExc_RuntimeError, "invalid arguments object (expected a tuple)");\n\
 		return NULL;\n\
-	}\n'
-
-			arg_vars = []
-			for i in range(arg_count):
-				arg_var = "_arg%d" % i
-				self._source += "PyObject *%s = PyTuple_GetItem(args, %d);\n" % (arg_var, i)
-				arg_vars.append(arg_var)
-
-			self._source += '\n'
-		else:
-			arg_vars = []
-
-		return arg_vars
+	}\n\
+\
+	int arg_count = PyTuple_Size(args);\n\
+\n'
 
 	def close_function(self):
 		self._source += '''\
