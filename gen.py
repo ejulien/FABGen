@@ -382,6 +382,19 @@ class FABGen:
 		self.close_function()
 		self._source += '\n'
 
+	def bind_function_with_overload(self, name, protos):
+		self.insert_code('// %s dispatcher\n' % name, True, False)
+
+		proxy_name = self.__get_proxy_function_name(name)
+
+		self.open_dispatcher(proxy_name)
+
+		for proto in protos:
+			rval, args = proto
+
+		self.close_dispatcher()
+		self._source += '\n'
+
 	# class member/method
 	def bind_class_method(self, obj, name, rval, args):
 		rval = parse(rval, _CType)
