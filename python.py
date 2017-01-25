@@ -19,6 +19,9 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 	def from_c_call(self, out_var, in_var_p, ownership_policy):
 		return "PyObject *%s = from_c_%s(%s, %s);\n" % (out_var, self.clean_name, in_var_p, ownership_policy)
 
+	def check_call(self, out_var, in_var):
+		return "bool %s = %s ? check_%s(%s) : false;\n" % (out_var, in_var, self.clean_name, in_var)
+
 
 #
 class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
@@ -28,6 +31,15 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	def get_type_glue(self, module_name):
 		# type
 		out = 'static PyObject *%s_type;\n\n' % self.clean_name
+
+		# constructor
+		out += 'static PyObject *%s_tp_new(PyTypeObject *subtype, PyObject *args, PyObject *kwds) {\n' % self.clean_name
+		if self.constructor:
+			out += '	return %s(NULL, args);\n' % self.constructor['proxy_name']
+		else:
+			out += '	PyErr_Format(PyExc_TypeError, "cannot create %s.%s instances");\n' % (module_name, self.clean_name)
+			out += '	return NULL;\n'
+		out += '}\n\n'
 
 		# members
 		out += 'static PyGetSetDef %s_tp_getset[] = {\n' % self.clean_name
@@ -45,6 +57,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 		# slots
 		out += 'static PyType_Slot %s_slots[] = {\n' % self.clean_name
+		out += '	{Py_tp_new, &%s_tp_new},\n' % self.clean_name
 		out += '	{Py_tp_doc, "TODO doc"},\n'
 		out += '	{Py_tp_dealloc, &wrapped_PyObject_tp_dealloc},\n'
 		out += '	{Py_tp_getset, &%s_tp_getset},\n' % self.clean_name
@@ -183,10 +196,11 @@ FAB_error:;
 		arg_count = len(args)
 
 		if arg_count > 0:
-			self._source += "if (!PyTuple_Check(args) || (PyTuple_Size(args) != %d)) {\n" % arg_count
-			self.raise_exception(None, 'invalid arguments object')
-			self._source += "	return NULL;\n"
-			self._source += "}\n"
+			self._source += '\
+	if (!PyTuple_Check(args)) {\n\
+		PyErr_SetString(PyExc_RuntimeError, "invalid arguments object (expected a tuple)");\n\
+		return NULL;\n\
+	}\n'
 
 			arg_vars = []
 			for i in range(arg_count):
