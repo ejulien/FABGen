@@ -192,17 +192,19 @@ class FunctionBindingContext:
 
 
 class ConstructorBindingContext:
-	def __init__(self, type):
+	def __init__(self, type, conv):
 		self.type = type
+		self.conv = conv
 
 	def __repr__(self):
 		return '%s constructor' % self.type
 
 
 class MethodBindingContext:
-	def __init__(self, type, name):
+	def __init__(self, type, name, conv):
 		self.type = type
 		self.name = name
+		self.conv = conv
 
 	def __repr__(self):
 		return '%s.%s method' % (self.type, self.name)
@@ -361,8 +363,8 @@ class FABGen:
 
 		# prepare C call self argument
 		if type(bind_ctx) is MethodBindingContext:
-			self._source += '	' + self.decl_var(rval_conv.storage_ctype, '_self')
-			self._source += '	' + rval_conv.to_c_call(self.get_self(), '&_self')
+			self._source += '	' + self.decl_var(bind_ctx.conv.storage_ctype, '_self')
+			self._source += '	' + bind_ctx.conv.to_c_call(self.get_self(), '&_self')
 
 		# prepare C call arguments
 		args = proto['args']
@@ -420,7 +422,9 @@ class FABGen:
 			self.open_function(proxy_name, 16)  # FIXME determine actual max arg count
 
 		if type(bind_ctx) is ConstructorBindingContext:
-			protos[0]['rval']['conv'].constructor = {'proxy_name': proxy_name, 'protos': protos}
+			bind_ctx.conv.constructor = {'proxy_name': proxy_name, 'protos': protos}
+		elif type(bind_ctx) is MethodBindingContext:
+			bind_ctx.conv.methods.append({'name': name, 'proxy_name': proxy_name, 'protos': protos})
 		elif type(bind_ctx) is FunctionBindingContext:
 			self._bound_functions.append({'name': name, 'proxy_name': proxy_name, 'protos': protos})
 
@@ -483,22 +487,27 @@ class FABGen:
 
 	#
 	def bind_function(self, name, rval, args):
-		self._bind_function_common(name, [(rval, args)], FunctionBindingContext(name))
+		self.bind_function_overloads(name, [(rval, args)])
 
 	def bind_function_overloads(self, name, protos):
 		self._bind_function_common(name, protos, FunctionBindingContext(name))
 
 	#
 	def bind_constructor(self, type, args):
-		self._bind_function_common('%s__constructor__' % type, [(type, args)], ConstructorBindingContext(type))
+		self.bind_constructor_overloads(type, [args])
 
-	def bind_constructor_overloads(self, type, protos):
-		protos = [(type, proto) for proto in protos]
-		self._bind_function_common('%s__constructor__' % type, protos, ConstructorBindingContext(type))
+	def bind_constructor_overloads(self, type, proto_args):
+		conv = self.select_ctype_conv(parse(type, _CType))
+		protos = [(type, args) for args in proto_args]
+		self._bind_function_common('%s__constructor__' % type, protos, ConstructorBindingContext(type, conv))
 
 	#
 	def bind_method(self, type, name, rval, args):
-		self._bind_function_common(name, [(rval, args)], MethodBindingContext(type, name))
+		self.bind_method_overloads(type, name, [(rval, args)])
+
+	def bind_method_overloads(self, type, name, protos):
+		conv = self.select_ctype_conv(parse(type, _CType))
+		self._bind_function_common(name, protos, MethodBindingContext(type, name, conv))
 
 	#
 	def bind_member(self, type, member):

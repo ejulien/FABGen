@@ -203,13 +203,12 @@ FAB_error:;
 		PyErr_SetString(PyExc_RuntimeError, "invalid arguments object (expected a tuple)");\n\
 		return NULL;\n\
 	}\n\
-\n\
 	int arg_count = PyTuple_Size(args);\n\
 \n\
 	PyObject *arg_pyobj[%d];\n\
-	for (int _i = 0; _i < arg_count; ++_i)\n\
+	for (int _i = 0; _i < arg_count && _i < %d; ++_i)\n\
 		arg_pyobj[_i] = PyTuple_GetItem(args, _i);\n\
-\n' % max_arg_count
+\n' % (max_arg_count, max_arg_count)
 
 	def close_function(self):
 		self._source += '''\
