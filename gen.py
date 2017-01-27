@@ -383,15 +383,131 @@ class FABGen:
 		self.close_function()
 		self._source += '\n'
 
-	def bind_function_with_overloads(self, name, protos):
-		self.insert_code('// %s dispatcher\n' % name, True, False)
-
-		proxy_name = self.__get_proxy_function_name(name)
-		self.open_function(proxy_name)
+	def prepare_protos(self, protos):
+		_protos = []
 
 		for proto in protos:
-			rval, args = proto
+			rval = parse(proto[0], _CType)
+			_proto = {'rval': {'ctype': rval, 'conv': self.select_ctype_conv(rval)}, 'args': []}
 
+			args = proto[1]
+			if not type(args) is type([]):
+				args = [args]
+
+			for arg in args:
+				carg = parse(arg, _CArg)
+				conv = self.select_ctype_conv(carg.ctype)
+				_proto['args'].append({'carg': carg, 'conv': conv, 'check_var': None})
+
+			_protos.append(_proto)
+
+		return _protos
+
+
+
+
+
+	def proto_call(self, name, proto):
+		# prepare C call arguments
+		args = proto['args']
+		c_call_args = []
+
+		for i, arg in enumerate(args):
+			conv = arg['conv']
+			if not conv:
+				continue
+
+			arg_name = 'arg%d' % i
+			self._source += self.decl_var(conv.storage_ctype, arg_name)
+			self._source += conv.to_c_call(self.get_arg(i), '&' + arg_name)
+
+			c_call_arg_transform = ctype_ref_to(conv.storage_ctype.get_ref(), conv.ctype.get_ref())
+			c_call_args.append(c_call_arg_transform + arg_name)
+
+		# declare return value
+		rval = proto['rval']['ctype']
+		rval_conv = proto['rval']['conv']
+
+		if rval_conv:
+			self._source += self.decl_var(rval, 'rval', ' = ')
+
+		# function call
+		self._source += '%s(%s);\n' % (name, ', '.join(c_call_args))
+
+		self.cleanup_args(args)
+
+		if rval_conv:
+			ownership = self.__ref_to_ownership_policy(rval)
+			self.rval_from_c_ptr(rval, 'rval', rval_conv, ctype_ref_to(rval.get_ref(), rval_conv.ctype.get_ref() + '*') + 'rval', ownership)
+
+		self.commit_rvals(rval)
+		self.cleanup_rvals(rval)
+
+	def bind_function_with_overloads(self, name, protos):
+		protos = self.prepare_protos(protos)
+
+		# prepare proxy function
+		self.insert_code('// %s\n' % name, True, False)
+
+		proxy_name = self.__get_proxy_function_name(name)
+		self.open_function(proxy_name, 16)  # FIXME determine actual max arg count
+
+		self._bound_functions.append({'name': name, 'proxy_name': proxy_name, 'protos': protos})
+
+		# categorize prototypes by number of argument they take
+		def get_protos_per_arg_count(protos):
+			by_arg_count = {}
+			for proto in protos:
+				arg_count = len(proto['args'])
+				if arg_count not in by_arg_count:
+					by_arg_count[arg_count] = []
+				by_arg_count[arg_count].append(proto)
+			return by_arg_count
+
+		protos_by_arg_count = get_protos_per_arg_count(protos)
+
+		# output dispatching logic
+		def get_protos_per_arg_conv(protos, arg_idx):
+			per_arg_conv = {}
+			for proto in protos:
+				arg_conv = proto['args'][arg_idx]['conv']
+				if arg_conv not in per_arg_conv:
+					per_arg_conv[arg_conv] = []
+				per_arg_conv[arg_conv].append(proto)
+			return per_arg_conv
+
+		for arg_count, protos_with_arg_count in protos_by_arg_count.items():
+			self._source += '	if (arg_count == %d) {\n' % arg_count
+
+			def output_arg_check_and_dispatch(protos, arg_idx, arg_limit):
+				indent = '	' * (arg_idx+2)
+
+				if arg_idx == arg_limit:
+					assert len(protos) == 1  # there should only be exactly one prototype with a single signature
+					self.proto_call(name, protos[0])
+					return
+
+				protos_per_arg_conv = get_protos_per_arg_conv(protos, arg_idx)
+
+				self._source += indent
+				for conv, protos_for_conv in protos_per_arg_conv.items():
+					self._source += 'if (%s) {\n' % conv.check_call(self.get_arg(arg_idx))
+					output_arg_check_and_dispatch(protos_for_conv, arg_idx+1, arg_limit)
+					self._source += indent + '} else '
+
+				self._source += '{\n'
+				self.set_error('runtime', 'incorrect type for argument %d to %s' % (arg_idx, name))
+				self._source += indent + '}\n'
+
+			output_arg_check_and_dispatch(protos_with_arg_count, 0, arg_count)
+
+			self._source += '	} else '
+
+		self._source += '{\n'
+		self.set_error('runtime', 'incorrect number of arguments to %s' % name)
+		self._source += '	}\n'
+
+		#
 		self.close_function()
 		self._source += '\n'
 

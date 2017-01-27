@@ -19,8 +19,8 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 	def from_c_call(self, out_var, in_var_p, ownership_policy):
 		return "PyObject *%s = from_c_%s(%s, %s);\n" % (out_var, self.clean_name, in_var_p, ownership_policy)
 
-	def check_call(self, out_var, in_var):
-		return "bool %s = %s ? check_%s(%s) : false;\n" % (out_var, in_var, self.clean_name, in_var)
+	def check_call(self, in_var):
+		return "check_%s(%s)" % (self.clean_name, in_var)
 
 
 #
@@ -120,7 +120,7 @@ class PythonGenerator(gen.FABGen):
 
 		self._source += '''\
 typedef struct {
-	PyObject_HEAD
+	PyObject_HEAD;
 
 	char magic[4]; // wrapped_PyObject marker
 	const char *type_tag; // wrapped pointer type tag
@@ -163,7 +163,7 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 		stl.bind_stl(self, PythonTypeConverterCommon)
 
 	#
-	def raise_exception(self, type, reason):
+	def set_error(self, type, reason):
 		self._source += 'PyErr_SetString(PyExc_RuntimeError, "%s");\n' % reason
 
 	#
@@ -191,24 +191,23 @@ FAB_error:;
 '''
 
 	def get_arg(self, i):
-		name = 'arg%d_pyobj' % i
-		self._source += "PyObject *%s = PyTuple_GetItem(args, %d);\n" % (name, i)
-		return name
+		return 'arg_pyobj[%d]' % i
 
-	def open_function(self, name, args):
+	def open_function(self, name, max_arg_count):
 		self._source += "static PyObject *%s(PyObject *_self, PyObject *args) {\n" % name
 
-		arg_count = len(args)
-
-		if arg_count > 0:
-			self._source += '\
+		self._source += '\
 	if (!PyTuple_Check(args)) {\n\
 		PyErr_SetString(PyExc_RuntimeError, "invalid arguments object (expected a tuple)");\n\
 		return NULL;\n\
 	}\n\
-\
+\n\
 	int arg_count = PyTuple_Size(args);\n\
-\n'
+\n\
+	PyObject *arg_pyobj[%d];\n\
+	for (int _i = 0; _i < arg_count; ++_i)\n\
+		arg_pyobj[_i] = PyTuple_GetItem(args, _i);\n\
+\n' % max_arg_count
 
 	def close_function(self):
 		self._source += '''\
@@ -217,9 +216,9 @@ FAB_error:;
 }
 '''
 
-	def open_method(self, name, args):
+	def open_method(self, name):
 		# function and methods share the same signature in C Python API...
-		arg_vars = self.open_function(name, args)
+		arg_vars = self.open_function(name)
 		# ...but the generator expects self as the first argument variable in the returned list.
 		arg_vars.insert(0, '_self')
 		return arg_vars

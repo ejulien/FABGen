@@ -1,13 +1,4 @@
-import lua
-import python
-
-
-def run_test(gen):
-	gen.start('test')
-
-	gen.bind_function_with_overloads('get', [('int', []), ('float', ['float']), ('int', ['float', 'int', 'int']), ('int', ['float', 'const char *', 'int']), ('void', ['float', 'int', 'float']), ('const char *', ['int', 'const char *']), ('int', ['int'])])
-
-	'''
+'''
 	base_class = gen.begin_class('base_class')
 	gen.bind_class_constructor(base_class, ['float v0'])
 	gen.end_class(base_class)
@@ -24,15 +15,4 @@ def run_test(gen):
 	gen.bind_class_method(derived_class, 'derived_method', 'int', [])
 	gen.bind_class_method(derived_class, 'base_method_override', 'int', [])
 	gen.end_class(derived_class)
-	'''
-
-	gen.finalize()
-
-	header, source = gen.get_output()
-
-	print(header)
-	print(source)
-
-
-#run_test(lua.LuaGenerator())
-run_test(python.PythonGenerator())
+'''
