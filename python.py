@@ -218,9 +218,9 @@ FAB_error:;
 }
 '''
 
-	def open_method(self, name):
+	def open_method(self, name, max_arg_count):
 		# function and methods share the same signature in C Python API...
-		return self.open_function(name)
+		return self.open_function(name, max_arg_count)
 
 	def close_method(self):
 		self.close_function()
