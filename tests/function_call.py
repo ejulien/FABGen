@@ -11,8 +11,8 @@ int get(int v, int k) { return v * k; }
 int get(int v, int k, int b) { return v * k + b; }
 ''', True, False)
 
-#	gen.bind_function('get_int', 'int', [])
-	gen.bind_function_with_overloads('get', [('int', []), ('int', ['int v']), ('int', ['int v', 'int k']), ('int', ['int v', 'int k', 'int b'])])
+	gen.bind_function('get_int', 'int', [])
+	gen.bind_function_overloads('get', [('int', []), ('int', ['int v']), ('int', ['int v', 'int k']), ('int', ['int v', 'int k', 'int b'])])
 
 	gen.finalize()
 	return gen.get_output()
@@ -23,7 +23,7 @@ import my_test
 
 from tests_api import expect_eq
 
-#expect_eq(my_test.get_int(), 8)
+expect_eq(my_test.get_int(), 8)
 
 # overload
 expect_eq(my_test.get(), 0)

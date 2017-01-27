@@ -168,8 +168,7 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 
 	#
 	def open_getter_function(self, name):
-		self._source += "static PyObject *%s(PyObject *_self, void *closure) {\n" % name
-		return ['_self']
+		self._source += "static PyObject *%s(PyObject *self, void *closure) {\n" % name
 
 	def close_getter_function(self):
 		self._source += '''\
@@ -179,8 +178,8 @@ FAB_error:
 '''
 
 	def open_setter_function(self, name):
-		self._source += "static int %s(PyObject *_self, PyObject *_val, void *closure) {\n" % name
-		return ['_self', '_val']
+		self._source += "static int %s(PyObject *self, PyObject *val, void *closure) {\n" % name
+		self._source += "	PyObject *arg_pyobj[] = {val};\n"
 
 	def close_setter_function(self):
 		self._source += '''\
@@ -190,11 +189,14 @@ FAB_error:;
 }
 '''
 
+	def get_self(self):
+		return 'self'
+
 	def get_arg(self, i):
 		return 'arg_pyobj[%d]' % i
 
 	def open_function(self, name, max_arg_count):
-		self._source += "static PyObject *%s(PyObject *_self, PyObject *args) {\n" % name
+		self._source += "static PyObject *%s(PyObject *self, PyObject *args) {\n" % name
 
 		self._source += '\
 	if (!PyTuple_Check(args)) {\n\
@@ -218,10 +220,7 @@ FAB_error:;
 
 	def open_method(self, name):
 		# function and methods share the same signature in C Python API...
-		arg_vars = self.open_function(name)
-		# ...but the generator expects self as the first argument variable in the returned list.
-		arg_vars.insert(0, '_self')
-		return arg_vars
+		return self.open_function(name)
 
 	def close_method(self):
 		self.close_function()
