@@ -204,7 +204,10 @@ FAB_error:;
 		return NULL;\n\
 	}\n\
 	int arg_count = PyTuple_Size(args);\n\
-\n\
+\n'
+
+		if max_arg_count > 0:
+			self._source += '\
 	PyObject *arg_pyobj[%d];\n\
 	for (int _i = 0; _i < arg_count && _i < %d; ++_i)\n\
 		arg_pyobj[_i] = PyTuple_GetItem(args, _i);\n\

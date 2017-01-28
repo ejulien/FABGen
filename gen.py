@@ -379,7 +379,7 @@ class FABGen:
 			self._source += self.decl_var(conv.storage_ctype, arg_name)
 			self._source += conv.to_c_call(self.get_arg(i), '&' + arg_name)
 
-			c_call_arg_transform = ctype_ref_to(conv.storage_ctype.get_ref(), conv.ctype.get_ref())
+			c_call_arg_transform = ctype_ref_to(conv.storage_ctype.get_ref(), arg['carg'].ctype.get_ref())
 			c_call_args.append(c_call_arg_transform + arg_name)
 
 		# declare return value
@@ -411,23 +411,6 @@ class FABGen:
 	def _bind_function_common(self, name, protos, bind_ctx):
 		protos = self.prepare_protos(protos)
 
-		# prepare proxy function
-		self.insert_code('// %s\n' % name, True, False)
-
-		proxy_name = '_' + clean_c_symbol_name(name)
-
-		if type(bind_ctx) is MethodBindingContext:
-			self.open_method(proxy_name, 16)  # FIXME determine actual max arg count
-		else:
-			self.open_function(proxy_name, 16)  # FIXME determine actual max arg count
-
-		if type(bind_ctx) is ConstructorBindingContext:
-			bind_ctx.conv.constructor = {'proxy_name': proxy_name, 'protos': protos}
-		elif type(bind_ctx) is MethodBindingContext:
-			bind_ctx.conv.methods.append({'name': name, 'proxy_name': proxy_name, 'protos': protos})
-		elif type(bind_ctx) is FunctionBindingContext:
-			self._bound_functions.append({'name': name, 'proxy_name': proxy_name, 'protos': protos})
-
 		# categorize prototypes by number of argument they take
 		def get_protos_per_arg_count(protos):
 			by_arg_count = {}
@@ -439,6 +422,24 @@ class FABGen:
 			return by_arg_count
 
 		protos_by_arg_count = get_protos_per_arg_count(protos)
+
+		# prepare proxy function
+		self.insert_code('// %s\n' % name, True, False)
+		proxy_name = '_' + clean_c_symbol_name(name)
+
+		max_arg_count = max(protos_by_arg_count.keys())
+
+		if type(bind_ctx) is MethodBindingContext:
+			self.open_method(proxy_name, max_arg_count)
+		else:
+			self.open_function(proxy_name, max_arg_count)
+
+		if type(bind_ctx) is ConstructorBindingContext:
+			bind_ctx.conv.constructor = {'proxy_name': proxy_name, 'protos': protos}
+		elif type(bind_ctx) is MethodBindingContext:
+			bind_ctx.conv.methods.append({'name': name, 'proxy_name': proxy_name, 'protos': protos})
+		elif type(bind_ctx) is FunctionBindingContext:
+			self._bound_functions.append({'name': name, 'proxy_name': proxy_name, 'protos': protos})
 
 		# output dispatching logic
 		def get_protos_per_arg_conv(protos, arg_idx):
