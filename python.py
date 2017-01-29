@@ -11,7 +11,8 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 	def get_type_api(self, module_name):
 		return 'bool check_%s(PyObject *o);\n' % self.clean_name +\
 		'void to_c_%s(PyObject *o, void *obj);\n' % self.clean_name +\
-		'PyObject *from_c_%s(void *obj, OwnershipPolicy);\n' % self.clean_name
+		'PyObject *from_c_%s(void *obj, OwnershipPolicy);\n' % self.clean_name +\
+		'\n'
 
 	def to_c_call(self, in_var, out_var_p):
 		return 'to_c_%s(%s, %s);\n' % (self.clean_name, in_var, out_var_p)
@@ -63,25 +64,36 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		out += '	{Py_tp_getset, &%s_tp_getset},\n' % self.clean_name
 		out += '	{Py_tp_methods, &%s_tp_methods},\n' % self.clean_name
 		out += '''	{0, NULL}
-};\n\n'''
+};
+\n'''
 
 		# specification
-		out += '''static PyType_Spec simple_struct_spec = {
+		out += '''static PyType_Spec %s_spec = {
 	"%s.%s", /* name */
 	sizeof(wrapped_PyObject), /* basicsize */
 	0, /* itemsize*/
 	Py_TPFLAGS_DEFAULT, /* flags */
 	%s_slots
-};\n\n''' % (module_name, self.bound_name, self.clean_name)
+};
+\n''' % (self.clean_name, module_name, self.bound_name, self.clean_name)
 
 		# delete delegate
 		out += 'static void delete_%s(void *o) { delete (%s *)o; }\n\n' % (self.clean_name, self.clean_name)
 
 		# to/from C
+		out += '''bool check_%s(PyObject *o) {
+	wrapped_PyObject *w = cast_to_wrapped_PyObject(o);
+	if (!w)
+		return false;
+	return w->type_tag == %s;
+}
+\n''' % (self.clean_name, self.type_tag)
+
 		out += '''void to_c_%s(PyObject *o, void *obj) {
 	wrapped_PyObject *w = cast_to_wrapped_PyObject(o);
 	*(%s **)obj = (%s *)_type_tag_upcast(w->obj, w->type_tag, %s);
-}\n\n''' % (self.clean_name, self.clean_name, self.clean_name, self.type_tag)
+}
+\n''' % (self.clean_name, self.clean_name, self.clean_name, self.type_tag)
 
 		out += '''PyObject *from_c_%s(void *obj, OwnershipPolicy own) {
 	wrapped_PyObject *pyobj = PyObject_New(wrapped_PyObject, (PyTypeObject *)%s_type);
@@ -91,7 +103,8 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	if (own != NonOwning)
 		pyobj->on_delete = &delete_%s;
 	return (PyObject *)pyobj;
-}\n''' % (self.clean_name, self.clean_name, self.clean_name, self.clean_name, self.clean_name, self.clean_name)
+}
+\n''' % (self.clean_name, self.clean_name, self.clean_name, self.clean_name, self.clean_name, self.clean_name)
 
 		return out
 
@@ -172,8 +185,6 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 
 	def close_getter_function(self):
 		self._source += '''\
-FAB_error:
-	return NULL;
 }
 '''
 
@@ -184,8 +195,6 @@ FAB_error:
 	def close_setter_function(self):
 		self._source += '''\
 	return 0;
-FAB_error:;
-	return -1;
 }
 '''
 
@@ -215,8 +224,6 @@ FAB_error:;
 
 	def close_function(self):
 		self._source += '''\
-FAB_error:;
-	return NULL;
 }
 '''
 

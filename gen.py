@@ -190,6 +190,9 @@ class FunctionBindingContext:
 	def __repr__(self):
 		return 'function %s' % self.name
 
+	def get_proxy_name(self):
+		return '_%s__' % clean_c_symbol_name(self.name)
+
 
 class ConstructorBindingContext:
 	def __init__(self, type, conv):
@@ -198,6 +201,9 @@ class ConstructorBindingContext:
 
 	def __repr__(self):
 		return '%s constructor' % self.type
+
+	def get_proxy_name(self):
+		return '_%s__constructor__' % clean_c_symbol_name(self.type)
 
 
 class MethodBindingContext:
@@ -208,6 +214,9 @@ class MethodBindingContext:
 
 	def __repr__(self):
 		return '%s.%s method' % (self.type, self.name)
+
+	def get_proxy_name(self):
+		return '_%s__%s__' % (clean_c_symbol_name(self.type), self.name)
 
 
 #
@@ -260,14 +269,6 @@ class FABGen:
 		assert 'raise_exception not implemented in generator'
 
 	#
-	def proto_check(self, name, ctype):
-		assert 'proto_check not implemented in generator'
-	def proto_to_c(self, name, ctype):
-		assert 'proto_check not implemented in generator'
-	def proto_from_c(self, name, ctype):
-		assert 'proto_check not implemented in generator'
-
-	#
 	def _begin_type(self, conv):
 		"""Declare a new type converter."""
 		self._bound_types.append(conv)
@@ -279,7 +280,6 @@ class FABGen:
 		self._source += '// %s type glue\n' % conv.fully_qualified_name
 		self._source += 'static const char *%s = "%s";\n\n' % (conv.type_tag, conv.fully_qualified_name)
 		self._source += conv.get_type_glue(self._name)
-		self.insert_code('\n')
 
 	#
 	def bind_type(self, conv):
@@ -303,9 +303,10 @@ class FABGen:
 		self._end_type(self.__type_convs[name])
 
 	#
-	def add_class_base(self, obj, base):
+	def add_class_base(self, name, base):
+		conv = self.__type_convs[name]
 		base_conv = self.__type_convs[base]
-		obj.bases.append(base_conv)
+		conv.bases.append(base_conv)
 
 	#
 	def select_ctype_conv(self, ctype):
@@ -425,7 +426,7 @@ class FABGen:
 
 		# prepare proxy function
 		self.insert_code('// %s\n' % name, True, False)
-		proxy_name = '_' + clean_c_symbol_name(name)
+		proxy_name = bind_ctx.get_proxy_name()
 
 		max_arg_count = max(protos_by_arg_count.keys())
 
@@ -546,6 +547,10 @@ class FABGen:
 
 		obj.members.append(member)
 
+	def bind_members(self, type, members):
+		for member in members:
+			self.bind_member(type, member)
+
 	# global function template
 	def decl_function_template(self, tmpl_name, tmpl_args, rval, args):
 		self.__function_templates[tmpl_name] = {'tmpl_args': tmpl_args, 'rval': rval, 'args': args}
@@ -596,12 +601,14 @@ class FABGen:
 			register_upcast(type, type.bases)
 
 		#
-		out = '// type_tag based cast system\n'
-		out += 'void *_type_tag_upcast(void *in_p, const char *in_type_tag, const char *out_type_tag) {\n'
-		out += '	if (out_type_tag == in_type_tag)\n'
-		out += '		return in_p;\n\n'
+		out = '''\
+// type_tag based cast system
+void *_type_tag_upcast(void *in_p, const char *in_type_tag, const char *out_type_tag) {
+	if (out_type_tag == in_type_tag)
+		return in_p;
 
-		out += '	void *out_p = NULL;\n\n'
+	void *out_p = NULL;
+\n'''
 
 		i = 0
 		for base in self._bound_types:

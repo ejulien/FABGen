@@ -26,8 +26,8 @@ bool test_simple_struct()
 }
 ''', True, False)
 
-	simple_struct = gen.begin_class('simple_struct')
-	gen.end_class(simple_struct)
+	gen.begin_class('simple_struct')
+	gen.end_class('simple_struct')
 
 	gen.bind_function('return_simple_struct_by_value', 'simple_struct', [])
 	gen.bind_function('return_simple_struct_by_pointer', 'simple_struct*', [])
