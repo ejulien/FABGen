@@ -193,6 +193,9 @@ class FunctionBindingContext:
 	def get_proxy_name(self):
 		return '_%s__' % clean_c_symbol_name(self.name)
 
+	def get_expr(self, c_call_args):
+		return '%s(%s);' % (name, ', '.join(c_call_args))
+
 
 class ConstructorBindingContext:
 	def __init__(self, type, conv):
@@ -205,18 +208,41 @@ class ConstructorBindingContext:
 	def get_proxy_name(self):
 		return '_%s__constructor__' % clean_c_symbol_name(self.type)
 
+	def get_expr(self, c_call_args):
+		return 'new %s(%s);' % (self.type, ', '.join(c_call_args))
+
 
 class MethodBindingContext:
-	def __init__(self, type, name, conv):
+	def __init__(self, type, conv, name):
 		self.type = type
-		self.name = name
 		self.conv = conv
+		self.name = name
 
 	def __repr__(self):
 		return '%s.%s method' % (self.type, self.name)
 
 	def get_proxy_name(self):
 		return '_%s__%s__' % (clean_c_symbol_name(self.type), self.name)
+
+	def get_expr(self, c_call_args):
+		return '_self->%s(%s);' % (self.name, ', '.join(c_call_args))
+
+
+class OperatorBindingContext:
+	def __init__(self, type, conv, op):
+		self.type = type
+		self.conv = conv
+		self.op = op
+
+	def __repr__(self):
+		return '%s operator for %s' % (self.op, self.type)
+
+	def get_proxy_name(self):
+		return '_%s__%s_operator__' % (self.type, self.op)
+
+	def get_expr(self, c_call_args):
+		assert len(c_call_args) == 1
+		return '_self %s %s;' % (self.op, ', '.join(c_call_args))
 
 
 #
@@ -358,7 +384,7 @@ class FABGen:
 
 		return _protos
 
-	def proto_call(self, name, proto, bind_ctx):
+	def proto_call(self, proto, bind_ctx):
 		rval = proto['rval']['ctype']
 		rval_conv = proto['rval']['conv']
 
@@ -385,11 +411,9 @@ class FABGen:
 
 		# declare return value
 		if type(bind_ctx) is ConstructorBindingContext:
-			fully_qualified_name = get_fully_qualified_ctype_name(rval)
-
 			rval = rval.add_ref('*')  # constructor returns a pointer
 			self._source += self.decl_var(rval, 'rval', ' = ')
-			self._source += 'new %s(%s);\n' % (fully_qualified_name, ', '.join(c_call_args))
+			self._source += bind_ctx.get_expr(c_call_args) + '\n'
 
 			ownership = 'Owning'  # constructor output is owned by VM
 			self.rval_from_c_ptr(rval, 'rval', rval_conv, ctype_ref_to(rval.get_ref(), rval_conv.ctype.get_ref() + '*') + 'rval', ownership)
@@ -398,10 +422,7 @@ class FABGen:
 			if rval_conv:
 				self._source += self.decl_var(rval, 'rval', ' = ')
 
-			if type(bind_ctx) is MethodBindingContext:
-				self._source += '_self->%s(%s);\n' % (name, ', '.join(c_call_args))
-			else:
-				self._source += '%s(%s);\n' % (name, ', '.join(c_call_args))
+			self._source += bind_ctx.get_expr(c_call_args) + '\n'
 
 			if rval_conv:
 				ownership = self.__ref_to_ownership_policy(rval)
@@ -460,7 +481,7 @@ class FABGen:
 
 				if arg_idx == arg_limit:
 					assert len(protos) == 1  # there should only be exactly one prototype with a single signature
-					self.proto_call(name, protos[0], bind_ctx)
+					self.proto_call(protos[0], bind_ctx)
 					return
 
 				protos_per_arg_conv = get_protos_per_arg_conv(protos, arg_idx)
@@ -509,7 +530,7 @@ class FABGen:
 
 	def bind_method_overloads(self, type, name, protos):
 		conv = self.select_ctype_conv(parse(type, _CType))
-		self._bind_function_common(name, protos, MethodBindingContext(type, name, conv))
+		self._bind_function_common(name, protos, MethodBindingContext(type, conv, name))
 
 	#
 	def bind_member(self, type, member):
@@ -535,7 +556,7 @@ class FABGen:
 		self.close_getter_function()
 
 		# setter
-		arg_vars = self.open_setter_function('_%s_set_%s' % (obj.clean_name, member.name))
+		self.open_setter_function('_%s_set_%s' % (obj.clean_name, member.name))
 
 		self._source += '	' + self.decl_var(obj.storage_ctype, '_self')
 		self._source += '	' + obj.to_c_call(self.get_self(), '&_self')
@@ -550,6 +571,14 @@ class FABGen:
 	def bind_members(self, type, members):
 		for member in members:
 			self.bind_member(type, member)
+
+	#
+	def bind_operator(self, type, op, rval, args):
+		conv = self.select_ctype_conv(parse(type, _CType))
+
+		protos = [(rval, args)]
+
+		self._bind_function_common('%s__%s_operator' % (type, op), protos, OperatorBindingContext(type, conv, op))
 
 	# global function template
 	def decl_function_template(self, tmpl_name, tmpl_args, rval, args):

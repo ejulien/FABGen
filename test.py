@@ -5,6 +5,7 @@ import python
 def bind_math(gen):
 	gen.begin_class('gs::Vector3')
 	gen.bind_members('gs::Vector3', ['float x', 'float y', 'float z'])
+	gen.bind_operator('gs::Vector3', '+', 'gs::Vector3', ['gs::Vector3 &'])
 	gen.end_class('gs::Vector3')
 
 def run_test(gen):
