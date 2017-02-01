@@ -38,7 +38,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		if self.constructor:
 			out += '	return %s(NULL, args);\n' % self.constructor['proxy_name']
 		else:
-			out += '	PyErr_Format(PyExc_TypeError, "cannot create %s.%s instances");\n' % (module_name, self.clean_name)
+			out += '	PyErr_Format(PyExc_TypeError, "cannot create %s.%s instances");\n' % (module_name, self.bound_name)
 			out += '	return NULL;\n'
 		out += '}\n\n'
 

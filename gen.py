@@ -17,14 +17,29 @@ def get_fully_qualified_ctype_name(type):
 	return out
 
 
+type_clean_rules = {
+	'+': 'add',
+	'*': 'mul',
+	'/': 'div',
+	'-': 'sub',
+	'+=': 'inplace_add',
+	'*=': 'inplace_mul',
+	'/=': 'inplace_div',
+	'-=': 'inplace_sub',
+
+	'*': 'ptr',  # pointer
+	'&': '_r',  # reference
+	'::': '__',  # namespace
+}
+
+
 def get_type_clean_name(type):
 	""" Return a type name cleaned so that it may be used as variable name in the generator output."""
 	parts = type.split(' ')
 
 	def clean_type_name_part(part):
-		part = part.replace('*', 'ptr')  # pointer
-		part = part.replace('&', '_r')  # reference
-		part = part.replace('::', '__')  # namespace
+		for f_o, f_d in type_clean_rules.items():
+			part = part.replace(f_o, f_d)
 		return part
 
 	parts = [clean_type_name_part(part) for part in parts]
@@ -52,12 +67,6 @@ class _CType:
 
 
 _CType.grammar = flag("const", K("const")), optional([flag("signed", K("signed")), flag("unsigned", K("unsigned"))]), attr("unqualified_name", typename), optional(attr("ref", ref_re))
-
-
-#
-def clean_c_symbol_name(name):
-	name = name.replace('::', '__')
-	return name
 
 
 #
@@ -117,6 +126,10 @@ def transform_var_ref_to(var, from_ref, to_ref):
 	return ctype_ref_to(from_ref, to_ref) + var
 
 
+def get_type_bound_name(type):
+	return type.split('::')[-1]
+
+
 class TypeConverter:
 	def __init__(self, type, storage_type=None):
 		if not storage_type:
@@ -126,7 +139,7 @@ class TypeConverter:
 		self.storage_ctype = parse(storage_type, _CType)
 
 		self.clean_name = get_type_clean_name(type)
-		self.bound_name = self.clean_name
+		self.bound_name = get_type_bound_name(type)
 		self.fully_qualified_name = get_fully_qualified_ctype_name(self.ctype)
 		self.type_tag = '__%s_type_tag' % self.clean_name
 
@@ -191,7 +204,7 @@ class FunctionBindingContext:
 		return 'function %s' % self.name
 
 	def get_proxy_name(self):
-		return '_%s__' % clean_c_symbol_name(self.name)
+		return get_type_clean_name('_%s__' % self.name)
 
 	def get_expr(self, c_call_args):
 		return '%s(%s);' % (name, ', '.join(c_call_args))
@@ -203,10 +216,10 @@ class ConstructorBindingContext:
 		self.conv = conv
 
 	def __repr__(self):
-		return '%s constructor' % self.type
+		return '%s constructor' % self.conv.bound_name
 
 	def get_proxy_name(self):
-		return '_%s__constructor__' % clean_c_symbol_name(self.type)
+		return get_type_clean_name('_%s__constructor__' % self.type)
 
 	def get_expr(self, c_call_args):
 		return 'new %s(%s);' % (self.type, ', '.join(c_call_args))
@@ -219,10 +232,10 @@ class MethodBindingContext:
 		self.name = name
 
 	def __repr__(self):
-		return '%s.%s method' % (self.type, self.name)
+		return '%s.%s method' % (self.conv.bound_name, self.name)
 
 	def get_proxy_name(self):
-		return '_%s__%s__' % (clean_c_symbol_name(self.type), self.name)
+		return get_type_clean_name('_%s__%s__' % (self.type, self.name))
 
 	def get_expr(self, c_call_args):
 		return '_self->%s(%s);' % (self.name, ', '.join(c_call_args))
@@ -235,14 +248,14 @@ class OperatorBindingContext:
 		self.op = op
 
 	def __repr__(self):
-		return '%s operator for %s' % (self.op, self.type)
+		return '%s operator of %s' % (self.op, self.conv.bound_name)
 
 	def get_proxy_name(self):
-		return '_%s__%s_operator__' % (self.type, self.op)
+		return get_type_clean_name('_%s__%s_operator__' % (self.type, self.op))
 
 	def get_expr(self, c_call_args):
 		assert len(c_call_args) == 1
-		return '_self %s %s;' % (self.op, ', '.join(c_call_args))
+		return '*_self %s %s;' % (self.op, ', '.join(c_call_args))
 
 
 #
@@ -389,7 +402,7 @@ class FABGen:
 		rval_conv = proto['rval']['conv']
 
 		# prepare C call self argument
-		if type(bind_ctx) is MethodBindingContext:
+		if type(bind_ctx) is MethodBindingContext or OperatorBindingContext:
 			self._source += '	' + self.decl_var(bind_ctx.conv.storage_ctype, '_self')
 			self._source += '	' + bind_ctx.conv.to_c_call(self.get_self(), '&_self')
 
@@ -446,7 +459,7 @@ class FABGen:
 		protos_by_arg_count = get_protos_per_arg_count(protos)
 
 		# prepare proxy function
-		self.insert_code('// %s\n' % name, True, False)
+		self.insert_code('// %s\n' % repr(bind_ctx), True, False)
 		proxy_name = bind_ctx.get_proxy_name()
 
 		max_arg_count = max(protos_by_arg_count.keys())
