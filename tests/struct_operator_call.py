@@ -17,10 +17,10 @@ struct simple_struct {
 
 	gen.begin_class('simple_struct')
 	gen.bind_constructor('simple_struct', 'int')
-	gen.bind_arithmetic_operator('simple_struct', '-', 'simple_struct', ['simple_struct b'])
-	gen.bind_arithmetic_operator('simple_struct', '+', 'simple_struct', ['simple_struct b'])
-	gen.bind_arithmetic_operator('simple_struct', '/', 'simple_struct', ['simple_struct b'])
-	gen.bind_arithmetic_operator('simple_struct', '*', 'simple_struct', ['simple_struct b'])
+	gen.bind_arithmetic_op('simple_struct', '-', 'simple_struct', ['simple_struct b'])
+	gen.bind_arithmetic_op('simple_struct', '+', 'simple_struct', ['simple_struct b'])
+	gen.bind_arithmetic_op('simple_struct', '/', 'simple_struct', ['simple_struct b'])
+	gen.bind_arithmetic_op('simple_struct', '*', 'simple_struct', ['simple_struct b'])
 	gen.bind_member('simple_struct', 'int v')
 	gen.end_class('simple_struct')
 

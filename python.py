@@ -61,7 +61,6 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 			op = self.get_operator(op)
 			return '	{%s, &%s},\n' % (slot, op['proxy_name']) if op else ''
 
-
 		out += 'static PyType_Slot %s_slots[] = {\n' % self.clean_name
 		out += '	{Py_tp_new, &%s_tp_new},\n' % self.clean_name
 		out += '	{Py_tp_doc, "TODO doc"},\n'
@@ -69,7 +68,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		out += '	{Py_tp_getset, &%s_tp_getset},\n' % self.clean_name
 		out += '	{Py_tp_methods, &%s_tp_methods},\n' % self.clean_name
 		out += get_operator_slot('Py_nb_add', '+')
-		out += get_operator_slot('Py_nb_substract', '-')
+		out += get_operator_slot('Py_nb_subtract', '-')
 		out += get_operator_slot('Py_nb_multiply', '*')
 		out += get_operator_slot('Py_nb_true_divide', '/')
 		out += '''	{0, NULL}
@@ -190,12 +189,12 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 
 	#
 	def get_self(self, ctx):
-		if ctx == 'arithmetic_operator':
+		if ctx == 'arithmetic_op':
 			return 'o1'
 		return 'self'
 
 	def get_arg(self, i, ctx):
-		if ctx == 'arithmetic_operator':
+		if ctx == 'arithmetic_op':
 			return 'o%d' % (i+2)
 		elif ctx == 'setter':
 			return 'val'
@@ -208,7 +207,7 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 		elif ctx == 'setter':
 			self._source += "static int %s(PyObject *self, PyObject *val, void *closure) {\n" % name
 			self._source += "	int arg_count = 1;\n"
-		elif ctx == 'arithmetic_operator':
+		elif ctx == 'arithmetic_op':
 			self._source += "static PyObject *%s(PyObject *o1, PyObject *o2) {\n" % name
 			self._source += "	int arg_count = 1;\n"
 		else:

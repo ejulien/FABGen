@@ -1,4 +1,5 @@
 from pypeg2 import re, flag, name, Plain, optional, attr, K, parse
+from collections import OrderedDict
 import copy
 
 
@@ -17,20 +18,22 @@ def get_fully_qualified_ctype_name(type):
 	return out
 
 
-type_clean_rules = {
-	'+': 'add',
-	'*': 'mul',
-	'/': 'div',
-	'-': 'sub',
-	'+=': 'inplace_add',
-	'*=': 'inplace_mul',
-	'/=': 'inplace_div',
-	'-=': 'inplace_sub',
+type_clean_rules = OrderedDict()
 
-	'*': 'ptr',  # pointer
-	'&': '_r',  # reference
-	'::': '__',  # namespace
-}
+type_clean_rules['::'] = '__'  # namespace
+
+type_clean_rules['+='] = 'inplace_add'
+type_clean_rules['*='] = 'inplace_mul'
+type_clean_rules['/='] = 'inplace_div'
+type_clean_rules['-='] = 'inplace_sub'
+
+type_clean_rules['+'] = 'add'
+type_clean_rules['*'] = 'mul'
+type_clean_rules['/'] = 'div'
+type_clean_rules['-'] = 'sub'
+
+type_clean_rules['*'] = 'ptr'  # pointer
+type_clean_rules['&'] = '_r'  # reference
 
 
 def get_type_clean_name(type):
@@ -146,14 +149,14 @@ class TypeConverter:
 		self.constructor = None
 		self.members = []
 		self.methods = []
-		self.arithmetic_operators = []
+		self.arithmetic_ops = []
 
 		self.bases = []  # type derives from the following types
 
 	def get_operator(self, op):
-		for op_ in self.arithmetic_operators:
-			if op_['op'] == op:
-				return op_
+		for arithmetic_op in self.arithmetic_ops:
+			if arithmetic_op['op'] == op:
+				return arithmetic_op
 
 	def get_type_api(self, module_name):
 		return ''
@@ -345,7 +348,7 @@ class FABGen:
 		rval_conv = proto['rval']['conv']
 
 		# prepare C call self argument
-		if self_conv:
+		if ctx in ['getter', 'setter', 'method', 'arithmetic_op']:
 			self._source += '	' + self.decl_var(self_conv.storage_ctype, '_self')
 			self._source += '	' + self_conv.to_c_call(self.get_self(ctx), '&_self')
 
@@ -513,16 +516,22 @@ class FABGen:
 			self.bind_member(type, member)
 
 	#
-	def bind_arithmetic_operator(self, type, op, rval, args):
-		assert op in ['+', '*', '/', '-']
+	def bind_arithmetic_op(self, type, op, rval, args):
 		self_conv = self.select_ctype_conv(parse(type, _CType))
 
 		expr_eval = lambda args: '*_self %s %s;' % (op, ', '.join(args))
-		protos = [(rval, args)]
+		if op in ['-', '+', '*', '/']:
+			protos = [(rval, args)]
+		elif op in ['-=', '+=', '*=', '/=']:
+			protos = [('void', args)]
 		proxy_name = get_type_clean_name('_%s__%s_operator__' % (type, op))
-		self._bind_proxy(proxy_name, self_conv, protos, '%s operator of %s' % (op, self_conv.bound_name), expr_eval, 'arithmetic_operator')
+		self._bind_proxy(proxy_name, self_conv, protos, '%s operator of %s' % (op, self_conv.bound_name), expr_eval, 'arithmetic_op')
 
-		self_conv.arithmetic_operators.append({'op': op, 'proxy_name': proxy_name})
+		self_conv.arithmetic_ops.append({'op': op, 'proxy_name': proxy_name})
+
+	def bind_arithmetic_ops(self, type, ops, rval, args):
+		for op in ops:
+			self.bind_arithmetic_op(type, op, rval, args)
 
 	# global function template
 	def decl_function_template(self, tmpl_name, tmpl_args, rval, args):
