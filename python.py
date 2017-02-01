@@ -45,7 +45,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		# members
 		out += 'static PyGetSetDef %s_tp_getset[] = {\n' % self.clean_name
 		for member in self.members:
-			out += '	{"%s", (getter)%s, (setter)%s, "TODO doc"},\n' % (member.name, '_%s_get_%s' % (self.clean_name, member.name), '_%s_set_%s' % (self.clean_name, member.name))
+			out += '	{"%s", (getter)%s, (setter)%s, "TODO doc"},\n' % (member['name'], member['getter'], member['setter'])
 		out += '	{NULL} /* Sentinel */\n'
 		out += '};\n\n'
 
@@ -204,7 +204,7 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 	def get_arg(self, i):
 		return 'arg_pyobj[%d]' % i
 
-	def open_function(self, name, max_arg_count):
+	def open_proxy(self, name, max_arg_count, bind_ctx):
 		self._source += "static PyObject *%s(PyObject *self, PyObject *args) {\n" % name
 
 		self._source += '\
@@ -222,17 +222,10 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 		arg_pyobj[_i] = PyTuple_GetItem(args, _i);\n\
 \n' % (max_arg_count, max_arg_count)
 
-	def close_function(self):
+	def close_proxy(self):
 		self._source += '''\
 }
 '''
-
-	def open_method(self, name, max_arg_count):
-		# function and methods share the same signature in C Python API...
-		return self.open_function(name, max_arg_count)
-
-	def close_method(self):
-		self.close_function()
 
 	#
 	def get_class_default_converter(self):

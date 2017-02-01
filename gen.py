@@ -258,6 +258,42 @@ class OperatorBindingContext:
 		return '*_self %s %s;' % (self.op, ', '.join(c_call_args))
 
 
+class MemberGetBindingContext:
+	def __init__(self, type, conv, name):
+		self.type = type
+		self.conv = conv
+		self.name = name
+
+	def __repr__(self):
+		return 'get member %s of %s' % (self.name, self.conv.bound_name)
+
+	def get_proxy_name(self):
+		return get_type_clean_name('_%s__get_%s__' % (self.type, self.name))
+
+	def get_expr(self, c_call_args):
+		return '_self->%s;' % self.name
+
+
+class MemberSetBindingContext:
+	def __init__(self, type, conv, name):
+		self.type = type
+		self.conv = conv
+		self.name = name
+
+	def __repr__(self):
+		return 'set member %s of %s' % (self.name, self.conv.bound_name)
+
+	def get_bound_name(self):
+		return self.name
+
+	def get_proxy_name(self):
+		return get_type_clean_name('_%s__set_%s__' % (self.type, self.name))
+
+	def get_expr(self, c_call_args):
+		assert len(c_call_args) == 1
+		return '_self->%s = %s;' % (self.name, c_call_args[0])
+
+
 #
 class FABGen:
 	def output_header(self):
@@ -402,7 +438,7 @@ class FABGen:
 		rval_conv = proto['rval']['conv']
 
 		# prepare C call self argument
-		if type(bind_ctx) is MethodBindingContext or OperatorBindingContext:
+		if type(bind_ctx) is MethodBindingContext or OperatorBindingContext or MemberGetBindingContext or MemberSetBindingContext:
 			self._source += '	' + self.decl_var(bind_ctx.conv.storage_ctype, '_self')
 			self._source += '	' + bind_ctx.conv.to_c_call(self.get_self(), '&_self')
 
@@ -443,7 +479,7 @@ class FABGen:
 
 		self.commit_rvals(rval)
 
-	def _bind_function_common(self, name, protos, bind_ctx):
+	def _bind_proxy(self, protos, bind_ctx):
 		protos = self.prepare_protos(protos)
 
 		# categorize prototypes by number of argument they take
@@ -460,21 +496,10 @@ class FABGen:
 
 		# prepare proxy function
 		self.insert_code('// %s\n' % repr(bind_ctx), True, False)
-		proxy_name = bind_ctx.get_proxy_name()
 
 		max_arg_count = max(protos_by_arg_count.keys())
 
-		if type(bind_ctx) is MethodBindingContext:
-			self.open_method(proxy_name, max_arg_count)
-		else:
-			self.open_function(proxy_name, max_arg_count)
-
-		if type(bind_ctx) is ConstructorBindingContext:
-			bind_ctx.conv.constructor = {'proxy_name': proxy_name, 'protos': protos}
-		elif type(bind_ctx) is MethodBindingContext:
-			bind_ctx.conv.methods.append({'name': name, 'proxy_name': proxy_name, 'protos': protos})
-		elif type(bind_ctx) is FunctionBindingContext:
-			self._bound_functions.append({'name': name, 'proxy_name': proxy_name, 'protos': protos})
+		self.open_proxy(bind_ctx.get_proxy_name(), max_arg_count, bind_ctx)
 
 		# output dispatching logic
 		def get_protos_per_arg_conv(protos, arg_idx):
@@ -518,7 +543,7 @@ class FABGen:
 		self._source += '	}\n'
 
 		#
-		self.close_function()
+		self.close_proxy()
 		self._source += '\n'
 
 	#
@@ -526,7 +551,9 @@ class FABGen:
 		self.bind_function_overloads(name, [(rval, args)])
 
 	def bind_function_overloads(self, name, protos):
-		self._bind_function_common(name, protos, FunctionBindingContext(name))
+		bind_ctx = FunctionBindingContext(name)
+		self._bind_proxy(protos, bind_ctx)
+		self._bound_functions.append({'name': name, 'proxy_name': bind_ctx.get_proxy_name(), 'protos': protos})
 
 	#
 	def bind_constructor(self, type, args):
@@ -535,7 +562,9 @@ class FABGen:
 	def bind_constructor_overloads(self, type, proto_args):
 		conv = self.select_ctype_conv(parse(type, _CType))
 		protos = [(type, args) for args in proto_args]
-		self._bind_function_common('%s__constructor__' % type, protos, ConstructorBindingContext(type, conv))
+		bind_ctx = ConstructorBindingContext(type, conv)
+		self._bind_proxy(protos, bind_ctx)
+		conv.constructor = {'proxy_name': bind_ctx.get_proxy_name(), 'protos': protos}
 
 	#
 	def bind_method(self, type, name, rval, args):
@@ -543,12 +572,32 @@ class FABGen:
 
 	def bind_method_overloads(self, type, name, protos):
 		conv = self.select_ctype_conv(parse(type, _CType))
-		self._bind_function_common(name, protos, MethodBindingContext(type, conv, name))
+		bind_ctx = MethodBindingContext(type, conv, name)
+		self._bind_proxy(protos, bind_ctx)
+		conv.methods.append({'name': name, 'proxy_name': bind_ctx.get_proxy_name(), 'protos': protos})
 
 	#
 	def bind_member(self, type, member):
-		obj = self.select_ctype_conv(parse(type, _CType))
+		conv = self.select_ctype_conv(parse(type, _CType))
+		arg = parse(member, _CArg)
 
+		get_ctx = MemberGetBindingContext(type, conv, arg.name)
+		set_ctx = MemberSetBindingContext(type, conv, arg.name)
+
+		get_protos = [(get_fully_qualified_ctype_name(arg.ctype), [])]
+		set_protos = [('void', [member])]
+
+		self._bind_proxy(get_protos, get_ctx)
+		self._bind_proxy(set_protos, set_ctx)
+
+		conv.members.append({ 'name': arg.name, 'getter': get_ctx.get_proxy_name(), 'setter': set_ctx.get_proxy_name()})
+
+
+
+
+
+
+		'''
 		member = parse(member, _CArg)
 		member_conv = self.select_ctype_conv(member.ctype)
 
@@ -580,6 +629,7 @@ class FABGen:
 		self._source += '\n'
 
 		obj.members.append(member)
+		'''
 
 	def bind_members(self, type, members):
 		for member in members:
@@ -591,7 +641,7 @@ class FABGen:
 
 		protos = [(rval, args)]
 
-		self._bind_function_common('%s__%s_operator' % (type, op), protos, OperatorBindingContext(type, conv, op))
+		self._bind_proxy('%s__%s_operator' % (type, op), protos, OperatorBindingContext(type, conv, op))
 
 	# global function template
 	def decl_function_template(self, tmpl_name, tmpl_args, rval, args):
