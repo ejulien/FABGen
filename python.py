@@ -57,12 +57,21 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		out += '};\n\n'
 
 		# slots
+		def get_operator_slot(slot, op):
+			op = self.get_operator(op)
+			return '	{%s, &%s},\n' % (slot, op['proxy_name']) if op else ''
+
+
 		out += 'static PyType_Slot %s_slots[] = {\n' % self.clean_name
 		out += '	{Py_tp_new, &%s_tp_new},\n' % self.clean_name
 		out += '	{Py_tp_doc, "TODO doc"},\n'
 		out += '	{Py_tp_dealloc, &wrapped_PyObject_tp_dealloc},\n'
 		out += '	{Py_tp_getset, &%s_tp_getset},\n' % self.clean_name
 		out += '	{Py_tp_methods, &%s_tp_methods},\n' % self.clean_name
+		out += get_operator_slot('Py_nb_add', '+')
+		out += get_operator_slot('Py_nb_substract', '-')
+		out += get_operator_slot('Py_nb_multiply', '*')
+		out += get_operator_slot('Py_nb_true_divide', '/')
 		out += '''	{0, NULL}
 };
 \n'''

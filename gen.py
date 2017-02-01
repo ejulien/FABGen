@@ -146,8 +146,14 @@ class TypeConverter:
 		self.constructor = None
 		self.members = []
 		self.methods = []
+		self.arithmetic_operators = []
 
 		self.bases = []  # type derives from the following types
+
+	def get_operator(self, op):
+		for op_ in self.arithmetic_operators:
+			if op_['op'] == op:
+				return op_
 
 	def get_type_api(self, module_name):
 		return ''
@@ -514,8 +520,9 @@ class FABGen:
 		expr_eval = lambda args: '*_self %s %s;' % (op, ', '.join(args))
 		protos = [(rval, args)]
 		proxy_name = get_type_clean_name('_%s__%s_operator__' % (type, op))
-
 		self._bind_proxy(proxy_name, self_conv, protos, '%s operator of %s' % (op, self_conv.bound_name), expr_eval, 'arithmetic_operator')
+
+		self_conv.arithmetic_operators.append({'op': op, 'proxy_name': proxy_name})
 
 	# global function template
 	def decl_function_template(self, tmpl_name, tmpl_args, rval, args):
