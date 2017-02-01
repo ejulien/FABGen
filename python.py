@@ -180,34 +180,32 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 		self._source += 'PyErr_SetString(PyExc_RuntimeError, "%s");\n' % reason
 
 	#
-	def open_getter_function(self, name):
-		self._source += "static PyObject *%s(PyObject *self, void *closure) {\n" % name
-
-	def close_getter_function(self):
-		self._source += '''\
-}
-'''
-
-	def open_setter_function(self, name):
-		self._source += "static int %s(PyObject *self, PyObject *val, void *closure) {\n" % name
-		self._source += "	PyObject *arg_pyobj[] = {val};\n"
-
-	def close_setter_function(self):
-		self._source += '''\
-	return 0;
-}
-'''
-
-	def get_self(self):
+	def get_self(self, ctx):
+		if ctx == 'arithmetic_operator':
+			return 'o1'
 		return 'self'
 
-	def get_arg(self, i):
+	def get_arg(self, i, ctx):
+		if ctx == 'arithmetic_operator':
+			return 'o%d' % (i+2)
+		elif ctx == 'setter':
+			return 'val'
 		return 'arg_pyobj[%d]' % i
 
-	def open_proxy(self, name, max_arg_count, bind_ctx):
-		self._source += "static PyObject *%s(PyObject *self, PyObject *args) {\n" % name
+	def open_proxy(self, name, max_arg_count, ctx):
+		if ctx == 'getter':
+			self._source += "static PyObject *%s(PyObject *self, void *closure) {\n" % name
+			self._source += "	int arg_count = 0;\n"
+		elif ctx == 'setter':
+			self._source += "static int %s(PyObject *self, PyObject *val, void *closure) {\n" % name
+			self._source += "	int arg_count = 1;\n"
+		elif ctx == 'arithmetic_operator':
+			self._source += "static PyObject *%s(PyObject *o1, PyObject *o2) {\n" % name
+			self._source += "	int arg_count = 1;\n"
+		else:
+			self._source += "static PyObject *%s(PyObject *self, PyObject *args) {\n" % name
 
-		self._source += '\
+			self._source += '\
 	if (!PyTuple_Check(args)) {\n\
 		PyErr_SetString(PyExc_RuntimeError, "invalid arguments object (expected a tuple)");\n\
 		return NULL;\n\
@@ -215,15 +213,22 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 	int arg_count = PyTuple_Size(args);\n\
 \n'
 
-		if max_arg_count > 0:
-			self._source += '\
+			if max_arg_count > 0:
+				self._source += '\
 	PyObject *arg_pyobj[%d];\n\
 	for (int _i = 0; _i < arg_count && _i < %d; ++_i)\n\
 		arg_pyobj[_i] = PyTuple_GetItem(args, _i);\n\
 \n' % (max_arg_count, max_arg_count)
 
-	def close_proxy(self):
-		self._source += '''\
+	def close_proxy(self, ctx):
+		if ctx == 'setter':
+			self._source += '''\
+	return -1;
+}
+'''
+		else:
+			self._source += '''\
+	return NULL;
 }
 '''
 
@@ -238,15 +243,18 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 	def rval_from_c_ptr(self, ctype, var, conv, rval_p, ownership_policy):
 		self._source += conv.from_c_call(var + '_pyobj', rval_p, ownership_policy)
 
-	def commit_rvals(self, rval):
-		rval_count = 1 if repr(rval) != 'void' else 0
-
-		if rval_count == 0:
-			self._source += 'Py_INCREF(Py_None);\nreturn Py_None;\n'
-		elif rval_count == 1:
-			self._source += 'return rval_pyobj;\n'
+	def commit_rvals(self, rval, ctx):
+		if ctx == 'setter':
+			self._source += 'return 0;\n'
 		else:
-			self._source += '// TODO make tuple, append rvals, return tuple\n'
+			rval_count = 1 if repr(rval) != 'void' else 0
+
+			if rval_count == 0:
+				self._source += 'Py_INCREF(Py_None);\nreturn Py_None;\n'
+			elif rval_count == 1:
+				self._source += 'return rval_pyobj;\n'
+			else:
+				self._source += '// TODO make tuple, append rvals, return tuple\n'
 
 	#
 	def output_module_functions_table(self):
