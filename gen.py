@@ -204,6 +204,19 @@ class TypeConverter:
 		return False
 
 
+def format_list_for_comment(lst):
+	ln = len(lst)
+
+	if ln == 0:
+		return ''
+	if ln == 1:
+		return lst[0]
+	if ln == 2:
+		return '%s or %s' % (lst[0], lst[1])
+
+	return ', '.join(lst[:-1]) + ' or ' + lst[-1]
+
+
 #
 class FABGen:
 	def output_header(self):
@@ -254,42 +267,45 @@ class FABGen:
 		assert 'raise_exception not implemented in generator'
 
 	#
-	def _begin_type(self, conv):
+	def begin_type(self, conv):
 		"""Declare a new type converter."""
+		self._header += conv.get_type_api(self._name)
+
+		self._source += '// %s type tag\n' % conv.fully_qualified_name
+		self._source += 'static const char *%s = "%s";\n\n' % (conv.type_tag, conv.fully_qualified_name)
+		self._source += conv.get_type_api(self._name)
+
 		self._bound_types.append(conv)
 		self.__type_convs[conv.fully_qualified_name] = conv
 		return conv
 
-	def _end_type(self, conv):
-		self._header += conv.get_type_api(self._name)
-		self._source += '// %s type glue\n' % conv.fully_qualified_name
-		self._source += 'static const char *%s = "%s";\n\n' % (conv.type_tag, conv.fully_qualified_name)
-		self._source += conv.get_type_glue(self._name)
+	def end_type(self, conv):
+		self._source += conv.get_type_glue(self._name) + '\n'
 
-	#
 	def bind_type(self, conv):
-		self._begin_type(conv)
-		self._end_type(conv)
+		self.begin_type(conv)
+		self.end_type(conv)
 
 	#
-	def get_class_default_converter(self):
-		assert "missing class type default converter"
+	def begin_class(self, type, converter_class=None):
+		"""Begin a class declaration."""
+		if type in self.__type_convs:
+			return self.__type_convs[type]  # type already declared
 
-	def begin_class(self, name):
-		class_default_conv = self.get_class_default_converter()
+		conv = self.default_class_converter(type) if converter_class is None else converter_class(type)
+		return self.begin_type(conv)
 
-		conv = class_default_conv(name)
-		api = conv.get_type_api(self._name)
-		self._source += api + '\n'
+	def end_class(self, type):
+		"""End a class declaration."""
+		self.end_type(self.__type_convs[type])
 
-		return self._begin_type(conv)
-
-	def end_class(self, name):
-		self._end_type(self.__type_convs[name])
+	def decl_class(self, type, converter_class=None):
+		"""Forward declare a class."""
+		return self.begin_class(type, converter_class)
 
 	#
-	def add_class_base(self, name, base):
-		conv = self.__type_convs[name]
+	def add_class_base(self, type, base):
+		conv = self.__type_convs[type]
 		base_conv = self.__type_convs[base]
 		conv.bases.append(base_conv)
 
@@ -303,6 +319,9 @@ class FABGen:
 
 		if full_qualified_ctype_name in self.__type_convs:
 			return self.__type_convs[full_qualified_ctype_name]
+
+		err_msg = "No converter for type %s" % ctype.unqualified_name
+		assert ctype.unqualified_name in self.__type_convs, err_msg
 
 		return self.__type_convs[ctype.unqualified_name]
 
@@ -422,6 +441,7 @@ class FABGen:
 			return per_arg_conv
 
 		has_fixed_argc = fixed_arg_count is not None
+
 		if has_fixed_argc:
 			assert len(protos_by_arg_count) == 1 and fixed_arg_count in protos_by_arg_count
 
@@ -446,7 +466,8 @@ class FABGen:
 					self._source += indent + '} else '
 
 				self._source += '{\n'
-				self.set_error('runtime', 'incorrect type for argument %d to %s' % (arg_idx+1, desc))
+				expected_types = [proto['args'][arg_idx]['conv'].bound_name for proto in protos]
+				self.set_error('runtime', 'incorrect type for argument %d to %s (expected %s)' % (arg_idx+1, desc, format_list_for_comment(expected_types)))
 				self._source += indent + '}\n'
 
 			output_arg_check_and_dispatch(protos_with_arg_count, 0, arg_count)

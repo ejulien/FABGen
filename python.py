@@ -86,7 +86,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 \n''' % (self.clean_name, module_name, self.bound_name, self.clean_name)
 
 		# delete delegate
-		out += 'static void delete_%s(void *o) { delete (%s *)o; }\n\n' % (self.clean_name, self.clean_name)
+		out += 'static void delete_%s(void *o) { delete (%s *)o; }\n\n' % (self.clean_name, self.fully_qualified_name)
 
 		# to/from C
 		out += '''bool check_%s(PyObject *o) {
@@ -126,6 +126,8 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 #
 class PythonGenerator(gen.FABGen):
+	default_class_converter = PythonClassTypeDefaultConverter
+
 	def get_langage(self):
 		return "Python"
 
@@ -232,10 +234,6 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 			self._source += '}\n'
 		else:
 			self._source += '''	return NULL;\n}\n'''
-
-	#
-	def get_class_default_converter(self):
-		return PythonClassTypeDefaultConverter
 
 	# function call return values
 	def return_void_from_c(self):
