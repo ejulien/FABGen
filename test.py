@@ -5,8 +5,10 @@ import python
 def bind_math(gen):
 	gen.begin_class('gs::Vector3')
 	gen.bind_members('gs::Vector3', ['float x', 'float y', 'float z'])
-	gen.bind_arithmetic_ops('gs::Vector3', ['+', '-', '*', '/', '+=', '-=', '*=', '/='], 'gs::Vector3', ['gs::Vector3 &'])
+	gen.bind_arithmetic_ops_overloads('gs::Vector3', ['+', '-', '*', '/'], [('gs::Vector3', ['gs::Vector3 &']), ('gs::Vector3', ['float'])])
+	gen.bind_inplace_arithmetic_ops_overloads('gs::Vector3', ['+=', '-=', '*=', '/='], [['gs::Vector3 &'], ['float']])
 	gen.end_class('gs::Vector3')
+
 
 def run_test(gen):
 	gen.start('test')
@@ -44,3 +46,17 @@ def run_test(gen):
 
 #run_test(lua.LuaGenerator())
 run_test(python.PythonGenerator())
+
+# from pybindgen import *
+# import sys
+#
+# mod = Module('test')
+# vec = mod.add_class('gs::Vector3')
+# vec.add_instance_attribute('x', 'float')
+# vec.add_instance_attribute('y', 'float')
+# vec.add_instance_attribute('z', 'float')
+# vec.add_constructor([])
+# vec.add_constructor([param('float', 'x'), param('float', 'y'), param('float', 'z')])
+# vec.add_inplace_numeric_operator('+=')
+# vec.add_inplace_numeric_operator('+=', param('float', 'v'))
+# mod.generate(sys.stdout)

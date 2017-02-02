@@ -343,12 +343,12 @@ class FABGen:
 
 		return _protos
 
-	def proto_call(self, self_conv, proto, expr_eval, ctx):
+	def proto_call(self, self_conv, proto, expr_eval, ctx, fixed_arg_count=None):
 		rval = proto['rval']['ctype']
 		rval_conv = proto['rval']['conv']
 
 		# prepare C call self argument
-		if ctx in ['getter', 'setter', 'method', 'arithmetic_op']:
+		if ctx in ['getter', 'setter', 'method', 'arithmetic_op', 'inplace_arithmetic_op']:
 			self._source += '	' + self.decl_var(self_conv.storage_ctype, '_self')
 			self._source += '	' + self_conv.to_c_call(self.get_self(ctx), '&_self')
 
@@ -389,7 +389,7 @@ class FABGen:
 
 		self.commit_rvals(rval, ctx)
 
-	def _bind_proxy(self, name, self_conv, protos, desc, expr_eval, ctx):
+	def _bind_proxy(self, name, self_conv, protos, desc, expr_eval, ctx, fixed_arg_count=None):
 		protos = self.prepare_protos(protos)
 
 		# categorize prototypes by number of argument they take
@@ -421,15 +421,20 @@ class FABGen:
 				per_arg_conv[arg_conv].append(proto)
 			return per_arg_conv
 
+		has_fixed_argc = fixed_arg_count is not None
+		if has_fixed_argc:
+			assert len(protos_by_arg_count) == 1 and fixed_arg_count in protos_by_arg_count
+
 		for arg_count, protos_with_arg_count in protos_by_arg_count.items():
-			self._source += '	if (arg_count == %d) {\n' % arg_count
+			if not has_fixed_argc:
+				self._source += '	if (arg_count == %d) {\n' % arg_count
 
 			def output_arg_check_and_dispatch(protos, arg_idx, arg_limit):
-				indent = '	' * (arg_idx+2)
+				indent = '	' * (arg_idx+(2 if not has_fixed_argc else 1))
 
 				if arg_idx == arg_limit:
 					assert len(protos) == 1  # there should only be exactly one prototype with a single signature
-					self.proto_call(self_conv, protos[0], expr_eval, ctx)
+					self.proto_call(self_conv, protos[0], expr_eval, ctx, fixed_arg_count)
 					return
 
 				protos_per_arg_conv = get_protos_per_arg_conv(protos, arg_idx)
@@ -441,16 +446,18 @@ class FABGen:
 					self._source += indent + '} else '
 
 				self._source += '{\n'
-				self.set_error('runtime', 'incorrect type for argument %d to %s' % (arg_idx, desc))
+				self.set_error('runtime', 'incorrect type for argument %d to %s' % (arg_idx+1, desc))
 				self._source += indent + '}\n'
 
 			output_arg_check_and_dispatch(protos_with_arg_count, 0, arg_count)
 
-			self._source += '	} else '
+			if not has_fixed_argc:
+				self._source += '	} else '
 
-		self._source += '{\n'
-		self.set_error('runtime', 'incorrect number of arguments to %s' % desc)
-		self._source += '	}\n'
+		if not has_fixed_argc:
+			self._source += '{\n'
+			self.set_error('runtime', 'incorrect number of arguments to %s' % desc)
+			self._source += '	}\n'
 
 		#
 		self.close_proxy(ctx)
@@ -502,12 +509,12 @@ class FABGen:
 		expr_eval = lambda args: '_self->%s;' % arg.name
 		getter_protos = [(get_fully_qualified_ctype_name(arg.ctype), [])]
 		getter_proxy_name = get_type_clean_name('_%s__get_%s__' % (type, arg.name))
-		self._bind_proxy(getter_proxy_name, self_conv, getter_protos, 'get member %s of %s' % (arg.name, self_conv.bound_name), expr_eval, 'getter')
+		self._bind_proxy(getter_proxy_name, self_conv, getter_protos, 'get member %s of %s' % (arg.name, self_conv.bound_name), expr_eval, 'getter', 0)
 
 		expr_eval = lambda args: '_self->%s = %s;' % (arg.name, args[0])
 		setter_protos = [('void', [member])]
 		setter_proxy_name = get_type_clean_name('_%s__set_%s__' % (type, arg.name))
-		self._bind_proxy(setter_proxy_name, self_conv, setter_protos, 'set member %s of %s' % (arg.name, self_conv.bound_name), expr_eval, 'setter')
+		self._bind_proxy(setter_proxy_name, self_conv, setter_protos, 'set member %s of %s' % (arg.name, self_conv.bound_name), expr_eval, 'setter', 1)
 
 		self_conv.members.append({'name': arg.name, 'getter': getter_proxy_name, 'setter': setter_proxy_name})
 
@@ -517,21 +524,48 @@ class FABGen:
 
 	#
 	def bind_arithmetic_op(self, type, op, rval, args):
+		self.bind_arithmetic_op_overloads(type, op, [(rval, args)])
+
+	def bind_arithmetic_op_overloads(self, type, op, protos):
+		assert op in ['-', '+', '*', '/']
 		self_conv = self.select_ctype_conv(parse(type, _CType))
 
 		expr_eval = lambda args: '*_self %s %s;' % (op, ', '.join(args))
-		if op in ['-', '+', '*', '/']:
-			protos = [(rval, args)]
-		elif op in ['-=', '+=', '*=', '/=']:
-			protos = [('void', args)]
 		proxy_name = get_type_clean_name('_%s__%s_operator__' % (type, op))
-		self._bind_proxy(proxy_name, self_conv, protos, '%s operator of %s' % (op, self_conv.bound_name), expr_eval, 'arithmetic_op')
+		self._bind_proxy(proxy_name, self_conv, protos, '%s operator of %s' % (op, self_conv.bound_name), expr_eval, 'arithmetic_op', 1)
 
 		self_conv.arithmetic_ops.append({'op': op, 'proxy_name': proxy_name})
 
 	def bind_arithmetic_ops(self, type, ops, rval, args):
 		for op in ops:
 			self.bind_arithmetic_op(type, op, rval, args)
+
+	def bind_arithmetic_ops_overloads(self, type, ops, protos):
+		for op in ops:
+			self.bind_arithmetic_op_overloads(type, op, protos)
+
+	#
+	def bind_inplace_arithmetic_op(self, type, op, args):
+		self.bind_inplace_arithmetic_op_overloads(type, op, [args])
+
+	def bind_inplace_arithmetic_op_overloads(self, type, op, args):
+		assert op in ['-=', '+=', '*=', '/=']
+		self_conv = self.select_ctype_conv(parse(type, _CType))
+
+		expr_eval = lambda args: '*_self %s %s;' % (op, ', '.join(args))
+		proxy_name = get_type_clean_name('_%s__%s_operator__' % (type, op))
+		protos = [('void', arg) for arg in args]
+		self._bind_proxy(proxy_name, self_conv, protos, '%s operator of %s' % (op, self_conv.bound_name), expr_eval, 'inplace_arithmetic_op', 1)
+
+		self_conv.arithmetic_ops.append({'op': op, 'proxy_name': proxy_name})
+
+	def bind_inplace_arithmetic_ops(self, type, ops, args):
+		for op in ops:
+			self.bind_inplace_arithmetic_op(type, op, args)
+
+	def bind_inplace_arithmetic_ops_overloads(self, type, ops, args):
+		for op in ops:
+			self.bind_inplace_arithmetic_op_overloads(type, op, args)
 
 	# global function template
 	def decl_function_template(self, tmpl_name, tmpl_args, rval, args):

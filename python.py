@@ -189,12 +189,12 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 
 	#
 	def get_self(self, ctx):
-		if ctx == 'arithmetic_op':
+		if ctx in ['arithmetic_op', 'inplace_arithmetic_op']:
 			return 'o1'
 		return 'self'
 
 	def get_arg(self, i, ctx):
-		if ctx == 'arithmetic_op':
+		if ctx in ['arithmetic_op', 'inplace_arithmetic_op']:
 			return 'o%d' % (i+2)
 		elif ctx == 'setter':
 			return 'val'
@@ -203,13 +203,10 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 	def open_proxy(self, name, max_arg_count, ctx):
 		if ctx == 'getter':
 			self._source += "static PyObject *%s(PyObject *self, void *closure) {\n" % name
-			self._source += "	int arg_count = 0;\n"
 		elif ctx == 'setter':
 			self._source += "static int %s(PyObject *self, PyObject *val, void *closure) {\n" % name
-			self._source += "	int arg_count = 1;\n"
-		elif ctx == 'arithmetic_op':
+		elif ctx in ['arithmetic_op', 'inplace_arithmetic_op']:
 			self._source += "static PyObject *%s(PyObject *o1, PyObject *o2) {\n" % name
-			self._source += "	int arg_count = 1;\n"
 		else:
 			self._source += "static PyObject *%s(PyObject *self, PyObject *args) {\n" % name
 
@@ -230,15 +227,11 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 
 	def close_proxy(self, ctx):
 		if ctx == 'setter':
-			self._source += '''\
-	return -1;
-}
-'''
+			self._source += '''	return -1;\n}\n'''
+		elif ctx == 'getter':
+			self._source += '}\n'
 		else:
-			self._source += '''\
-	return NULL;
-}
-'''
+			self._source += '''	return NULL;\n}\n'''
 
 	#
 	def get_class_default_converter(self):
@@ -254,6 +247,9 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 	def commit_rvals(self, rval, ctx):
 		if ctx == 'setter':
 			self._source += 'return 0;\n'
+		elif ctx == 'inplace_arithmetic_op':
+			self_var = self.get_self(ctx)
+			self._source += 'Py_INCREF(%s);\nreturn %s;\n' % (self_var, self_var)
 		else:
 			rval_count = 1 if repr(rval) != 'void' else 0
 
