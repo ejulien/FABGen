@@ -1,3 +1,4 @@
+* const members
 - static const members
 - static class method
 - operator ==, !=

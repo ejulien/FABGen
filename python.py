@@ -45,7 +45,10 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		# members
 		out += 'static PyGetSetDef %s_tp_getset[] = {\n' % self.clean_name
 		for member in self.members:
-			out += '	{"%s", (getter)%s, (setter)%s, "TODO doc"},\n' % (member['name'], member['getter'], member['setter'])
+			setter = member['setter']
+			if setter is None:
+				setter = 'NULL'
+			out += '	{"%s", (getter)%s, (setter)%s, "TODO doc"},\n' % (member['name'], member['getter'], setter)
 		out += '	{NULL} /* Sentinel */\n'
 		out += '};\n\n'
 

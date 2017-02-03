@@ -15,7 +15,7 @@ def bind_math(gen):
 	# Vector3
 	gen.begin_class('gs::Vector3')
 
-	gen.bind_members('gs::Vector3', ['float x', 'float y', 'float z'])
+	gen.bind_members('gs::Vector3', ['float x', 'float y', 'float z', 'const gs::Vector3 v'])
 
 	gen.bind_constructor_overloads('gs::Vector3', [['float x', 'float y', 'float z'], ['const gs::Vector4 &v'], ['const gs::Color &c']])
 
@@ -82,6 +82,9 @@ def run_test(gen):
 #run_test(lua.LuaGenerator())
 run_test(python.PythonGenerator())
 
+
+
+
 # from pybindgen import *
 # import sys
 #
@@ -90,6 +93,7 @@ run_test(python.PythonGenerator())
 # vec.add_instance_attribute('x', 'float')
 # vec.add_instance_attribute('y', 'float')
 # vec.add_instance_attribute('z', 'float')
+# vec.add_instance_attribute('v', 'gs::Vector3', True)
 # vec.add_constructor([])
 # vec.add_constructor([param('float', 'x'), param('float', 'y'), param('float', 'z')])
 # vec.add_inplace_numeric_operator('+=')

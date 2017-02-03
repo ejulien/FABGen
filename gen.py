@@ -68,8 +68,25 @@ class _CType:
 			setattr(t, 'ref', ref)
 		return t
 
+	def is_pointer(self):
+		ref = self.get_ref()
+		return ref == '*'
 
-_CType.grammar = flag("const", K("const")), optional([flag("signed", K("signed")), flag("unsigned", K("unsigned"))]), attr("unqualified_name", typename), optional(attr("ref", ref_re))
+	def is_const(self):
+		if self.get_ref() == '':
+			return self.const
+		return self.const_ref
+
+	def non_const(self):
+		t = copy.deepcopy(self)
+		if self.get_ref() == '':
+			t.const = False
+		else:
+			t.const_ref = False
+		return t
+
+
+_CType.grammar = flag("const", K("const")), optional([flag("signed", K("signed")), flag("unsigned", K("unsigned"))]), attr("unqualified_name", typename), optional(attr("ref", ref_re)), flag("const_ref", K("const"))
 
 
 #
@@ -135,11 +152,12 @@ def get_type_bound_name(type):
 
 class TypeConverter:
 	def __init__(self, type, storage_type=None):
-		if not storage_type:
-			storage_type = type
-
 		self.ctype = parse(type, _CType)
-		self.storage_ctype = parse(storage_type, _CType)
+
+		if not storage_type:
+			self.storage_ctype = self.ctype.non_const()
+		else:
+			self.storage_ctype = parse(storage_type, _CType)
 
 		self.clean_name = get_type_clean_name(type)
 		self.bound_name = get_type_bound_name(type)
@@ -347,7 +365,7 @@ class FABGen:
 
 		for proto in protos:
 			rval = parse(proto[0], _CType)
-			_proto = {'rval': {'ctype': rval, 'conv': self.select_ctype_conv(rval)}, 'args': []}
+			_proto = {'rval': {'ctype': rval.non_const(), 'conv': self.select_ctype_conv(rval)}, 'args': []}
 
 			args = proto[1]
 			if not type(args) is type([]):
@@ -532,10 +550,13 @@ class FABGen:
 		getter_proxy_name = get_type_clean_name('_%s__get_%s__' % (type, arg.name))
 		self._bind_proxy(getter_proxy_name, self_conv, getter_protos, 'get member %s of %s' % (arg.name, self_conv.bound_name), expr_eval, 'getter', 0)
 
-		expr_eval = lambda args: '_self->%s = %s;' % (arg.name, args[0])
-		setter_protos = [('void', [member])]
-		setter_proxy_name = get_type_clean_name('_%s__set_%s__' % (type, arg.name))
-		self._bind_proxy(setter_proxy_name, self_conv, setter_protos, 'set member %s of %s' % (arg.name, self_conv.bound_name), expr_eval, 'setter', 1)
+		if not arg.ctype.is_const():
+			expr_eval = lambda args: '_self->%s = %s;' % (arg.name, args[0])
+			setter_protos = [('void', [member])]
+			setter_proxy_name = get_type_clean_name('_%s__set_%s__' % (type, arg.name))
+			self._bind_proxy(setter_proxy_name, self_conv, setter_protos, 'set member %s of %s' % (arg.name, self_conv.bound_name), expr_eval, 'setter', 1)
+		else:
+			setter_proxy_name = None
 
 		self_conv.members.append({'name': arg.name, 'getter': getter_proxy_name, 'setter': setter_proxy_name})
 
