@@ -48,6 +48,9 @@ expect_eq(s.a, -2)
 expect_eq(s.b, -4.5)
 expect_eq(s.c, False)
 
+s.a += 4
+expect_eq(s.a, 2)
+
 # write to const member
 write_to_const_failed = False
 try:

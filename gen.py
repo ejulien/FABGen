@@ -545,11 +545,17 @@ class FABGen:
 		self_conv = self.select_ctype_conv(parse(type, _CType))
 		arg = parse(member, _CArg)
 
+		# getter must go through a pointer or reference so that the enclosing object copy is modified
+		getter_ctype = arg.ctype
+		if getter_ctype.get_ref() == '':
+			getter_ctype = getter_ctype.add_ref('&')
+
 		expr_eval = lambda args: '_self->%s;' % arg.name
-		getter_protos = [(get_fully_qualified_ctype_name(arg.ctype), [])]
+		getter_protos = [(get_fully_qualified_ctype_name(getter_ctype), [])]
 		getter_proxy_name = get_type_clean_name('_%s__get_%s__' % (type, arg.name))
 		self._bind_proxy(getter_proxy_name, self_conv, getter_protos, 'get member %s of %s' % (arg.name, self_conv.bound_name), expr_eval, 'getter', 0)
 
+		# setter
 		if not arg.ctype.is_const():
 			expr_eval = lambda args: '_self->%s = %s;' % (arg.name, args[0])
 			setter_protos = [('void', [member])]

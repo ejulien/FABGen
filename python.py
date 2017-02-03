@@ -15,10 +15,10 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 		'\n'
 
 	def to_c_call(self, in_var, out_var_p):
-		return 'to_c_%s(%s, %s);\n' % (self.clean_name, in_var, out_var_p)
+		return 'to_c_%s(%s, (void *)%s);\n' % (self.clean_name, in_var, out_var_p)
 
 	def from_c_call(self, out_var, in_var_p, ownership_policy):
-		return "PyObject *%s = from_c_%s(%s, %s);\n" % (out_var, self.clean_name, in_var_p, ownership_policy)
+		return "PyObject *%s = from_c_%s((void *)%s, %s);\n" % (out_var, self.clean_name, in_var_p, ownership_policy)
 
 	def check_call(self, in_var):
 		return "check_%s(%s)" % (self.clean_name, in_var)
