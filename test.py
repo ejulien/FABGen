@@ -82,20 +82,19 @@ def run_test(gen):
 #run_test(lua.LuaGenerator())
 run_test(python.PythonGenerator())
 
+from pybindgen import *
+import sys
 
-
-
-# from pybindgen import *
-# import sys
-#
-# mod = Module('test')
-# vec = mod.add_class('gs::Vector3')
-# vec.add_instance_attribute('x', 'float')
-# vec.add_instance_attribute('y', 'float')
-# vec.add_instance_attribute('z', 'float')
-# vec.add_instance_attribute('v', 'gs::Vector3', True)
-# vec.add_constructor([])
-# vec.add_constructor([param('float', 'x'), param('float', 'y'), param('float', 'z')])
-# vec.add_inplace_numeric_operator('+=')
-# vec.add_inplace_numeric_operator('+=', param('float', 'v'))
-# mod.generate(sys.stdout)
+mod = Module('test')
+vec = mod.add_class('gs::Vector3')
+vec.add_instance_attribute('x', 'float')
+vec.add_instance_attribute('y', 'float')
+vec.add_instance_attribute('z', 'float')
+vec.add_static_attribute('v', 'gs::Vector3', True)
+vec.add_constructor([])
+vec.add_constructor([param('float', 'x'), param('float', 'y'), param('float', 'z')])
+vec.add_inplace_numeric_operator('+=')
+vec.add_inplace_numeric_operator('+=', param('float', 'v'))
+vec.add_method('test', retval('void'), [param('int', 'a'), param('int', 'b')])
+vec.add_method('test', retval('gs::Vector3'), [param('int', 'a'), param('gs::Vector3', 'b'), param('float', 'c')])
+mod.generate(sys.stdout)
