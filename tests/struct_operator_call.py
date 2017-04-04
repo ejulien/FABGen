@@ -26,6 +26,11 @@ struct simple_struct {
 	void operator/=(int k) { v /= k; }
 	void operator*=(int k) { v *= k; }
 
+	bool operator==(int k) const { return k == v; }
+	bool operator==(const simple_struct &b) const { return b.v == v; }
+	bool operator!=(int k) const { return k != v; }
+	bool operator!=(const simple_struct &b) const { return b.v != v; }
+
 	int v;
 };
 ''', True, False)
@@ -34,6 +39,7 @@ struct simple_struct {
 	gen.bind_constructor('simple_struct', 'int')
 	gen.bind_arithmetic_ops_overloads('simple_struct', ['-', '+', '/', '*'], [('simple_struct', ['simple_struct b']), ('simple_struct', ['int k'])])
 	gen.bind_inplace_arithmetic_ops_overloads('simple_struct', ['-=', '+=', '/=', '*='], [['simple_struct b'], ['int k']])
+	gen.bind_comparison_ops_overloads('simple_struct', ['==', '!='], [['simple_struct b'], ['int k']])
 	gen.bind_member('simple_struct', 'int v')
 	gen.end_class('simple_struct')
 
@@ -44,7 +50,7 @@ struct simple_struct {
 test_python = '''\
 import my_test
 
-from tests_api import expect_eq
+from tests_api import expect_eq, expect_neq
 
 a, b = my_test.simple_struct(4), my_test.simple_struct(8)
 
@@ -71,4 +77,8 @@ s = s - b
 expect_eq(s.v, 40)
 s -= 32
 expect_eq(s.v, 8)
+
+c = a * 2
+expect_eq(c, b)
+expect_neq(a, b)
 '''

@@ -13,7 +13,7 @@ start_path = os.path.dirname(__file__)
 
 
 parser = argparse.ArgumentParser(description='Run generator unit tests.')
-parser.add_argument('--pybase', dest='python_base_path', help='Specify the base path of the Python interpreter location')
+parser.add_argument('--pybase', dest='python_base_path', help='Specify the base path of the Python interpreter location', required=True)
 parser.add_argument('--debug', dest='debug_test', help='Generate a working solution to debug a test')
 
 args = parser.parse_args()
@@ -108,7 +108,7 @@ target_link_libraries(my_test "%s")
 
 		print("Generating build system...")
 		try:
-			subprocess.check_output('cmake .. -G "Visual Studio 12 2013')
+			subprocess.check_output('cmake .. -G "Visual Studio 15 2017')
 		except subprocess.CalledProcessError as e:
 			print(e.output.decode('utf-8'))
 			return False

@@ -35,6 +35,13 @@ type_clean_rules['-'] = 'sub'
 type_clean_rules['*'] = 'ptr'  # pointer
 type_clean_rules['&'] = '_r'  # reference
 
+type_clean_rules['<'] = 'lt'
+type_clean_rules['<='] = 'le'
+type_clean_rules['=='] = 'eq'
+type_clean_rules['!='] = 'ne'
+type_clean_rules['>'] = 'gt'
+type_clean_rules['>='] = 'ge'
+
 
 def get_type_clean_name(type):
 	""" Return a type name cleaned so that it may be used as variable name in the generator output."""
@@ -166,8 +173,11 @@ class TypeConverter:
 
 		self.constructor = None
 		self.members = []
+		self.static_members = []
 		self.methods = []
+		self.static_methods = []
 		self.arithmetic_ops = []
+		self.comparison_ops = []
 
 		self.bases = []  # type derives from the following types
 
@@ -361,6 +371,7 @@ class FABGen:
 
 	# --
 	def prepare_protos(self, protos):
+		"""Prepare a list of prototypes, select converter objects"""
 		_protos = []
 
 		for proto in protos:
@@ -385,9 +396,10 @@ class FABGen:
 		rval_conv = proto['rval']['conv']
 
 		# prepare C call self argument
-		if ctx in ['getter', 'setter', 'method', 'arithmetic_op', 'inplace_arithmetic_op']:
-			self._source += '	' + self.decl_var(self_conv.storage_ctype, '_self')
-			self._source += '	' + self_conv.to_c_call(self.get_self(ctx), '&_self')
+		if self_conv:
+			if ctx in ['getter', 'setter', 'method', 'arithmetic_op', 'inplace_arithmetic_op', 'comparison_op']:
+				self._source += '	' + self.decl_var(self_conv.storage_ctype, '_self')
+				self._source += '	' + self_conv.to_c_call(self.get_self(ctx), '&_self')
 
 		# prepare C call arguments
 		args = proto['args']
@@ -571,6 +583,32 @@ class FABGen:
 			self.bind_member(type, member)
 
 	#
+	def bind_static_member(self, type, member):
+		self_conv = self.select_ctype_conv(parse(type, _CType))
+		arg = parse(member, _CArg)
+
+		# getter must go through a pointer or reference so that the enclosing object copy is modified
+		getter_ctype = arg.ctype
+		if getter_ctype.get_ref() == '':
+			getter_ctype = getter_ctype.add_ref('&')
+
+		expr_eval = lambda args: '%s::%s;' % (self_conv.fully_qualified_name, arg.name)
+		getter_protos = [(get_fully_qualified_ctype_name(getter_ctype), [])]
+		getter_proxy_name = get_type_clean_name('_%s__get_%s__' % (type, arg.name))
+		self._bind_proxy(getter_proxy_name, None, getter_protos, 'get static member %s of %s' % (arg.name, self_conv.bound_name), expr_eval, 'getter', 0)
+
+		# setter
+		if not arg.ctype.is_const():
+			expr_eval = lambda args: '%s::%s = %s;' % (self_conv.fully_qualified_name, arg.name, args[0])
+			setter_protos = [('void', [member])]
+			setter_proxy_name = get_type_clean_name('_%s__set_%s__' % (type, arg.name))
+			self._bind_proxy(setter_proxy_name, None, setter_protos, 'set static member %s of %s' % (arg.name, self_conv.bound_name), expr_eval, 'setter', 1)
+		else:
+			setter_proxy_name = None
+
+		self_conv.static_members.append({'name': arg.name, 'getter': getter_proxy_name, 'setter': setter_proxy_name})
+
+	#
 	def bind_arithmetic_op(self, type, op, rval, args):
 		self.bind_arithmetic_op_overloads(type, op, [(rval, args)])
 
@@ -614,6 +652,29 @@ class FABGen:
 	def bind_inplace_arithmetic_ops_overloads(self, type, ops, args):
 		for op in ops:
 			self.bind_inplace_arithmetic_op_overloads(type, op, args)
+
+	#
+	def bind_comparison_op(self, type, op, args):
+		self.bind_comparison_op_overloads(type, op, [args])
+
+	def bind_comparison_op_overloads(self, type, op, args):
+		assert op in ['<', '<=', '==', '!=', '>', '>=']
+		self_conv = self.select_ctype_conv(parse(type, _CType))
+
+		expr_eval = lambda args: '*_self %s %s;' % (op, ', '.join(args))
+		proxy_name = get_type_clean_name('_%s__%s_operator__' % (type, op))
+		protos = [('bool', arg) for arg in args]
+		self._bind_proxy(proxy_name, self_conv, protos, '%s operator of %s' % (op, self_conv.bound_name), expr_eval, 'comparison_op', 1)
+
+		self_conv.comparison_ops.append({'op': op, 'proxy_name': proxy_name})
+
+	def bind_comparison_ops(self, type, ops, rval, args):
+		for op in ops:
+			self.bind_comparison_op(type, op, rval, args)
+
+	def bind_comparison_ops_overloads(self, type, ops, protos):
+		for op in ops:
+			self.bind_comparison_op_overloads(type, op, protos)
 
 	# global function template
 	def decl_function_template(self, tmpl_name, tmpl_args, rval, args):

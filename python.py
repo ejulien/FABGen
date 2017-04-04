@@ -52,12 +52,43 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		out += '	{NULL} /* Sentinel */\n'
 		out += '};\n\n'
 
+		# output binding code for static class members
+		out += 'static void bind_%s_static_members(PyObject *o) {\n' % self.clean_name
+		out += '	PyObject *tmp;\n\n'
+
+		for i, attr in enumerate(self.static_members):
+			if attr['getter']:
+				out += '	// %s::%s\n' % (self.clean_name, attr['name'])
+				out += '	tmp = %s(o, NULL);\n' % attr['getter']
+				out += '	PyObject_SetAttrString(o, "%s", tmp);\n' % attr['name']
+				out += '	Py_DECREF(tmp);\n'
+		out += '}\n\n'
+
 		# methods
 		out += 'static PyMethodDef %s_tp_methods[] = {\n' % self.clean_name
 		for method in self.get_all_methods():
 			out += '	{"%s", (PyCFunction)%s, METH_VARARGS},\n' % (method['name'], method['proxy_name'])
 		out += '	{NULL} /* Sentinel */\n'
 		out += '};\n\n'
+
+		# comparison operators dispatcher
+		out += 'static PyObject *%s_tp_richcompare(PyObject *o1, PyObject *o2, int op) {\n' % self.clean_name
+		for i, ops in enumerate(self.comparison_ops):
+			op = ops['op']
+			if op == '<':
+				out += "	if (op == Py_LT) return %s(o1, o2);\n" % ops['proxy_name']
+			elif op == '<=':
+				out += "	if (op == Py_LE) return %s(o1, o2);\n" % ops['proxy_name']
+			elif op == '==':
+				out += "	if (op == Py_EQ) return %s(o1, o2);\n" % ops['proxy_name']
+			elif op == '!=':
+				out += "	if (op == Py_NE) return %s(o1, o2);\n" % ops['proxy_name']
+			elif op == '>':
+				out += "	if (op == Py_GT) return %s(o1, o2);\n" % ops['proxy_name']
+			elif op == '>=':
+				out += "	if (op == Py_GE) return %s(o1, o2);\n" % ops['proxy_name']
+		out += '	return Py_NotImplemented;\n'
+		out += '}\n\n'
 
 		# slots
 		def get_operator_slot(slot, op):
@@ -70,6 +101,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		out += '	{Py_tp_dealloc, &wrapped_PyObject_tp_dealloc},\n'
 		out += '	{Py_tp_getset, &%s_tp_getset},\n' % self.clean_name
 		out += '	{Py_tp_methods, &%s_tp_methods},\n' % self.clean_name
+		out += '	{Py_tp_richcompare, &%s_tp_richcompare},\n' % self.clean_name
 		out += get_operator_slot('Py_nb_add', '+')
 		out += get_operator_slot('Py_nb_subtract', '-')
 		out += get_operator_slot('Py_nb_multiply', '*')
@@ -120,10 +152,9 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		return out
 
 	def finalize_type(self):
-		out = '''\
-	%s_type = PyType_FromSpec(&%s_spec);
-	PyModule_AddObject(m, "%s", %s_type);
-''' % (self.clean_name, self.clean_name, self.bound_name, self.clean_name)
+		out = '	%s_type = PyType_FromSpec(&%s_spec);\n' % (self.clean_name, self.clean_name)
+		out += '	bind_%s_static_members(%s_type);\n' % (self.clean_name, self.clean_name)
+		out += '	PyModule_AddObject(m, "%s", %s_type);\n' % (self.bound_name, self.clean_name)
 		return out
 
 
@@ -194,12 +225,12 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 
 	#
 	def get_self(self, ctx):
-		if ctx in ['arithmetic_op', 'inplace_arithmetic_op']:
+		if ctx in ['arithmetic_op', 'inplace_arithmetic_op', 'comparison_op']:
 			return 'o1'
 		return 'self'
 
 	def get_arg(self, i, ctx):
-		if ctx in ['arithmetic_op', 'inplace_arithmetic_op']:
+		if ctx in ['arithmetic_op', 'inplace_arithmetic_op', 'comparison_op']:
 			return 'o%d' % (i+2)
 		elif ctx == 'setter':
 			return 'val'
@@ -210,7 +241,7 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 			self._source += "static PyObject *%s(PyObject *self, void *closure) {\n" % name
 		elif ctx == 'setter':
 			self._source += "static int %s(PyObject *self, PyObject *val, void *closure) {\n" % name
-		elif ctx in ['arithmetic_op', 'inplace_arithmetic_op']:
+		elif ctx in ['arithmetic_op', 'inplace_arithmetic_op', 'comparison_op']:
 			self._source += "static PyObject *%s(PyObject *o1, PyObject *o2) {\n" % name
 		else:
 			self._source += "static PyObject *%s(PyObject *self, PyObject *args) {\n" % name

@@ -1,4 +1,6 @@
 * const members
-- static const members
-- static class method
-- operator ==, !=
+* static const members (const only, it looks impossible to bind writable members with the limited api)
+KO static class method (impossible to do with the limited api)
+* operator ==, !=
+- std::vector<T>
+- std::shared_ptr<T>
