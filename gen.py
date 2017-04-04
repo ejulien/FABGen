@@ -370,7 +370,7 @@ class FABGen:
 		return 'Copy' if ctype.get_ref() == '' else 'NonOwning'
 
 	# --
-	def prepare_protos(self, protos):
+	def __prepare_protos(self, protos):
 		"""Prepare a list of prototypes, select converter objects"""
 		_protos = []
 
@@ -391,7 +391,7 @@ class FABGen:
 
 		return _protos
 
-	def proto_call(self, self_conv, proto, expr_eval, ctx, fixed_arg_count=None):
+	def __proto_call(self, self_conv, proto, expr_eval, ctx, fixed_arg_count=None):
 		rval = proto['rval']['ctype']
 		rval_conv = proto['rval']['conv']
 
@@ -438,8 +438,8 @@ class FABGen:
 
 		self.commit_rvals(rval, ctx)
 
-	def _bind_proxy(self, name, self_conv, protos, desc, expr_eval, ctx, fixed_arg_count=None):
-		protos = self.prepare_protos(protos)
+	def __bind_proxy(self, name, self_conv, protos, desc, expr_eval, ctx, fixed_arg_count=None):
+		protos = self.__prepare_protos(protos)
 
 		# categorize prototypes by number of argument they take
 		def get_protos_per_arg_count(protos):
@@ -484,7 +484,7 @@ class FABGen:
 
 				if arg_idx == arg_limit:
 					assert len(protos) == 1  # there should only be exactly one prototype with a single signature
-					self.proto_call(self_conv, protos[0], expr_eval, ctx, fixed_arg_count)
+					self.__proto_call(self_conv, protos[0], expr_eval, ctx, fixed_arg_count)
 					return
 
 				protos_per_arg_conv = get_protos_per_arg_conv(protos, arg_idx)
@@ -521,7 +521,7 @@ class FABGen:
 	def bind_function_overloads(self, name, protos):
 		expr_eval = lambda args: '%s(%s);' % (name, ', '.join(args))
 		proxy_name = get_type_clean_name('_%s__' % name)
-		self._bind_proxy(proxy_name, None, protos, 'function %s' % name, expr_eval, 'function')
+		self.__bind_proxy(proxy_name, None, protos, 'function %s' % name, expr_eval, 'function')
 
 		self._bound_functions.append({'name': name, 'proxy_name': proxy_name, 'protos': protos})
 
@@ -535,7 +535,7 @@ class FABGen:
 		expr_eval = lambda args: 'new %s(%s);' % (type, ', '.join(args))
 		protos = [(type, args) for args in proto_args]
 		proxy_name = get_type_clean_name('_%s__constructor__' % type)
-		self._bind_proxy(proxy_name, self_conv, protos, '%s constructor' % self_conv.bound_name, expr_eval, 'constructor')
+		self.__bind_proxy(proxy_name, self_conv, protos, '%s constructor' % self_conv.bound_name, expr_eval, 'constructor')
 
 		self_conv.constructor = {'proxy_name': proxy_name, 'protos': protos}
 
@@ -548,7 +548,7 @@ class FABGen:
 
 		expr_eval = lambda args: '_self->%s(%s);' % (name, ', '.join(args))
 		proxy_name = get_type_clean_name('_%s__%s__' % (type, name))
-		self._bind_proxy(proxy_name, self_conv, protos, 'method %s of %s' % (name, self_conv.bound_name), expr_eval, 'method')
+		self.__bind_proxy(proxy_name, self_conv, protos, 'method %s of %s' % (name, self_conv.bound_name), expr_eval, 'method')
 
 		self_conv.methods.append({'name': name, 'proxy_name': proxy_name, 'protos': protos})
 
@@ -565,14 +565,14 @@ class FABGen:
 		expr_eval = lambda args: '_self->%s;' % arg.name
 		getter_protos = [(get_fully_qualified_ctype_name(getter_ctype), [])]
 		getter_proxy_name = get_type_clean_name('_%s__get_%s__' % (type, arg.name))
-		self._bind_proxy(getter_proxy_name, self_conv, getter_protos, 'get member %s of %s' % (arg.name, self_conv.bound_name), expr_eval, 'getter', 0)
+		self.__bind_proxy(getter_proxy_name, self_conv, getter_protos, 'get member %s of %s' % (arg.name, self_conv.bound_name), expr_eval, 'getter', 0)
 
 		# setter
 		if not arg.ctype.is_const():
 			expr_eval = lambda args: '_self->%s = %s;' % (arg.name, args[0])
 			setter_protos = [('void', [member])]
 			setter_proxy_name = get_type_clean_name('_%s__set_%s__' % (type, arg.name))
-			self._bind_proxy(setter_proxy_name, self_conv, setter_protos, 'set member %s of %s' % (arg.name, self_conv.bound_name), expr_eval, 'setter', 1)
+			self.__bind_proxy(setter_proxy_name, self_conv, setter_protos, 'set member %s of %s' % (arg.name, self_conv.bound_name), expr_eval, 'setter', 1)
 		else:
 			setter_proxy_name = None
 
@@ -595,14 +595,14 @@ class FABGen:
 		expr_eval = lambda args: '%s::%s;' % (self_conv.fully_qualified_name, arg.name)
 		getter_protos = [(get_fully_qualified_ctype_name(getter_ctype), [])]
 		getter_proxy_name = get_type_clean_name('_%s__get_%s__' % (type, arg.name))
-		self._bind_proxy(getter_proxy_name, None, getter_protos, 'get static member %s of %s' % (arg.name, self_conv.bound_name), expr_eval, 'getter', 0)
+		self.__bind_proxy(getter_proxy_name, None, getter_protos, 'get static member %s of %s' % (arg.name, self_conv.bound_name), expr_eval, 'getter', 0)
 
 		# setter
 		if not arg.ctype.is_const():
 			expr_eval = lambda args: '%s::%s = %s;' % (self_conv.fully_qualified_name, arg.name, args[0])
 			setter_protos = [('void', [member])]
 			setter_proxy_name = get_type_clean_name('_%s__set_%s__' % (type, arg.name))
-			self._bind_proxy(setter_proxy_name, None, setter_protos, 'set static member %s of %s' % (arg.name, self_conv.bound_name), expr_eval, 'setter', 1)
+			self.__bind_proxy(setter_proxy_name, None, setter_protos, 'set static member %s of %s' % (arg.name, self_conv.bound_name), expr_eval, 'setter', 1)
 		else:
 			setter_proxy_name = None
 
@@ -618,7 +618,7 @@ class FABGen:
 
 		expr_eval = lambda args: '*_self %s %s;' % (op, ', '.join(args))
 		proxy_name = get_type_clean_name('_%s__%s_operator__' % (type, op))
-		self._bind_proxy(proxy_name, self_conv, protos, '%s operator of %s' % (op, self_conv.bound_name), expr_eval, 'arithmetic_op', 1)
+		self.__bind_proxy(proxy_name, self_conv, protos, '%s operator of %s' % (op, self_conv.bound_name), expr_eval, 'arithmetic_op', 1)
 
 		self_conv.arithmetic_ops.append({'op': op, 'proxy_name': proxy_name})
 
@@ -641,7 +641,7 @@ class FABGen:
 		expr_eval = lambda args: '*_self %s %s;' % (op, ', '.join(args))
 		proxy_name = get_type_clean_name('_%s__%s_operator__' % (type, op))
 		protos = [('void', arg) for arg in args]
-		self._bind_proxy(proxy_name, self_conv, protos, '%s operator of %s' % (op, self_conv.bound_name), expr_eval, 'inplace_arithmetic_op', 1)
+		self.__bind_proxy(proxy_name, self_conv, protos, '%s operator of %s' % (op, self_conv.bound_name), expr_eval, 'inplace_arithmetic_op', 1)
 
 		self_conv.arithmetic_ops.append({'op': op, 'proxy_name': proxy_name})
 
@@ -664,7 +664,7 @@ class FABGen:
 		expr_eval = lambda args: '*_self %s %s;' % (op, ', '.join(args))
 		proxy_name = get_type_clean_name('_%s__%s_operator__' % (type, op))
 		protos = [('bool', arg) for arg in args]
-		self._bind_proxy(proxy_name, self_conv, protos, '%s operator of %s' % (op, self_conv.bound_name), expr_eval, 'comparison_op', 1)
+		self.__bind_proxy(proxy_name, self_conv, protos, '%s operator of %s' % (op, self_conv.bound_name), expr_eval, 'comparison_op', 1)
 
 		self_conv.comparison_ops.append({'op': op, 'proxy_name': proxy_name})
 
@@ -696,11 +696,11 @@ class FABGen:
 
 		# output wrapper
 		self._source += '// %s<%s> wrapper\n' % (tmpl_name, ', '.join(bind_args))
-		self._source += 'static %s %s(%s) {\n' % (bound_rval, bound_name, ', '.join(bound_named_args))
+		self._source += 'static %s %s(%s) { ' % (bound_rval, bound_name, ', '.join(bound_named_args))
 		if bound_rval != 'void':
 			self._source += 'return '
-		self._source += '%s<%s>(%s);\n' % (tmpl_name, ', '.join(bind_args), ', '.join(['arg%d' % i for i in range(len(bound_args))]))
-		self._source += '}\n\n'
+		self._source += '%s<%s>(%s);' % (tmpl_name, ', '.join(bind_args), ', '.join(['arg%d' % i for i in range(len(bound_args))]))
+		self._source += ' }\n\n'
 
 		# bind wrapper
 		self.bind_function(bound_name, bound_rval, bound_args)
