@@ -82,40 +82,36 @@ def run_tests(gen, names, testbed):
 
 # --
 # language CMake support
-class PythonTestBed:
-	def build_and_test_extension(self, work_path, module):
-		cmake_path = os.path.join(work_path, 'CMakeLists.txt')
+def create_cmake_file(module, work_path, site_package, include_dir, python_lib):
+	cmake_path = os.path.join(work_path, 'CMakeLists.txt')
 
-		with open(cmake_path, 'w') as file:
-			file.write('''
+	with open(cmake_path, 'w') as file:
+		file.write('''
 cmake_minimum_required(VERSION 3.1)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/")
 
-project(test)
+project(%s)
 enable_language(C CXX)
 
 add_library(my_test SHARED test_module.cpp)
 set_target_properties(my_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "%s" RUNTIME_OUTPUT_DIRECTORY_RELEASE "%s" SUFFIX .pyd)
 target_include_directories(my_test PRIVATE "%s")
 target_link_libraries(my_test "%s")
-''' % (python_site_package, python_site_package, python_include_dir, python_library))
+''' % (module, site_package, site_package, include_dir, python_lib))
 
-		build_path = os.path.join(work_path, 'build')
 
-		os.mkdir(build_path)
-		os.chdir(build_path)
+def build_and_deploy_extension(work_path, build_path, python_interpreter):
+	print("Generating build system...")
+	try:
+		subprocess.check_output('cmake .. -G "Visual Studio 15 2017')
+	except subprocess.CalledProcessError as e:
+		print(e.output.decode('utf-8'))
+		return False
 
-		print("Generating build system...")
-		try:
-			subprocess.check_output('cmake .. -G "Visual Studio 15 2017')
-		except subprocess.CalledProcessError as e:
-			print(e.output.decode('utf-8'))
-			return False
-
-		if args.debug_test:
-			with open(os.path.join(build_path, 'my_test.vcxproj.user'), 'w') as file:
-				file.write('''\
+	if args.debug_test:
+		with open(os.path.join(build_path, 'my_test.vcxproj.user'), 'w') as file:
+			file.write('''\
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">
@@ -126,14 +122,28 @@ target_link_libraries(my_test "%s")
   </PropertyGroup>
 </Project>''' % (python_interpreter, work_path))
 
-		print("Building extension...")
-		try:
-			subprocess.check_output('cmake --build . --config Release')
-		except subprocess.CalledProcessError as e:
-			print(e.output.decode('utf-8'))
+	print("Building extension...")
+	try:
+		subprocess.check_output('cmake --build . --config Release')
+	except subprocess.CalledProcessError as e:
+		print(e.output.decode('utf-8'))
+		return False
+
+	return True
+
+
+class PythonTestBed:
+	def build_and_test_extension(self, work_path, module):
+		create_cmake_file("test", work_path, python_site_package, python_include_dir, python_library)
+
+		build_path = os.path.join(work_path, 'build')
+		os.mkdir(build_path)
+		os.chdir(build_path)
+
+		if not build_and_deploy_extension(work_path, build_path, python_interpreter):
 			return False
 
-		# assert extension correctness
+		# run test to assert extension correctness
 		test_path = os.path.join(work_path, 'test.py')
 		with open(test_path, 'w') as file:
 			file.write(module.test_python)

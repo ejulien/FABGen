@@ -1,8 +1,16 @@
 import lua
 import python
+from tests import PythonTestBed
 
 
 def bind_math(gen):
+	gen.add_include("foundation/color.h")
+	gen.add_include("foundation/vector3.h")
+	gen.add_include("foundation/vector4.h")
+	gen.add_include("foundation/matrix3.h")
+	gen.add_include("foundation/matrix4.h")
+	gen.add_include("foundation/matrix44.h")
+
 	gen.decl_class('gs::Color')
 	gen.decl_class('gs::Vector3')
 	gen.decl_class('gs::Vector4')
@@ -80,4 +88,4 @@ def run_test(gen):
 
 
 #run_test(lua.LuaGenerator())
-run_test(python.PythonGenerator())
+#run_tests(python.PythonGenerator(), [""], PythonTestBed())
