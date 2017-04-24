@@ -1,0 +1,55 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "Tests",
+			"type": "python",
+			"request": "launch",
+			"stopOnEntry": false,
+			"pythonPath": "${config.python.pythonPath}",
+			"program": "${workspaceRoot}/tests.py",
+			"cwd": "${workspaceRoot}",
+			"args": ["--pybase", "C:/Pythons/test-install"],
+			"env": null,
+			"envFile": "${workspaceRoot}/.env",
+			"debugOptions": [
+				"WaitOnAbnormalExit",
+				"WaitOnNormalExit",
+				"RedirectOutput"
+			]
+		},
+		{
+			"name": "Tests --debug",
+			"type": "python",
+			"request": "launch",
+			"stopOnEntry": false,
+			"pythonPath": "${config.python.pythonPath}",
+			"program": "${workspaceRoot}/tests.py",
+			"cwd": "${workspaceRoot}",
+			"args": ["--pybase", "C:/Pythons/test-install", "--debug", "function_template_call"],
+			"env": null,
+			"envFile": "${workspaceRoot}/.env",
+			"debugOptions": [
+				"WaitOnAbnormalExit",
+				"WaitOnNormalExit",
+				"RedirectOutput"
+			]
+		},
+		{
+			"name": "Test",
+			"type": "python",
+			"request": "launch",
+			"stopOnEntry": false,
+			"pythonPath": "${config.python.pythonPath}",
+			"program": "${workspaceRoot}/test.py",
+			"cwd": "${workspaceRoot}",
+			"env": null,
+			"envFile": "${workspaceRoot}/.env",
+			"debugOptions": [
+				"WaitOnAbnormalExit",
+				"WaitOnNormalExit",
+				"RedirectOutput"
+			]
+		}
+	]
+}
