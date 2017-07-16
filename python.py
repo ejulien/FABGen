@@ -136,7 +136,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	wrapped_PyObject *w = cast_to_wrapped_PyObject(o);
 	*(%s **)obj = (%s *)_type_tag_upcast(w->obj, w->type_tag, %s);
 }
-\n''' % (self.clean_name, self.clean_name, self.clean_name, self.type_tag)
+\n''' % (self.clean_name, self.fully_qualified_name, self.fully_qualified_name, self.type_tag)
 
 		out += '''PyObject *from_c_%s(void *obj, OwnershipPolicy own) {
 	wrapped_PyObject *pyobj = PyObject_New(wrapped_PyObject, (PyTypeObject *)%s_type);
@@ -147,7 +147,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		pyobj->on_delete = &delete_%s;
 	return (PyObject *)pyobj;
 }
-\n''' % (self.clean_name, self.clean_name, self.clean_name, self.clean_name, self.clean_name, self.clean_name)
+\n''' % (self.clean_name, self.clean_name, self.fully_qualified_name, self.fully_qualified_name, self.clean_name, self.clean_name)
 
 		return out
 
@@ -299,7 +299,7 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 
 		rows = []
 		for f in self._bound_functions:
-			rows.append('	{"%s", %s, METH_VARARGS, "TODO doc"}' % (f['name'], f['proxy_name']))
+			rows.append('	{"%s", %s, METH_VARARGS, "TODO doc"}' % (f['bound_name'], f['proxy_name']))
 		rows.append('	{NULL, NULL, 0, NULL} /* Sentinel */')
 
 		self._source += ',\n'.join(rows) + '\n'
@@ -319,10 +319,10 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 
 	def output_module_init_function(self, module_def):
 		self._source += 'PyMODINIT_FUNC PyInit_%s(void) {\n' % self._name
-		self._source += '	PyObject *m;\n'
+		self._source += self._custom_init_code
 
 		self._source += '''
-	m = PyModule_Create(&%s);
+	PyObject *m = PyModule_Create(&%s);
 	if (m == NULL)
 		return NULL;
 

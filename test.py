@@ -1,6 +1,44 @@
 import lua
 import python
-from tests import PythonTestBed
+
+
+def bind_globals(gen):
+	gen.bind_function_overloads('gs::core::LoadPlugins', [('bool', []), ('bool', ['const char *path'])])
+	gen.bind_function('gs::core::UnloadPlugins', 'void', [])
+
+
+def bind_render(gen):
+	gen.begin_class('gs::RenderWindow')
+	gen.end_class('gs::RenderWindow')
+
+
+def bind_plus(gen):
+
+	# Plus
+	gen.add_include('plus/plus.h')
+
+	gen.begin_class('gs::Plus')
+
+	gen.bind_constructor('gs::Plus', [])
+
+	gen.bind_method_overloads('gs::Plus', 'RenderInit', [
+		('bool', ['int width', 'int height']),
+		('bool', ['int width', 'int height', 'const char *core_path'])
+	])
+	gen.bind_method('gs::Plus', 'RenderUninit', 'void', [])
+
+	gen.bind_method('gs::Plus', 'NewRenderWindow', 'gs::RenderWindow', ['int width', 'int height'])
+	gen.bind_method('gs::Plus', 'FreeRenderWindow', 'void', ['gs::RenderWindow &window'])
+
+	gen.bind_method('gs::Plus', 'GetRenderWindow', 'gs::RenderWindow', [])
+	gen.bind_method_overloads('gs::Plus', 'SetRenderWindow', [
+		('void', ['gs::RenderWindow &window']),
+		('void', [])
+	])
+
+	gen.bind_method('gs::Plus', 'UpdateRenderWindow', 'void', ['const gs::RenderWindow &window'])
+
+	gen.end_class('gs::Plus')
 
 
 def bind_math(gen):
@@ -32,9 +70,7 @@ def bind_math(gen):
 
 	gen.bind_inplace_arithmetic_ops_overloads('gs::Vector3', ['+=', '-=', '*=', '/='], [['gs::Vector3 &'], ['float']])
 
-
-
-#	gen.bind_method('gs::Vector3', 'Set', 'void', ['float x=0', 'float y=0', 'float z=0'])
+	#gen.bind_method('gs::Vector3', 'Set', 'void', ['float x=0', 'float y=0', 'float z=0'])
 
 	gen.bind_method('gs::Vector3', 'Set', 'void', ['const gs::Vector3 &v'])
 
@@ -60,7 +96,7 @@ def bind_math(gen):
 	gen.bind_method('gs::Vector3', 'Minimum', 'gs::Vector3', ['const gs::Vector3 &left', 'const gs::Vector3 &right'])
 
 	gen.bind_method('gs::Vector3', 'Reflected', 'gs::Vector3', ['const gs::Vector3 &n'])
-#	gen.bind_method('gs::Vector3', 'Refracted', 'gs::Vector3', ['const gs::Vector3 &n', 'float index_of_refraction_in=1', 'float index_of_refraction_out=1'])
+	#gen.bind_method('gs::Vector3', 'Refracted', 'gs::Vector3', ['const gs::Vector3 &n', 'float index_of_refraction_in=1', 'float index_of_refraction_out=1'])
 
 	gen.bind_method('gs::Vector3', 'Len2', 'float', [])
 	gen.bind_method('gs::Vector3', 'Len', 'float', [])
@@ -68,7 +104,7 @@ def bind_math(gen):
 	gen.bind_method('gs::Vector3', 'Floor', 'gs::Vector3', [])
 	gen.bind_method('gs::Vector3', 'Ceil', 'gs::Vector3', [])
 
-# TODO
+	# TODO
 	# static Vector3 Random(float min = -1.f, float max = 1.f);
 	# static Vector3 Random(const Vector3 &min, const Vector3 &max);
 	#
@@ -78,14 +114,31 @@ def bind_math(gen):
 	gen.end_class('gs::Vector3')
 
 
-def run_test(gen):
-	gen.start('test')
-	bind_math(gen)
+def bind_gs(gen):
+	gen.start('gs')
+
+	gen.add_include('engine/engine.h')
+	gen.add_include('engine/engine_plugins.h')
+
+	gen.add_custom_init_code('''
+	gs::core::Init();
+''')
+
+	bind_globals(gen)
+	bind_render(gen)
+	bind_plus(gen)
+	#bind_math(gen)
+
 	gen.finalize()
 
-	header, source = gen.get_output()
-	print(header, source)
+	return gen.get_output()
 
 
-#run_test(lua.LuaGenerator())
-#run_tests(python.PythonGenerator(), [""], PythonTestBed())
+hdr, src = bind_gs(python.PythonGenerator())
+
+with open('d:/gs-fabgen-test/bind_gs.h', mode='w', encoding='utf-8') as f:
+	f.write(hdr)
+with open('d:/gs-fabgen-test/bind_gs.cpp', mode='w', encoding='utf-8') as f:
+	f.write(src)
+
+print("DONE")

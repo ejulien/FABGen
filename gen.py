@@ -278,6 +278,8 @@ class FABGen:
 		self._source += 'enum OwnershipPolicy { NonOwning, Copy, Owning };\n\n'
 		self._source += 'void *_type_tag_upcast(void *in_p, const char *in_type_tag, const char *out_type_tag);\n\n'
 
+		self._custom_init_code = ""
+
 	def add_include(self, path, is_system_include = False):
 		if is_system_include:
 			self.__system_includes.append(path)
@@ -289,6 +291,9 @@ class FABGen:
 			self._header += code
 		if in_source:
 			self._source += code
+
+	def add_custom_init_code(self, code):
+		self._custom_init_code += code
 
 	#
 	def raise_exception(self, type, reason):
@@ -497,7 +502,16 @@ class FABGen:
 					self._source += indent + '} else '
 
 				self._source += '{\n'
-				expected_types = [proto['args'][arg_idx]['conv'].bound_name for proto in protos]
+
+				expected_types = []
+				for proto in protos:
+					proto_arg = proto['args'][arg_idx]
+
+					proto_arg_name = str(proto_arg['carg'].name)
+					proto_arg_type_name = proto_arg['conv'].bound_name
+
+					expected_types.append('%s %s' % (proto_arg_type_name, proto_arg_name))
+
 				self.set_error('runtime', 'incorrect type for argument %d to %s (expected %s)' % (arg_idx+1, desc, format_list_for_comment(expected_types)))
 				self._source += indent + '}\n'
 
@@ -524,7 +538,8 @@ class FABGen:
 		proxy_name = get_type_clean_name('_%s__' % name)
 		self.__bind_proxy(proxy_name, None, protos, 'function %s' % name, expr_eval, 'function')
 
-		self._bound_functions.append({'name': name, 'proxy_name': proxy_name, 'protos': protos})
+		bound_name = get_type_bound_name(name)
+		self._bound_functions.append({'name': name, 'bound_name': bound_name, 'proxy_name': proxy_name, 'protos': protos})
 
 	#
 	def bind_constructor(self, type, args):
