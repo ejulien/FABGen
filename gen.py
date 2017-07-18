@@ -1,4 +1,4 @@
-from pypeg2 import re, flag, name, Plain, optional, attr, K, parse
+from pypeg2 import re, flag, name, Plain, optional, attr, K, parse, Keyword, Enum, List, csl
 from collections import OrderedDict
 import copy
 
@@ -13,6 +13,8 @@ def get_fully_qualified_ctype_name(type):
 	if type.const:
 		out += 'const '
 	out += type.unqualified_name
+	if hasattr(type, 'template'):
+		out += '<%s>' % type.template[0]
 	if hasattr(type, 'ref'):
 		out += ' ' + type.ref
 	return out
@@ -60,6 +62,10 @@ def ctypes_to_string(ctypes):
 	return ','.join([repr(ctype) for ctype in ctypes])
 
 
+class _TemplateParameters(List):
+	grammar = "<", optional(csl(typename)), ">"
+
+
 class _CType:
 	def __repr__(self):
 		return get_fully_qualified_ctype_name(self)
@@ -93,7 +99,7 @@ class _CType:
 		return t
 
 
-_CType.grammar = flag("const", K("const")), optional([flag("signed", K("signed")), flag("unsigned", K("unsigned"))]), attr("unqualified_name", typename), optional(attr("ref", ref_re)), flag("const_ref", K("const"))
+_CType.grammar = flag("const", K("const")), optional([flag("signed", K("signed")), flag("unsigned", K("unsigned"))]), attr("unqualified_name", typename), optional(attr("template", _TemplateParameters)), optional(attr("ref", ref_re)), flag("const_ref", K("const"))
 
 
 #

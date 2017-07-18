@@ -9,9 +9,17 @@ struct simple_struct {
 };
 ''', True, False)
 
+	gen.add_include('memory', True)
+
 	gen.begin_class('simple_struct')
 	gen.bind_members('simple_struct', ['float u', 'int v'])
 	gen.end_class('simple_struct')
+
+
+	gen.begin_class('std::shared_ptr<simple_struct>')
+	gen.bind_members('std::shared_ptr<simple_struct>', ['float u', 'int v'])
+	gen.end_class('std::shared_ptr<simple_struct>')
+
 
 	gen.finalize()
 	return gen.get_output()
