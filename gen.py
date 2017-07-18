@@ -179,6 +179,8 @@ class TypeConverter:
 		self.arithmetic_ops = []
 		self.comparison_ops = []
 
+		self._non_copyable = False
+
 		self.bases = []  # type derives from the following types
 
 	def get_operator(self, op):
@@ -320,13 +322,17 @@ class FABGen:
 		self.end_type(conv)
 
 	#
-	def begin_class(self, type, converter_class=None):
+	def begin_class(self, type, converter_class=None, noncopyable=False):
 		"""Begin a class declaration."""
 		if type in self.__type_convs:
 			return self.__type_convs[type]  # type already declared
 
 		conv = self.default_class_converter(type) if converter_class is None else converter_class(type)
-		return self.begin_type(conv)
+		conv = self.begin_type(conv)
+
+		conv._non_copyable = noncopyable
+
+		return conv
 
 	def end_class(self, type):
 		"""End a class declaration."""
@@ -512,7 +518,7 @@ class FABGen:
 
 					expected_types.append('%s %s' % (proto_arg_type_name, proto_arg_name))
 
-				self.set_error('runtime', 'incorrect type for argument %d to %s (expected %s)' % (arg_idx+1, desc, format_list_for_comment(expected_types)))
+				self.set_error('runtime', 'incorrect type for argument %d to %s, expected %s' % (arg_idx+1, desc, format_list_for_comment(expected_types)))
 				self._source += indent + '}\n'
 
 			output_arg_check_and_dispatch(protos_with_arg_count, 0, arg_count)

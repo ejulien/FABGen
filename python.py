@@ -112,13 +112,13 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 		# specification
 		out += '''static PyType_Spec %s_spec = {
-	"%s.%s", /* name */
+	"%s", /* name */
 	sizeof(wrapped_PyObject), /* basicsize */
 	0, /* itemsize*/
 	Py_TPFLAGS_DEFAULT, /* flags */
 	%s_slots
 };
-\n''' % (self.clean_name, module_name, self.bound_name, self.clean_name)
+\n''' % (self.clean_name, self.bound_name, self.clean_name)
 
 		# delete delegate
 		out += 'static void delete_%s(void *o) { delete (%s *)o; }\n\n' % (self.clean_name, self.fully_qualified_name)
@@ -138,16 +138,23 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 }
 \n''' % (self.clean_name, self.fully_qualified_name, self.fully_qualified_name, self.type_tag)
 
+		if self._non_copyable:
+			copy_code = '''PyErr_SetString(PyExc_RuntimeError, "type %s is non-copyable");
+		return NULL;''' % self.bound_name
+		else:
+			copy_code = 'obj = new %s(*(%s *)obj);' % (self.fully_qualified_name, self.fully_qualified_name)
+
 		out += '''PyObject *from_c_%s(void *obj, OwnershipPolicy own) {
 	wrapped_PyObject *pyobj = PyObject_New(wrapped_PyObject, (PyTypeObject *)%s_type);
-	if (own == Copy)
-		obj = new %s(*(%s *)obj);
+	if (own == Copy) {
+		%s
+	}
 	init_wrapped_PyObject(pyobj, __%s_type_tag, obj);
 	if (own != NonOwning)
 		pyobj->on_delete = &delete_%s;
 	return (PyObject *)pyobj;
 }
-\n''' % (self.clean_name, self.clean_name, self.fully_qualified_name, self.fully_qualified_name, self.clean_name, self.clean_name)
+\n''' % (self.clean_name, self.clean_name, copy_code, self.clean_name, self.clean_name)
 
 		return out
 

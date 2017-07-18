@@ -17,7 +17,7 @@ def bind_plus(gen):
 	# Plus
 	gen.add_include('plus/plus.h')
 
-	gen.begin_class('gs::Plus')
+	gen.begin_class('gs::Plus', noncopyable=True)
 
 	gen.bind_constructor('gs::Plus', [])
 
@@ -44,6 +44,7 @@ def bind_plus(gen):
 def bind_math(gen):
 	gen.add_include("foundation/color.h")
 	gen.add_include("foundation/vector3.h")
+	gen.add_include("foundation/vector3_api.h")
 	gen.add_include("foundation/vector4.h")
 	gen.add_include("foundation/matrix3.h")
 	gen.add_include("foundation/matrix4.h")
@@ -56,26 +57,37 @@ def bind_math(gen):
 	gen.decl_class('gs::Matrix4')
 	gen.decl_class('gs::Matrix44')
 
-	# tVector2 TODO class template support
+	gen.begin_class('gs::Color')
+	gen.end_class('gs::Color')
+
+	gen.begin_class('gs::Vector4')
+	gen.end_class('gs::Vector4')
+
+	gen.begin_class('gs::Matrix3')
+	gen.end_class('gs::Matrix3')
+
+	gen.begin_class('gs::Matrix4')
+	gen.end_class('gs::Matrix4')
+
+	gen.begin_class('gs::Matrix44')
+	gen.end_class('gs::Matrix44')
 
 	# Vector3
 	gen.begin_class('gs::Vector3')
 
 	gen.bind_members('gs::Vector3', ['float x', 'float y', 'float z'])
 
-	gen.bind_constructor_overloads('gs::Vector3', [['float x', 'float y', 'float z'], ['const gs::Vector4 &v'], ['const gs::Color &c']])
+	gen.bind_constructor_overloads('gs::Vector3', [[], ['float x', 'float y', 'float z']])
 
-	gen.bind_arithmetic_ops_overloads('gs::Vector3', ['+', '-', '/'], [('gs::Vector3', ['gs::Vector3 &']), ('gs::Vector3', ['float'])])
-	gen.bind_arithmetic_ops_overloads('gs::Vector3', ['*'], [('gs::Vector3', ['gs::Vector3 &']), ('gs::Vector3', ['float']), ('gs::Vector3', ['gs::Matrix3']), ('gs::Vector3', ['gs::Matrix4'])])
+	gen.bind_function('gs::Vector3FromVector4', 'gs::Vector3', ['const gs::Vector4 &v'])
 
-	gen.bind_inplace_arithmetic_ops_overloads('gs::Vector3', ['+=', '-=', '*=', '/='], [['gs::Vector3 &'], ['float']])
+	gen.bind_arithmetic_ops_overloads('gs::Vector3', ['+', '-', '/'], [('gs::Vector3', ['gs::Vector3 &v']), ('gs::Vector3', ['float k'])])
+	gen.bind_arithmetic_ops_overloads('gs::Vector3', ['*'], [('gs::Vector3', ['gs::Vector3 &v']), ('gs::Vector3', ['float k']), ('gs::Vector3', ['gs::Matrix3 m']), ('gs::Vector3', ['gs::Matrix4 m'])])
 
-	#gen.bind_method('gs::Vector3', 'Set', 'void', ['float x=0', 'float y=0', 'float z=0'])
+	gen.bind_inplace_arithmetic_ops_overloads('gs::Vector3', ['+=', '-=', '*=', '/='], [['gs::Vector3 &v'], ['float k']])
 
-	gen.bind_method('gs::Vector3', 'Set', 'void', ['const gs::Vector3 &v'])
-
-	gen.bind_method('gs::Vector3', 'Dot', 'float', ['const gs::Vector3 &v'])
-	gen.bind_method('gs::Vector3', 'Cross', 'gs::Vector3', ['const gs::Vector3 &v'])
+	gen.bind_function('gs::Dot', 'float', ['const gs::Vector3 &u', 'const gs::Vector3 &v'])
+	gen.bind_function('gs::Cross', 'gs::Vector3', ['const gs::Vector3 &u', 'const gs::Vector3 &v'])
 
 	gen.bind_method('gs::Vector3', 'Reverse', 'void', [])
 	gen.bind_method('gs::Vector3', 'Inverse', 'void', [])
@@ -95,8 +107,8 @@ def bind_math(gen):
 	gen.bind_method('gs::Vector3', 'Maximum', 'gs::Vector3', ['const gs::Vector3 &left', 'const gs::Vector3 &right'])
 	gen.bind_method('gs::Vector3', 'Minimum', 'gs::Vector3', ['const gs::Vector3 &left', 'const gs::Vector3 &right'])
 
-	gen.bind_method('gs::Vector3', 'Reflected', 'gs::Vector3', ['const gs::Vector3 &n'])
-	#gen.bind_method('gs::Vector3', 'Refracted', 'gs::Vector3', ['const gs::Vector3 &n', 'float index_of_refraction_in=1', 'float index_of_refraction_out=1'])
+	gen.bind_function('gs::Reflect', 'gs::Vector3', ['const gs::Vector3 &v', 'const gs::Vector3 &normal'])
+	gen.bind_function_overloads('gs::Refract', [('gs::Vector3', ['const gs::Vector3 &v', 'const gs::Vector3 &normal']), ('gs::Vector3', ['const gs::Vector3 &v', 'const gs::Vector3 &normal', 'float index_of_refraction_in', 'float index_of_refraction_out'])])
 
 	gen.bind_method('gs::Vector3', 'Len2', 'float', [])
 	gen.bind_method('gs::Vector3', 'Len', 'float', [])
@@ -127,7 +139,7 @@ def bind_gs(gen):
 	bind_globals(gen)
 	bind_render(gen)
 	bind_plus(gen)
-	#bind_math(gen)
+	bind_math(gen)
 
 	gen.finalize()
 
