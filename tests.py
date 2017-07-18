@@ -132,9 +132,23 @@ def build_and_deploy_extension(work_path, build_path, python_interpreter):
 	return True
 
 
+def create_clang_format_file(work_path):
+	with open(os.path.join(work_path, '_clang-format'), 'w') as file:
+		file.write('''ColumnLimit: 0
+UseTab: Always
+TabWidth: 4
+IndentWidth: 4
+IndentCaseLabels: true
+AccessModifierOffset: -4
+AlignAfterOpenBracket: DontAlign
+AlwaysBreakTemplateDeclarations: false
+AlignTrailingComments: false''')
+
+
 class PythonTestBed:
 	def build_and_test_extension(self, work_path, module):
 		create_cmake_file("test", work_path, python_site_package, python_include_dir, python_library)
+		create_clang_format_file(work_path)
 
 		build_path = os.path.join(work_path, 'build')
 		os.mkdir(build_path)
