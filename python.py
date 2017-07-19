@@ -149,12 +149,12 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	if (own == Copy) {
 		%s
 	}
-	init_wrapped_PyObject(pyobj, __%s_type_tag, obj);
+	init_wrapped_PyObject(pyobj, %s, obj);
 	if (own != NonOwning)
 		pyobj->on_delete = &delete_%s;
 	return (PyObject *)pyobj;
 }
-\n''' % (self.bound_name, self.bound_name, copy_code, self.bound_name, self.bound_name)
+\n''' % (self.bound_name, self.bound_name, copy_code, self.type_tag, self.bound_name)
 
 		return out
 

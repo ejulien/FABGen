@@ -217,7 +217,7 @@ class TypeConverter:
 		self.clean_name = get_clean_ctype_name(self.ctype)
 		self.bound_name = get_ctype_default_bound_name(self.ctype) if bound_name is None else bound_name
 		self.fully_qualified_name = get_fully_qualified_ctype_name(self.ctype)
-		self.type_tag = '__%s_type_tag' % self.bound_name
+		self.type_tag = 'type_tag_' + self.bound_name
 
 		self.constructor = None
 		self.members = []
@@ -358,7 +358,7 @@ class FABGen:
 		self._header += conv.get_type_api(self._name)
 
 		self._source += '// %s type tag\n' % conv.fully_qualified_name
-		self._source += 'static const char *%s = "%s";\n\n' % (conv.type_tag, conv.fully_qualified_name)
+		self._source += 'static const char *%s = "%s";\n\n' % (conv.type_tag, conv.bound_name)
 		self._source += conv.get_type_api(self._name)
 
 		self._bound_types.append(conv)
@@ -620,7 +620,7 @@ class FABGen:
 	def bind_function_overloads(self, name, protos):
 		expr_eval = lambda args: '%s(%s);' % (name, ', '.join(args))
 		bound_name = get_symbol_default_bound_name(name)
-		proxy_name = get_clean_symbol_name('_%s__' % name)
+		proxy_name = 'py_' + bound_name
 		self.__bind_proxy(proxy_name, None, protos, 'function %s' % bound_name, expr_eval, 'function')
 
 		self._bound_functions.append({'name': name, 'bound_name': bound_name, 'proxy_name': proxy_name, 'protos': protos})
@@ -634,7 +634,7 @@ class FABGen:
 
 		expr_eval = lambda args: 'new %s(%s);' % (type, ', '.join(args))
 		protos = [(type, args[0], args[1]) for args in proto_args]
-		proxy_name = get_clean_symbol_name('_%s__constructor__' % conv.bound_name)
+		proxy_name = 'py_construct_' + conv.bound_name
 		self.__bind_proxy(proxy_name, conv, protos, '%s constructor' % conv.bound_name, expr_eval, 'constructor')
 
 		conv.constructor = {'proxy_name': proxy_name, 'protos': protos}
@@ -645,7 +645,8 @@ class FABGen:
 
 	def bind_method_overloads(self, conv, name, protos):
 		expr_eval = lambda args: '_self->%s(%s);' % (name, ', '.join(args))
-		proxy_name = get_clean_symbol_name('_%s__%s__' % (conv.bound_name, name))
+		bound_name = get_symbol_default_bound_name(name)
+		proxy_name = 'py_method_%s_of_%s' % (bound_name, conv.bound_name)
 		self.__bind_proxy(proxy_name, conv, protos, 'method %s of %s' % (name, conv.bound_name), expr_eval, 'method')
 
 		conv.methods.append({'name': name, 'proxy_name': proxy_name, 'protos': protos})
@@ -666,14 +667,14 @@ class FABGen:
 
 		expr_eval = lambda args: '&_self->%s;' % arg.name
 		getter_protos = [(get_fully_qualified_ctype_name(getter_ctype), [], flags)]
-		getter_proxy_name = get_clean_symbol_name('_%s__get_%s__' % (conv.bound_name, arg.name))
+		getter_proxy_name = 'py_get_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name)
 		self.__bind_proxy(getter_proxy_name, conv, getter_protos, 'get member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'getter', 0)
 
 		# setter
 		if not arg.ctype.is_const():
 			expr_eval = lambda args: '_self->%s = %s;' % (arg.name, args[0])
 			setter_protos = [('void', [member], flags)]
-			setter_proxy_name = get_clean_symbol_name('_%s__set_%s__' % (conv.bound_name, arg.name))
+			setter_proxy_name = 'py_set_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name)
 			self.__bind_proxy(setter_proxy_name, conv, setter_protos, 'set member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'setter', 1)
 		else:
 			setter_proxy_name = None
@@ -695,14 +696,14 @@ class FABGen:
 
 		expr_eval = lambda args: '%s::%s;' % (conv.fully_qualified_name, arg.name)
 		getter_protos = [(get_fully_qualified_ctype_name(getter_ctype), [])]
-		getter_proxy_name = get_clean_symbol_name('_%s__get_%s__' % (conv.bound_name, arg.name))
+		getter_proxy_name = 'py_get_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name)
 		self.__bind_proxy(getter_proxy_name, None, getter_protos, 'get static member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'getter', 0, enable_proxy_protocol)
 
 		# setter
 		if not arg.ctype.is_const():
 			expr_eval = lambda args: '%s::%s = %s;' % (conv.fully_qualified_name, arg.name, args[0])
 			setter_protos = [('void', [member])]
-			setter_proxy_name = get_clean_symbol_name('_%s__set_%s__' % (conv.bound_name, arg.name))
+			setter_proxy_name = 'py_set_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name)
 			self.__bind_proxy(setter_proxy_name, None, setter_protos, 'set static member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'setter', 1, enable_proxy_protocol)
 		else:
 			setter_proxy_name = None
@@ -717,7 +718,7 @@ class FABGen:
 		assert op in ['-', '+', '*', '/'], 'Unsupported arithmetic operator ' + op
 
 		expr_eval = lambda args: '*_self %s %s;' % (op, ', '.join(args))
-		proxy_name = get_clean_symbol_name('_%s__%s_operator__' % (conv.bound_name, op))
+		proxy_name = 'py_%s_operator_of_%s' % (get_clean_symbol_name(op), conv.bound_name)
 		self.__bind_proxy(proxy_name, conv, protos, '%s operator of %s' % (op, conv.bound_name), expr_eval, 'arithmetic_op', 1)
 
 		conv.arithmetic_ops.append({'op': op, 'proxy_name': proxy_name})
@@ -738,7 +739,7 @@ class FABGen:
 		assert op in ['-=', '+=', '*=', '/='], 'Unsupported inplace arithmetic operator ' + op
 
 		expr_eval = lambda args: '*_self %s %s;' % (op, ', '.join(args))
-		proxy_name = get_clean_symbol_name('_%s__%s_operator__' % (conv.bound_name, op))
+		proxy_name = 'py_%s_operator_of_%s' % (get_clean_symbol_name(op), conv.bound_name)
 		protos = [('void', arg[0], arg[1]) for arg in args]
 		self.__bind_proxy(proxy_name, conv, protos, '%s operator of %s' % (op, conv.bound_name), expr_eval, 'inplace_arithmetic_op', 1)
 
@@ -760,7 +761,7 @@ class FABGen:
 		assert op in ['<', '<=', '==', '!=', '>', '>='], 'Unsupported comparison operator ' + op
 
 		expr_eval = lambda args: '*_self %s %s;' % (op, ', '.join(args[0]))
-		proxy_name = get_clean_symbol_name('_%s__%s_operator__' % (conv.bound_name, op))
+		proxy_name = 'py_%s_operator_of_%s' % (get_clean_symbol_name(op), conv.bound_name)
 		protos = [('bool', arg[0], arg[1]) for arg in args]
 		self.__bind_proxy(proxy_name, conv, protos, '%s operator of %s' % (op, conv.bound_name), expr_eval, 'comparison_op', 1)
 
