@@ -26,7 +26,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--pybase", "C:/Pythons/test-install", "--debug", "shared_ptr"],
+			"args": ["--pybase", "C:/Pythons/test-install", "--debug", "struct_inheritance"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [

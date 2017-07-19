@@ -397,9 +397,7 @@ class FABGen:
 		return self.begin_class(type, converter_class)
 
 	#
-	def add_class_base(self, type, base):
-		conv = self.__type_convs[type]
-		base_conv = self.__type_convs[base]
+	def add_class_base(self, conv, base_conv):
 		conv.bases.append(base_conv)
 
 	#
