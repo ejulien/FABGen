@@ -5,36 +5,36 @@ import lib.python.stl as stl
 
 #
 class PythonTypeConverterCommon(gen.TypeConverter):
-	def __init__(self, type, storage_type=None):
-		super().__init__(type, storage_type)
+	def __init__(self, type, storage_type=None, bound_name=None):
+		super().__init__(type, storage_type, bound_name)
 
 	def get_type_api(self, module_name):
-		return 'bool check_%s(PyObject *o);\n' % self.clean_name +\
-		'void to_c_%s(PyObject *o, void *obj);\n' % self.clean_name +\
-		'PyObject *from_c_%s(void *obj, OwnershipPolicy);\n' % self.clean_name +\
+		return 'bool check_%s(PyObject *o);\n' % self.bound_name +\
+		'void to_c_%s(PyObject *o, void *obj);\n' % self.bound_name +\
+		'PyObject *from_c_%s(void *obj, OwnershipPolicy);\n' % self.bound_name +\
 		'\n'
 
 	def to_c_call(self, in_var, out_var_p):
-		return 'to_c_%s(%s, (void *)%s);\n' % (self.clean_name, in_var, out_var_p)
+		return 'to_c_%s(%s, (void *)%s);\n' % (self.bound_name, in_var, out_var_p)
 
 	def from_c_call(self, out_var, in_var_p, ownership_policy):
-		return "PyObject *%s = from_c_%s((void *)%s, %s);\n" % (out_var, self.clean_name, in_var_p, ownership_policy)
+		return "PyObject *%s = from_c_%s((void *)%s, %s);\n" % (out_var, self.bound_name, in_var_p, ownership_policy)
 
 	def check_call(self, in_var):
-		return "check_%s(%s)" % (self.clean_name, in_var)
+		return "check_%s(%s)" % (self.bound_name, in_var)
 
 
 #
 class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
-	def __init__(self, type):
-		super().__init__(type, type + '*')
+	def __init__(self, type, storage_type=None, bound_name=None):
+		super().__init__(type, storage_type, bound_name)
 
 	def get_type_glue(self, module_name):
 		# type
-		out = 'static PyObject *%s_type;\n\n' % self.clean_name
+		out = 'static PyObject *%s_type;\n\n' % self.bound_name
 
 		# constructor
-		out += 'static PyObject *%s_tp_new(PyTypeObject *subtype, PyObject *args, PyObject *kwds) {\n' % self.clean_name
+		out += 'static PyObject *%s_tp_new(PyTypeObject *subtype, PyObject *args, PyObject *kwds) {\n' % self.bound_name
 		if self.constructor:
 			out += '	return %s(NULL, args);\n' % self.constructor['proxy_name']
 		else:
@@ -43,7 +43,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		out += '}\n\n'
 
 		# members
-		out += 'static PyGetSetDef %s_tp_getset[] = {\n' % self.clean_name
+		out += 'static PyGetSetDef %s_tp_getset[] = {\n' % self.bound_name
 		for member in self.members:
 			setter = member['setter']
 			if setter is None:
@@ -53,26 +53,26 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		out += '};\n\n'
 
 		# output binding code for static class members
-		out += 'static void bind_%s_static_members(PyObject *o) {\n' % self.clean_name
+		out += 'static void bind_%s_static_members(PyObject *o) {\n' % self.bound_name
 		out += '	PyObject *tmp;\n\n'
 
 		for i, attr in enumerate(self.static_members):
 			if attr['getter']:
-				out += '	// %s::%s\n' % (self.clean_name, attr['name'])
+				out += '	// %s::%s\n' % (self.fully_qualified_name, attr['name'])
 				out += '	tmp = %s(o, NULL);\n' % attr['getter']
 				out += '	PyObject_SetAttrString(o, "%s", tmp);\n' % attr['name']
 				out += '	Py_DECREF(tmp);\n'
 		out += '}\n\n'
 
 		# methods
-		out += 'static PyMethodDef %s_tp_methods[] = {\n' % self.clean_name
+		out += 'static PyMethodDef %s_tp_methods[] = {\n' % self.bound_name
 		for method in self.get_all_methods():
 			out += '	{"%s", (PyCFunction)%s, METH_VARARGS},\n' % (method['name'], method['proxy_name'])
 		out += '	{NULL} /* Sentinel */\n'
 		out += '};\n\n'
 
 		# comparison operators dispatcher
-		out += 'static PyObject *%s_tp_richcompare(PyObject *o1, PyObject *o2, int op) {\n' % self.clean_name
+		out += 'static PyObject *%s_tp_richcompare(PyObject *o1, PyObject *o2, int op) {\n' % self.bound_name
 		for i, ops in enumerate(self.comparison_ops):
 			op = ops['op']
 			if op == '<':
@@ -95,13 +95,13 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 			op = self.get_operator(op)
 			return '	{%s, &%s},\n' % (slot, op['proxy_name']) if op else ''
 
-		out += 'static PyType_Slot %s_slots[] = {\n' % self.clean_name
-		out += '	{Py_tp_new, &%s_tp_new},\n' % self.clean_name
+		out += 'static PyType_Slot %s_slots[] = {\n' % self.bound_name
+		out += '	{Py_tp_new, &%s_tp_new},\n' % self.bound_name
 		out += '	{Py_tp_doc, "TODO doc"},\n'
 		out += '	{Py_tp_dealloc, &wrapped_PyObject_tp_dealloc},\n'
-		out += '	{Py_tp_getset, &%s_tp_getset},\n' % self.clean_name
-		out += '	{Py_tp_methods, &%s_tp_methods},\n' % self.clean_name
-		out += '	{Py_tp_richcompare, &%s_tp_richcompare},\n' % self.clean_name
+		out += '	{Py_tp_getset, &%s_tp_getset},\n' % self.bound_name
+		out += '	{Py_tp_methods, &%s_tp_methods},\n' % self.bound_name
+		out += '	{Py_tp_richcompare, &%s_tp_richcompare},\n' % self.bound_name
 		out += get_operator_slot('Py_nb_add', '+')
 		out += get_operator_slot('Py_nb_subtract', '-')
 		out += get_operator_slot('Py_nb_multiply', '*')
@@ -118,10 +118,10 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	Py_TPFLAGS_DEFAULT, /* flags */
 	%s_slots
 };
-\n''' % (self.clean_name, self.bound_name, self.clean_name)
+\n''' % (self.bound_name, self.bound_name, self.bound_name)
 
 		# delete delegate
-		out += 'static void delete_%s(void *o) { delete (%s *)o; }\n\n' % (self.clean_name, self.fully_qualified_name)
+		out += 'static void delete_%s(void *o) { delete (%s *)o; }\n\n' % (self.bound_name, self.fully_qualified_name)
 
 		# to/from C
 		out += '''bool check_%s(PyObject *o) {
@@ -130,13 +130,13 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		return false;
 	return w->type_tag == %s;
 }
-\n''' % (self.clean_name, self.type_tag)
+\n''' % (self.bound_name, self.type_tag)
 
 		out += '''void to_c_%s(PyObject *o, void *obj) {
 	wrapped_PyObject *w = cast_to_wrapped_PyObject_unsafe(o);
 	*(%s **)obj = (%s *)_type_tag_upcast(w->obj, w->type_tag, %s);
 }
-\n''' % (self.clean_name, self.fully_qualified_name, self.fully_qualified_name, self.type_tag)
+\n''' % (self.bound_name, self.fully_qualified_name, self.fully_qualified_name, self.type_tag)
 
 		if self._non_copyable:
 			copy_code = '''PyErr_SetString(PyExc_RuntimeError, "type %s is non-copyable");
@@ -154,14 +154,14 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		pyobj->on_delete = &delete_%s;
 	return (PyObject *)pyobj;
 }
-\n''' % (self.clean_name, self.clean_name, copy_code, self.clean_name, self.clean_name)
+\n''' % (self.bound_name, self.bound_name, copy_code, self.bound_name, self.bound_name)
 
 		return out
 
 	def finalize_type(self):
-		out = '	%s_type = PyType_FromSpec(&%s_spec);\n' % (self.clean_name, self.clean_name)
-		out += '	bind_%s_static_members(%s_type);\n' % (self.clean_name, self.clean_name)
-		out += '	PyModule_AddObject(m, "%s", %s_type);\n' % (self.bound_name, self.clean_name)
+		out = '	%s_type = PyType_FromSpec(&%s_spec);\n' % (self.bound_name, self.bound_name)
+		out += '	bind_%s_static_members(%s_type);\n' % (self.bound_name, self.bound_name)
+		out += '	PyModule_AddObject(m, "%s", %s_type);\n' % (self.bound_name, self.bound_name)
 		return out
 
 
