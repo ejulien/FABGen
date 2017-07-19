@@ -84,9 +84,9 @@ symbol_clean_rules['>'] = 'gt'
 symbol_clean_rules['>='] = 'ge'
 
 
-def get_clean_symbol_name(str):
+def get_clean_symbol_name(name):
 	""" Return a string cleaned so that it may be used as a valid symbol name in the generator output."""
-	parts = str.split(' ')
+	parts = name.split(' ')
 
 	def clean_symbol_name_part(part):
 		for f_o, f_d in symbol_clean_rules.items():
@@ -95,6 +95,11 @@ def get_clean_symbol_name(str):
 
 	parts = [clean_symbol_name_part(part) for part in parts]
 	return '_'.join(parts)
+
+
+def get_symbol_default_bound_name(name):
+	name = name.split('::')[-1]  # strip namespace
+	return get_clean_symbol_name(name)
 
 
 #
@@ -598,10 +603,10 @@ class FABGen:
 
 	def bind_function_overloads(self, name, protos, enable_proxy_protocol=False):
 		expr_eval = lambda args: '%s(%s);' % (name, ', '.join(args))
+		bound_name = get_symbol_default_bound_name(name)
 		proxy_name = get_clean_symbol_name('_%s__' % name)
-		self.__bind_proxy(proxy_name, None, protos, 'function %s' % name, expr_eval, 'function', enable_proxy_protocol=enable_proxy_protocol)
+		self.__bind_proxy(proxy_name, None, protos, 'function %s' % bound_name, expr_eval, 'function', enable_proxy_protocol=enable_proxy_protocol)
 
-		bound_name = get_ctype_default_bound_name(parse(name, _CType))
 		self._bound_functions.append({'name': name, 'bound_name': bound_name, 'proxy_name': proxy_name, 'protos': protos})
 
 	#
