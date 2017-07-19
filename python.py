@@ -38,7 +38,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		if self.constructor:
 			out += '	return %s(NULL, args);\n' % self.constructor['proxy_name']
 		else:
-			out += '	PyErr_Format(PyExc_TypeError, "cannot create %s.%s instances");\n' % (module_name, self.bound_name)
+			out += '	PyErr_Format(PyExc_TypeError, "cannot create %s instances");\n' % self.bound_name
 			out += '	return NULL;\n'
 		out += '}\n\n'
 
@@ -125,7 +125,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 		# to/from C
 		out += '''bool check_%s(PyObject *o) {
-	wrapped_PyObject *w = cast_to_wrapped_PyObject(o);
+	wrapped_PyObject *w = cast_to_wrapped_PyObject_safe(o);
 	if (!w)
 		return false;
 	return w->type_tag == %s;
@@ -133,7 +133,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 \n''' % (self.clean_name, self.type_tag)
 
 		out += '''void to_c_%s(PyObject *o, void *obj) {
-	wrapped_PyObject *w = cast_to_wrapped_PyObject(o);
+	wrapped_PyObject *w = cast_to_wrapped_PyObject_unsafe(o);
 	*(%s **)obj = (%s *)_type_tag_upcast(w->obj, w->type_tag, %s);
 }
 \n''' % (self.clean_name, self.fully_qualified_name, self.fully_qualified_name, self.type_tag)
@@ -186,7 +186,7 @@ class PythonGenerator(gen.FABGen):
 typedef struct {
 	PyObject_HEAD;
 
-	char magic[4]; // wrapped_PyObject marker
+	uint32_t magic_u32; // wrapped_PyObject marker
 	const char *type_tag; // wrapped pointer type tag
 
 	void *obj;
@@ -195,10 +195,7 @@ typedef struct {
 } wrapped_PyObject;
 
 static void init_wrapped_PyObject(wrapped_PyObject *o, const char *type_tag, void *obj) {
-	o->magic[0] = 'F';
-	o->magic[1] = 'A';
-	o->magic[2] = 'B';
-	o->magic[3] = '!';
+	o->magic_u32 = 0x46414221;
 	o->type_tag = type_tag;
 
 	o->obj = obj;
@@ -206,12 +203,14 @@ static void init_wrapped_PyObject(wrapped_PyObject *o, const char *type_tag, voi
 	o->on_delete = NULL;
 }
 
-static wrapped_PyObject *cast_to_wrapped_PyObject(PyObject *o) {
+static wrapped_PyObject *cast_to_wrapped_PyObject_safe(PyObject *o) {
 	wrapped_PyObject *w = (wrapped_PyObject *)o;
-	if (w->magic[0] != 'F' || w->magic[1] != 'A' || w->magic[2] != 'B' || w->magic[3] != '!')
+	if (w->magic_u32 != 0x46414221)
 		return NULL;
 	return w;
 }
+
+static wrapped_PyObject *cast_to_wrapped_PyObject_unsafe(PyObject *o) { return (wrapped_PyObject *)o; }
 
 static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 	wrapped_PyObject *w = (wrapped_PyObject *)self;
