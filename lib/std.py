@@ -1,4 +1,4 @@
-class StdSharedPtrProxyProtocol:
+class StdSharedPtrProxyFeature:
 	def __init__(self, wrapped_conv):
 		self.wrapped_conv = wrapped_conv
 

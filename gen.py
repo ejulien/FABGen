@@ -229,10 +229,8 @@ class TypeConverter:
 
 		self._non_copyable = False
 
-		# if type acts as a proxy (such as std::shared_ptr), this protocol can unwrap the underlying object before method call, member lookup and argument passing
-		self._proxy_protocol = None
-
-		self.bases = []  # type derives from the following types
+		self._features = {}
+		self._upcasts = []  # type valid upcasts
 
 	def get_operator(self, op):
 		for arithmetic_op in self.arithmetic_ops:
@@ -256,21 +254,8 @@ class TypeConverter:
 		return transform_var_ref_to(var, var_ref, self.ctype.get_ref('*'))
 
 	def get_all_methods(self):
-		"""Return a list of all the type methods (including inherited methods)."""
-		all_methods = copy.copy(self.methods)
-
-		def collect_base_methods(base):
-			for method in base.methods:
-				if not any(m['name'] == method['name'] for m in all_methods):
-					all_methods.append(method)
-
-			for _base in base.bases:
-				collect_base_methods(_base)
-
-		for base in self.bases:
-			collect_base_methods(base)
-
-		return all_methods
+		"""Return a list of all the type methods."""
+		return self.methods
 
 	def can_upcast_to(self, type):
 		clean_name = get_clean_symbol_name(type)
@@ -278,8 +263,8 @@ class TypeConverter:
 		if self.clean_name == clean_name:
 			return True
 
-		for base in self.bases:
-			if base.can_upcast_to(type):
+		for upcast in self._upcasts:
+			if upcast.can_upcast_to(type):
 				return True
 
 		return False
@@ -345,6 +330,11 @@ class FABGen:
 		if in_source:
 			self._source += code
 
+	def insert_binding_code(self, code, comment):
+		self._source += '// %s\n' % comment
+		self._source += code
+		self._source += '\n'
+
 	def add_custom_init_code(self, code):
 		self._custom_init_code += code
 
@@ -353,13 +343,15 @@ class FABGen:
 		assert 'raise_exception not implemented in generator'
 
 	#
-	def begin_type(self, conv):
+	def begin_type(self, conv, features):
 		"""Declare a new type converter."""
 		self._header += conv.get_type_api(self._name)
 
 		self._source += '// %s type tag\n' % conv.fully_qualified_name
 		self._source += 'static const char *%s = "%s";\n\n' % (conv.type_tag, conv.bound_name)
 		self._source += conv.get_type_api(self._name)
+
+		conv._features = features
 
 		self._bound_types.append(conv)
 		self.__type_convs[conv.fully_qualified_name] = conv
@@ -368,12 +360,12 @@ class FABGen:
 	def end_type(self, conv):
 		self._source += conv.get_type_glue(self._name) + '\n'
 
-	def bind_type(self, conv):
-		self.begin_type(conv)
+	def bind_type(self, conv, features={}):
+		self.begin_type(conv, features)
 		self.end_type(conv)
 
 	#
-	def begin_class(self, type, converter_class=None, noncopyable=False, bound_name=None, proxy_protocol=None):
+	def begin_class(self, type, converter_class=None, noncopyable=False, bound_name=None, features={}):
 		"""Begin a class declaration."""
 		if type in self.__type_convs:
 			return self.__type_convs[type]  # type already declared
@@ -381,8 +373,7 @@ class FABGen:
 		default_storage_type = type + '*'
 
 		conv = self.default_class_converter(type, default_storage_type, bound_name) if converter_class is None else converter_class(type, default_storage_type, bound_name)
-		conv._proxy_protocol = proxy_protocol
-		conv = self.begin_type(conv)
+		conv = self.begin_type(conv, features)
 
 		conv._non_copyable = noncopyable
 
@@ -397,8 +388,8 @@ class FABGen:
 		return self.begin_class(type, converter_class)
 
 	#
-	def add_class_base(self, conv, base_conv):
-		conv.bases.append(base_conv)
+	def add_upcast(self, conv, base_conv):
+		conv._upcasts.append(base_conv)
 
 	#
 	def select_ctype_conv(self, ctype):
@@ -438,10 +429,10 @@ class FABGen:
 		_protos = []
 
 		for proto in protos:
-			assert len(proto) == 3, "prototype incomplete. Expected 3 entries (type, [arguments], [flags]), found %d" % len(proto)
+			assert len(proto) == 3, "prototype incomplete. Expected 3 entries (type, [arguments], [features]), found %d" % len(proto)
 
 			rval = parse(proto[0], _CType)
-			_proto = {'rval': {'ctype': rval.non_const(), 'conv': self.select_ctype_conv(rval)}, 'args': [], 'flags': proto[2]}
+			_proto = {'rval': {'ctype': rval.non_const(), 'conv': self.select_ctype_conv(rval)}, 'args': [], 'features': proto[2]}
 
 			args = proto[1]
 			if not type(args) is type([]):
@@ -458,11 +449,12 @@ class FABGen:
 		return _protos
 
 	def __proto_call(self, self_conv, proto, expr_eval, ctx, fixed_arg_count=None):
-		flags = proto['flags']
+		features = proto['features']
 
-		enable_proxy_protocol = 'proxy' in flags
-		if enable_proxy_protocol:
-			assert self_conv._proxy_protocol is not None, "Type converter has no proxy protocol"
+		enable_proxy = 'proxy' in features
+		if enable_proxy:
+			assert ctx != 'function', "Proxy feature cannot be used for a function call"
+			assert 'proxy' in self_conv._features, "Type converter does not support the proxy feature"
 
 		rval = proto['rval']['ctype']
 		rval_conv = proto['rval']['conv']
@@ -470,12 +462,14 @@ class FABGen:
 		# prepare C call self argument
 		if self_conv:
 			if ctx in ['getter', 'setter', 'method', 'arithmetic_op', 'inplace_arithmetic_op', 'comparison_op']:
-				if enable_proxy_protocol:
+				if enable_proxy:
+					proxy = self_conv._features['proxy']
+
 					self._source += '	' + self.decl_var(self_conv.storage_ctype, '_self_wrapped')
 					self._source += '	' + self_conv.to_c_call(self.get_self(ctx), '&_self_wrapped')
 
-					self._source += '	' + self.decl_var(self_conv._proxy_protocol.wrapped_conv.storage_ctype, '_self')
-					self._source += self_conv._proxy_protocol.unwrap(self_conv, '_self_wrapped', '_self')
+					self._source += '	' + self.decl_var(proxy.wrapped_conv.storage_ctype, '_self')
+					self._source += proxy.unwrap(self_conv, '_self_wrapped', '_self')
 				else:
 					self._source += '	' + self.decl_var(self_conv.storage_ctype, '_self')
 					self._source += '	' + self_conv.to_c_call(self.get_self(ctx), '&_self')
@@ -500,12 +494,14 @@ class FABGen:
 		if ctx == 'constructor':
 			rval_ptr = rval.add_ref('*')  # constructor returns a pointer
 
-			if enable_proxy_protocol:
-				self._source += self.decl_var(rval_conv._proxy_protocol.wrapped_conv.ctype.add_ref('*'), 'rval_raw', ' = ')
-				self._source += 'new %s(%s);\n' % (rval_conv._proxy_protocol.wrapped_conv.ctype, ', '.join(c_call_args))
+			if enable_proxy:
+				proxy = rval_conv._features['proxy']
+
+				self._source += self.decl_var(proxy.wrapped_conv.ctype.add_ref('*'), 'rval_raw', ' = ')
+				self._source += 'new %s(%s);\n' % (proxy.wrapped_conv.ctype, ', '.join(c_call_args))
 
 				self._source += self.decl_var(rval_ptr, 'rval')
-				self._source += self_conv._proxy_protocol.wrap(self_conv, 'rval_raw', 'rval')
+				self._source += proxy.wrap(self_conv, 'rval_raw', 'rval')
 			else:
 				self._source += self.decl_var(rval_ptr, 'rval', ' = ')
 				self._source += 'new %s(%s);\n' % (rval, ', '.join(c_call_args))
@@ -612,8 +608,8 @@ class FABGen:
 		self._source += '\n'
 
 	#
-	def bind_function(self, name, rval, args, flags=[]):
-		self.bind_function_overloads(name, [(rval, args, flags)])
+	def bind_function(self, name, rval, args, features=[]):
+		self.bind_function_overloads(name, [(rval, args, features)])
 
 	def bind_function_overloads(self, name, protos):
 		expr_eval = lambda args: '%s(%s);' % (name, ', '.join(args))
@@ -624,8 +620,8 @@ class FABGen:
 		self._bound_functions.append({'name': name, 'bound_name': bound_name, 'proxy_name': proxy_name, 'protos': protos})
 
 	#
-	def bind_constructor(self, conv, args, flags=[]):
-		self.bind_constructor_overloads(conv, [(args, flags)])
+	def bind_constructor(self, conv, args, features=[]):
+		self.bind_constructor_overloads(conv, [(args, features)])
 
 	def bind_constructor_overloads(self, conv, proto_args):
 		type = conv.fully_qualified_name
@@ -638,8 +634,8 @@ class FABGen:
 		conv.constructor = {'proxy_name': proxy_name, 'protos': protos}
 
 	#
-	def bind_method(self, conv, name, rval, args, flags=[]):
-		self.bind_method_overloads(conv, name, [(rval, args, flags)])
+	def bind_method(self, conv, name, rval, args, features=[]):
+		self.bind_method_overloads(conv, name, [(rval, args, features)])
 
 	def bind_method_overloads(self, conv, name, protos):
 		expr_eval = lambda args: '_self->%s(%s);' % (name, ', '.join(args))
@@ -650,13 +646,8 @@ class FABGen:
 		conv.methods.append({'name': name, 'proxy_name': proxy_name, 'protos': protos})
 
 	#
-	def bind_member(self, conv, member, enable_proxy_protocol=False):
+	def bind_member(self, conv, member, features=[]):
 		arg = parse(member, _CArg)
-
-		# prepare proxy binding flags
-		flags = []
-		if enable_proxy_protocol:
-			flags.append('proxy')
 
 		# getter must go through a pointer or reference so that the enclosing object copy is modified
 		getter_ctype = arg.ctype
@@ -664,14 +655,14 @@ class FABGen:
 			getter_ctype = getter_ctype.add_ref('*')
 
 		expr_eval = lambda args: '&_self->%s;' % arg.name
-		getter_protos = [(get_fully_qualified_ctype_name(getter_ctype), [], flags)]
+		getter_protos = [(get_fully_qualified_ctype_name(getter_ctype), [], features)]
 		getter_proxy_name = 'py_get_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name)
 		self.__bind_proxy(getter_proxy_name, conv, getter_protos, 'get member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'getter', 0)
 
 		# setter
 		if not arg.ctype.is_const():
 			expr_eval = lambda args: '_self->%s = %s;' % (arg.name, args[0])
-			setter_protos = [('void', [member], flags)]
+			setter_protos = [('void', [member], features)]
 			setter_proxy_name = 'py_set_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name)
 			self.__bind_proxy(setter_proxy_name, conv, setter_protos, 'set member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'setter', 1)
 		else:
@@ -679,12 +670,12 @@ class FABGen:
 
 		conv.members.append({'name': arg.name, 'getter': getter_proxy_name, 'setter': setter_proxy_name})
 
-	def bind_members(self, conv, members, enable_proxy_protocol=False):
+	def bind_members(self, conv, members, features=[]):
 		for member in members:
-			self.bind_member(conv, member, enable_proxy_protocol)
+			self.bind_member(conv, member, features)
 
 	#
-	def bind_static_member(self, conv, member, enable_proxy_protocol=False):
+	def bind_static_member(self, conv, member, features=[]):
 		arg = parse(member, _CArg)
 
 		# getter must go through a pointer or reference so that the enclosing object copy is modified
@@ -693,24 +684,24 @@ class FABGen:
 			getter_ctype = getter_ctype.add_ref('&')
 
 		expr_eval = lambda args: '%s::%s;' % (conv.fully_qualified_name, arg.name)
-		getter_protos = [(get_fully_qualified_ctype_name(getter_ctype), [])]
+		getter_protos = [(get_fully_qualified_ctype_name(getter_ctype), [], features)]
 		getter_proxy_name = 'py_get_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name)
-		self.__bind_proxy(getter_proxy_name, None, getter_protos, 'get static member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'getter', 0, enable_proxy_protocol)
+		self.__bind_proxy(getter_proxy_name, None, getter_protos, 'get static member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'getter', 0)
 
 		# setter
 		if not arg.ctype.is_const():
 			expr_eval = lambda args: '%s::%s = %s;' % (conv.fully_qualified_name, arg.name, args[0])
-			setter_protos = [('void', [member])]
+			setter_protos = [('void', [member], features)]
 			setter_proxy_name = 'py_set_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name)
-			self.__bind_proxy(setter_proxy_name, None, setter_protos, 'set static member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'setter', 1, enable_proxy_protocol)
+			self.__bind_proxy(setter_proxy_name, None, setter_protos, 'set static member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'setter', 1)
 		else:
 			setter_proxy_name = None
 
 		conv.static_members.append({'name': arg.name, 'getter': getter_proxy_name, 'setter': setter_proxy_name})
 
 	#
-	def bind_arithmetic_op(self, conv, op, rval, args, flags=[]):
-		self.bind_arithmetic_op_overloads(conv, op, [(rval, args, flags)], enable_proxy_protocol)
+	def bind_arithmetic_op(self, conv, op, rval, args, features=[]):
+		self.bind_arithmetic_op_overloads(conv, op, [(rval, args, features)])
 
 	def bind_arithmetic_op_overloads(self, conv, op, protos):
 		assert op in ['-', '+', '*', '/'], 'Unsupported arithmetic operator ' + op
@@ -721,17 +712,17 @@ class FABGen:
 
 		conv.arithmetic_ops.append({'op': op, 'proxy_name': proxy_name})
 
-	def bind_arithmetic_ops(self, conv, ops, rval, args, flags=[]):
+	def bind_arithmetic_ops(self, conv, ops, rval, args, features=[]):
 		for op in ops:
-			self.bind_arithmetic_op(conv, op, rval, args, flags)
+			self.bind_arithmetic_op(conv, op, rval, args, features)
 
 	def bind_arithmetic_ops_overloads(self, conv, ops, protos):
 		for op in ops:
 			self.bind_arithmetic_op_overloads(conv, op, protos)
 
 	#
-	def bind_inplace_arithmetic_op(self, conv, op, args, flags=[]):
-		self.bind_inplace_arithmetic_op_overloads(conv, op, [args, flags])
+	def bind_inplace_arithmetic_op(self, conv, op, args, features=[]):
+		self.bind_inplace_arithmetic_op_overloads(conv, op, [args, features])
 
 	def bind_inplace_arithmetic_op_overloads(self, conv, op, args):
 		assert op in ['-=', '+=', '*=', '/='], 'Unsupported inplace arithmetic operator ' + op
@@ -743,17 +734,17 @@ class FABGen:
 
 		conv.arithmetic_ops.append({'op': op, 'proxy_name': proxy_name})
 
-	def bind_inplace_arithmetic_ops(self, conv, ops, args, flags=[]):
+	def bind_inplace_arithmetic_ops(self, conv, ops, args, features=[]):
 		for op in ops:
-			self.bind_inplace_arithmetic_op(conv, op, args, flags)
+			self.bind_inplace_arithmetic_op(conv, op, args, features)
 
 	def bind_inplace_arithmetic_ops_overloads(self, conv, ops, args):
 		for op in ops:
 			self.bind_inplace_arithmetic_op_overloads(conv, op, args)
 
 	#
-	def bind_comparison_op(self, conv, op, args, flags=[]):
-		self.bind_comparison_op_overloads(conv, op, [args, flags])
+	def bind_comparison_op(self, conv, op, args, features=[]):
+		self.bind_comparison_op_overloads(conv, op, [args, features])
 
 	def bind_comparison_op_overloads(self, conv, op, args):
 		assert op in ['<', '<=', '==', '!=', '>', '>='], 'Unsupported comparison operator ' + op
@@ -765,9 +756,9 @@ class FABGen:
 
 		conv.comparison_ops.append({'op': op, 'proxy_name': proxy_name})
 
-	def bind_comparison_ops(self, conv, ops, rval, args, flags=[]):
+	def bind_comparison_ops(self, conv, ops, rval, args, features=[]):
 		for op in ops:
-			self.bind_comparison_op(conv, op, rval, args, flags)
+			self.bind_comparison_op(conv, op, rval, args, features)
 
 	def bind_comparison_ops_overloads(self, conv, ops, protos):
 		for op in ops:
@@ -814,13 +805,13 @@ class FABGen:
 		for type in self._bound_types:
 			downcasts[type] = []
 
-		def register_upcast(type, bases):
-			for base in bases:
+		def register_upcast(type, upcasts):
+			for base in upcasts:
 				downcasts[base].append(type)
-				register_upcast(type, base.bases)
+				register_upcast(type, base._upcasts)
 
 		for type in self._bound_types:
-			register_upcast(type, type.bases)
+			register_upcast(type, type._upcasts)
 
 		#
 		out = '''\

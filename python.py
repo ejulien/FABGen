@@ -325,6 +325,7 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 
 	def output_module_init_function(self, module_def):
 		self._source += 'PyMODINIT_FUNC PyInit_%s(void) {\n' % self._name
+		self._source += '// custom initialization code'
 		self._source += self._custom_init_code
 
 		self._source += '''

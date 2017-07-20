@@ -1,7 +1,7 @@
 import lua
 import python
 
-from lib.std import StdSharedPtrProxyProtocol
+from lib.std import StdSharedPtrProxyFeature
 
 
 def bind_globals(gen):
@@ -9,14 +9,12 @@ def bind_globals(gen):
 	gen.bind_function('gs::core::UnloadPlugins', 'void', [])
 
 
-def bind_render(gen):
+def bind_window_system(gen):
 	window_conv = gen.begin_class('gs::RenderWindow')
 	gen.end_class(window_conv)
 
 
 def bind_plus(gen):
-
-	# Plus
 	gen.add_include('plus/plus.h')
 
 	plus_conv = gen.begin_class('gs::Plus', noncopyable=True)
@@ -44,19 +42,56 @@ def bind_plus(gen):
 
 
 def bind_filesystem(gen):
+	gen.add_include("foundation/filesystem.h")
 	gen.add_include("foundation/io_cfile.h")
 
-	cfile_conv = gen.begin_class('gs::io::CFile', bound_name='CFile_hide_me')  # TODO do not expose this type in the module
-	gen.end_class(cfile_conv)
+	# binding specific API
+	gen.insert_binding_code('''static bool MountFileDriver(gs::io::sDriver driver) {
+	return gs::g_fs.get().Mount(driver);
+}
+	''', 'Filesystem custom API')
 
-	std_file_driver_conv = gen.begin_class('std::shared_ptr<gs::io::CFile>', bound_name='StdFileDriver', proxy_protocol=StdSharedPtrProxyProtocol(cfile_conv))
-	gen.bind_constructor_overloads(std_file_driver_conv, [
+	#
+	io_driver = gen.begin_class('gs::io::Driver', bound_name='IODriver_hide_me', noncopyable=True)
+	gen.end_class(io_driver)
+
+	shared_io_driver = gen.begin_class('std::shared_ptr<gs::io::Driver>', bound_name='IODriver', features={'proxy': StdSharedPtrProxyFeature(io_driver)})
+	gen.end_class(shared_io_driver)
+
+	#
+	io_cfile = gen.begin_class('gs::io::CFile', bound_name='CFile_hide_me')  # TODO do not expose this type in the module
+	gen.end_class(io_cfile)
+
+	shared_io_cfile = gen.begin_class('std::shared_ptr<gs::io::CFile>', bound_name='StdFileDriver', features={'proxy': StdSharedPtrProxyFeature(io_cfile)})
+	gen.add_upcast(shared_io_cfile, shared_io_driver)
+	gen.bind_constructor_overloads(shared_io_cfile, [
 		([], ['proxy']),
 		(['const std::string &root_path'], ['proxy']),
 		(['const std::string &root_path', 'bool sandbox'], ['proxy'])
 		])
-	gen.bind_method_overloads(std_file_driver_conv, 'SetRootPath', [('void', ['const std::string &path'], ['proxy']), ('void', ['const std::string &path', 'bool sandbox'], ['proxy'])])
-	gen.end_class(std_file_driver_conv)
+	gen.bind_method_overloads(shared_io_cfile, 'SetRootPath', [('void', ['const std::string &path'], ['proxy']), ('void', ['const std::string &path', 'bool sandbox'], ['proxy'])])
+	gen.end_class(shared_io_cfile)
+
+	gen.bind_function('MountFileDriver', 'bool', ['std::shared_ptr<gs::io::Driver> driver'])
+
+
+def bind_mixer(gen):
+	gen.add_include('engine/engine_factories.h')
+	gen.add_include('engine/mixer.h')
+
+	# binding specific API
+	gen.insert_binding_code('''static std::shared_ptr<gs::audio::Mixer> CreateMixer(const char *name) { return gs::core::g_mixer_factory.get().Instantiate(name); }
+static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixer_factory.get().Instantiate(); }
+	''', 'Mixer custom API')
+
+	#
+	audio_mixer = gen.begin_class('gs::audio::Mixer', bound_name='Mixer_hide_me', noncopyable=True)
+	gen.end_class(audio_mixer)
+
+	shared_audio_mixer = gen.begin_class('std::shared_ptr<gs::audio::Mixer>', bound_name='Mixer', features={'proxy': StdSharedPtrProxyFeature(audio_mixer)})
+	gen.end_class(shared_audio_mixer)
+
+	gen.bind_function_overloads('CreateMixer', [('std::shared_ptr<gs::audio::Mixer>', [], []), ('std::shared_ptr<gs::audio::Mixer>', ['const char *name'], [])])
 
 
 def bind_math(gen):
@@ -149,9 +184,10 @@ def bind_gs(gen):
 
 	bind_globals(gen)
 	bind_filesystem(gen)
-	bind_render(gen)
+	bind_window_system(gen)
 	bind_plus(gen)
 	bind_math(gen)
+	bind_mixer(gen)
 
 	gen.finalize()
 
