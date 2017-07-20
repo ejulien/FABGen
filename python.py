@@ -66,7 +66,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 		# methods
 		out += 'static PyMethodDef %s_tp_methods[] = {\n' % self.bound_name
-		for method in self.get_all_methods():
+		for method in self.methods:
 			out += '	{"%s", (PyCFunction)%s, METH_VARARGS},\n' % (method['name'], method['proxy_name'])
 		out += '	{NULL} /* Sentinel */\n'
 		out += '};\n\n'
@@ -128,13 +128,13 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	wrapped_PyObject *w = cast_to_wrapped_PyObject_safe(o);
 	if (!w)
 		return false;
-	return _type_tag_upcast(o, w->type_tag, %s) != nullptr;
+	return _type_tag_cast(o, w->type_tag, %s) != nullptr;
 }
 \n''' % (self.bound_name, self.type_tag)
 
 		out += '''void to_c_%s(PyObject *o, void *obj) {
 	wrapped_PyObject *w = cast_to_wrapped_PyObject_unsafe(o);
-	*(%s **)obj = (%s *)_type_tag_upcast(w->obj, w->type_tag, %s);
+	*(%s **)obj = (%s *)_type_tag_cast(w->obj, w->type_tag, %s);
 }
 \n''' % (self.bound_name, self.fully_qualified_name, self.fully_qualified_name, self.type_tag)
 

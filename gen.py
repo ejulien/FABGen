@@ -230,7 +230,8 @@ class TypeConverter:
 		self._non_copyable = False
 
 		self._features = {}
-		self._upcasts = []  # type valid upcasts
+		self._upcasts = []  # valid upcasts
+		self._casts = []  # valid casts
 
 	def get_operator(self, op):
 		for arithmetic_op in self.arithmetic_ops:
@@ -252,22 +253,6 @@ class TypeConverter:
 	def prepare_var_for_conv(self, var, var_ref):
 		"""Prepare a variable for use with the converter from_c/to_c methods."""
 		return transform_var_ref_to(var, var_ref, self.ctype.get_ref('*'))
-
-	def get_all_methods(self):
-		"""Return a list of all the type methods."""
-		return self.methods
-
-	def can_upcast_to(self, type):
-		clean_name = get_clean_symbol_name(type)
-
-		if self.clean_name == clean_name:
-			return True
-
-		for upcast in self._upcasts:
-			if upcast.can_upcast_to(type):
-				return True
-
-		return False
 
 
 def format_list_for_comment(lst):
@@ -314,7 +299,7 @@ class FABGen:
 		self.output_includes()
 
 		self._source += 'enum OwnershipPolicy { NonOwning, Copy, Owning };\n\n'
-		self._source += 'void *_type_tag_upcast(void *in_p, const char *in_type_tag, const char *out_type_tag);\n\n'
+		self._source += 'void *_type_tag_cast(void *in_p, const char *in_type_tag, const char *out_type_tag);\n\n'
 
 		self._custom_init_code = ""
 
@@ -352,6 +337,8 @@ class FABGen:
 		self._source += conv.get_type_api(self._name)
 
 		conv._features = features
+		for feature, feature_obj in conv._features.items():
+			feature_obj.init(self, conv)  # init converter feature
 
 		self._bound_types.append(conv)
 		self.__type_convs[conv.fully_qualified_name] = conv
@@ -363,6 +350,11 @@ class FABGen:
 	def bind_type(self, conv, features={}):
 		self.begin_type(conv, features)
 		self.end_type(conv)
+
+	#
+	def typedef(self, name, alias_of):
+		conv = self.__type_convs[alias_of]
+		self.__type_convs[name] = conv
 
 	#
 	def begin_class(self, type, converter_class=None, noncopyable=False, bound_name=None, features={}):
@@ -388,8 +380,12 @@ class FABGen:
 		return self.begin_class(type, converter_class)
 
 	#
-	def add_upcast(self, conv, base_conv):
-		conv._upcasts.append(base_conv)
+	def add_upcast(self, derived_conv, base_conv):
+		derived_conv._upcasts.append(base_conv)
+
+	def add_cast(self, src_conv, tgt_conv, cast_delegate):
+		"""Declare a cast delegate from one type to another."""
+		src_conv._casts.append((tgt_conv, cast_delegate))
 
 	#
 	def select_ctype_conv(self, ctype):
@@ -469,7 +465,7 @@ class FABGen:
 					self._source += '	' + self_conv.to_c_call(self.get_self(ctx), '&_self_wrapped')
 
 					self._source += '	' + self.decl_var(proxy.wrapped_conv.storage_ctype, '_self')
-					self._source += proxy.unwrap(self_conv, '_self_wrapped', '_self')
+					self._source += proxy.unwrap('_self_wrapped', '_self')
 				else:
 					self._source += '	' + self.decl_var(self_conv.storage_ctype, '_self')
 					self._source += '	' + self_conv.to_c_call(self.get_self(ctx), '&_self')
@@ -501,7 +497,7 @@ class FABGen:
 				self._source += 'new %s(%s);\n' % (proxy.wrapped_conv.ctype, ', '.join(c_call_args))
 
 				self._source += self.decl_var(rval_ptr, 'rval')
-				self._source += proxy.wrap(self_conv, 'rval_raw', 'rval')
+				self._source += proxy.wrap('rval_raw', 'rval')
 			else:
 				self._source += self.decl_var(rval_ptr, 'rval', ' = ')
 				self._source += 'new %s(%s);\n' % (rval, ', '.join(c_call_args))
@@ -816,12 +812,14 @@ class FABGen:
 		#
 		out = '''\
 // type_tag based cast system
-void *_type_tag_upcast(void *in_p, const char *in_type_tag, const char *out_type_tag) {
+void *_type_tag_cast(void *in_p, const char *in_type_tag, const char *out_type_tag) {
 	if (out_type_tag == in_type_tag)
 		return in_p;
 
 	void *out_p = NULL;
-\n'''
+
+	// upcast
+'''
 
 		i = 0
 		for base in self._bound_types:
@@ -836,7 +834,29 @@ void *_type_tag_upcast(void *in_p, const char *in_type_tag, const char *out_type
 				out += 'if (in_type_tag == %s)\n' % downcast.type_tag
 				out += '			out_p = (%s *)((%s *)in_p);\n' % (get_fully_qualified_ctype_name(base.ctype), get_fully_qualified_ctype_name(downcast.ctype))
 
-			out += '	}'
+			out += '	}\n'
+			i += 1
+
+		out += '''
+	if (out_p)
+		return out_p;
+
+	// custom cast
+'''
+
+		i = 0
+		for conv in self._bound_types:
+			if len(conv._casts) == 0:
+				continue
+
+			out += '	' if i == 0 else ' else '
+			out += 'if (in_type_tag == %s) {\n' % conv.type_tag
+
+			for cast in conv._casts:
+				out += 'if (out_type_tag == %s) {\n' % cast[0]
+				out += '}\n'
+
+			out += '}\n'
 			i += 1
 
 		out += '''

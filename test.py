@@ -1,7 +1,7 @@
 import lua
 import python
 
-from lib.std import StdSharedPtrProxyFeature
+import lib.std
 
 
 def bind_globals(gen):
@@ -55,14 +55,14 @@ def bind_filesystem(gen):
 	io_driver = gen.begin_class('gs::io::Driver', bound_name='IODriver_hide_me', noncopyable=True)
 	gen.end_class(io_driver)
 
-	shared_io_driver = gen.begin_class('std::shared_ptr<gs::io::Driver>', bound_name='IODriver', features={'proxy': StdSharedPtrProxyFeature(io_driver)})
+	shared_io_driver = gen.begin_class('std::shared_ptr<gs::io::Driver>', bound_name='IODriver', features={'proxy': lib.std.SharedPtrProxyFeature(io_driver)})
 	gen.end_class(shared_io_driver)
 
 	#
 	io_cfile = gen.begin_class('gs::io::CFile', bound_name='CFile_hide_me')  # TODO do not expose this type in the module
 	gen.end_class(io_cfile)
 
-	shared_io_cfile = gen.begin_class('std::shared_ptr<gs::io::CFile>', bound_name='StdFileDriver', features={'proxy': StdSharedPtrProxyFeature(io_cfile)})
+	shared_io_cfile = gen.begin_class('std::shared_ptr<gs::io::CFile>', bound_name='StdFileDriver', features={'proxy': lib.std.SharedPtrProxyFeature(io_cfile)})
 	gen.add_upcast(shared_io_cfile, shared_io_driver)
 	gen.bind_constructor_overloads(shared_io_cfile, [
 		([], ['proxy']),
@@ -73,25 +73,6 @@ def bind_filesystem(gen):
 	gen.end_class(shared_io_cfile)
 
 	gen.bind_function('MountFileDriver', 'bool', ['std::shared_ptr<gs::io::Driver> driver'])
-
-
-def bind_mixer(gen):
-	gen.add_include('engine/engine_factories.h')
-	gen.add_include('engine/mixer.h')
-
-	# binding specific API
-	gen.insert_binding_code('''static std::shared_ptr<gs::audio::Mixer> CreateMixer(const char *name) { return gs::core::g_mixer_factory.get().Instantiate(name); }
-static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixer_factory.get().Instantiate(); }
-	''', 'Mixer custom API')
-
-	#
-	audio_mixer = gen.begin_class('gs::audio::Mixer', bound_name='Mixer_hide_me', noncopyable=True)
-	gen.end_class(audio_mixer)
-
-	shared_audio_mixer = gen.begin_class('std::shared_ptr<gs::audio::Mixer>', bound_name='Mixer', features={'proxy': StdSharedPtrProxyFeature(audio_mixer)})
-	gen.end_class(shared_audio_mixer)
-
-	gen.bind_function_overloads('CreateMixer', [('std::shared_ptr<gs::audio::Mixer>', [], []), ('std::shared_ptr<gs::audio::Mixer>', ['const char *name'], [])])
 
 
 def bind_math(gen):
@@ -170,6 +151,71 @@ def bind_math(gen):
 	gen.bind_method(vector3_conv, 'Ceil', 'gs::Vector3', [])
 
 	gen.end_class(vector3_conv)
+
+
+def bind_mixer(gen):
+	gen.add_include('engine/engine_factories.h')
+	gen.add_include('engine/mixer.h')
+
+	# binding specific API
+	gen.insert_binding_code('''static std::shared_ptr<gs::audio::Mixer> CreateMixer(const char *name) { return gs::core::g_mixer_factory.get().Instantiate(name); }
+static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixer_factory.get().Instantiate(); }
+	''', 'Mixer custom API')
+
+	#
+	mixer_channel_state = gen.begin_class('gs::audio::MixerChannelState')
+	gen.bind_constructor_overloads(mixer_channel_state, [
+		([], []),
+		(['float volume'], []),
+		(['float volume', 'bool direct'], [])
+	])
+	gen.end_class(mixer_channel_state)
+
+	mixer_channel_location = gen.begin_class('gs::audio::MixerChannelLocation')
+	gen.bind_constructor_overloads(mixer_channel_location, [
+		([], []),
+		(['const gs::Vector3 &pos'], [])
+	])
+	gen.bind_members(mixer_channel_location, ['gs::Vector3 position', 'gs::Vector3 velocity'])
+	gen.end_class(mixer_channel_location)
+
+	gen.typedef('gs::audio::MixerChannel', 'int')
+
+	#
+	sound = gen.begin_class('gs::audio::Sound', bound_name='Sound_hide_me', noncopyable=True)
+	gen.end_class(sound)
+
+	shared_sound = gen.begin_class('std::shared_ptr<gs::audio::Sound>', bound_name='Sound', features={'proxy': lib.std.SharedPtrProxyFeature(sound)})
+	gen.end_class(shared_sound)
+
+	#
+	def bind_mixer_api(conv, features=[]):
+		gen.bind_method(conv, 'Open', 'bool', [], features)
+		gen.bind_method(conv, 'Close', 'void', [], features)
+
+		gen.bind_method(conv, 'GetMasterVolume', 'float', [], features)
+		gen.bind_method(conv, 'SetMasterVolume', 'void', ['float volume'], features)
+
+		gen.bind_method(conv, 'EnableSpatialization', 'bool', ['bool enable'], features)
+
+		gen.bind_method(conv, 'LoadSound', 'std::shared_ptr<gs::audio::Sound>', ['const char *path'], features)
+		gen.bind_method_overloads(conv, 'Start', [
+			('gs::audio::MixerChannel', ['gs::audio::Sound &sound'], features),
+			('gs::audio::MixerChannel', ['gs::audio::Sound &sound', 'gs::audio::MixerChannelState state'], features),
+			('gs::audio::MixerChannel', ['gs::audio::Sound &sound', 'gs::audio::MixerChannelLocation location'], features),
+			('gs::audio::MixerChannel', ['gs::audio::Sound &sound', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state'], features)
+		])
+
+		gen.bind_method(conv, 'StopAll', 'void', [], features)
+
+	audio_mixer = gen.begin_class('gs::audio::Mixer', bound_name='Mixer_hide_me', noncopyable=True)
+	gen.end_class(audio_mixer)
+
+	shared_audio_mixer = gen.begin_class('std::shared_ptr<gs::audio::Mixer>', bound_name='Mixer', features={'proxy': lib.std.SharedPtrProxyFeature(audio_mixer)})
+	bind_mixer_api(shared_audio_mixer, ['proxy'])
+	gen.end_class(shared_audio_mixer)
+
+	gen.bind_function_overloads('CreateMixer', [('std::shared_ptr<gs::audio::Mixer>', [], []), ('std::shared_ptr<gs::audio::Mixer>', ['const char *name'], [])])
 
 
 def bind_gs(gen):
