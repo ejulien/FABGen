@@ -128,7 +128,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	wrapped_PyObject *w = cast_to_wrapped_PyObject_safe(o);
 	if (!w)
 		return false;
-	return w->type_tag == %s;
+	return _type_tag_upcast(o, w->type_tag, %s) != nullptr;
 }
 \n''' % (self.bound_name, self.type_tag)
 
