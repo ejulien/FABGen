@@ -841,7 +841,7 @@ void *_type_tag_cast(void *in_p, const char *in_type_tag, const char *out_type_t
 	if (out_p)
 		return out_p;
 
-	// custom cast
+	// additional casts
 '''
 
 		i = 0
@@ -852,8 +852,9 @@ void *_type_tag_cast(void *in_p, const char *in_type_tag, const char *out_type_t
 			out += '	' if i == 0 else ' else '
 			out += 'if (in_type_tag == %s) {\n' % conv.type_tag
 
-			for cast in conv._casts:
-				out += 'if (out_type_tag == %s) {\n' % cast[0]
+			for j, cast in enumerate(conv._casts):
+				out += 'if (out_type_tag == %s) {\n' % cast[0].type_tag
+				out += cast[1]('in_p', 'out_p')
 				out += '}\n'
 
 			out += '}\n'

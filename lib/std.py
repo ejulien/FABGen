@@ -10,7 +10,7 @@ class SharedPtrProxyFeature:
 ''' % (cast_function_name, conv.fully_qualified_name), True, False)
 
 		def cast_delegate(in_var, out_var):
-			return '%s = %s();\n' % (out_var, in_var)
+			return '%s = %s(%s);\n' % (out_var, cast_function_name, in_var)
 
 		gen.add_cast(conv, self.wrapped_conv, cast_delegate)
 
