@@ -8,6 +8,10 @@ def get_fully_qualified_ctype_name(ctype):
 	out = ''
 	if ctype.const:
 		out += 'const '
+	if ctype.signed:
+		out += 'signed '
+	if ctype.unsigned:
+		out += 'unsigned '
 	out += ctype.unqualified_name
 	if hasattr(ctype, 'template'):
 		out += '<%s>' % ctype.template[0]
@@ -33,6 +37,10 @@ def get_clean_ctype_name(ctype):
 
 	if ctype.const:
 		parts.append('const')
+	if ctype.signed:
+		parts.append('signed')
+	if ctype.unsigned:
+		parts.append('unsigned')
 
 	parts.append(ctype.unqualified_name.replace(':', '_'))
 
@@ -145,7 +153,7 @@ class _CType:
 
 
 _TemplateParameters.grammar = "<", optional(csl(_CType)), ">"
-_CType.grammar = flag("const", K("const")), optional([flag("signed", K("signed")), flag("unsigned", K("unsigned"))]), attr("unqualified_name", typename), optional(attr("template", _TemplateParameters)), optional(attr("ref", ref_re)), flag("const_ref", K("const"))
+_CType.grammar = flag("const", K("const")), optional(flag("signed", K("signed"))), optional(flag("unsigned", K("unsigned"))), attr("unqualified_name", typename), optional(attr("template", _TemplateParameters)), optional(attr("ref", ref_re)), flag("const_ref", K("const"))
 
 
 #
@@ -365,20 +373,25 @@ class FABGen:
 		self.__type_convs[type] = conv
 
 	#
-	def bind_enum(self, name, values, storage_type='int', bound_name=None, prefix=None):
+	def bind_enum(self, name, symbols, storage_type='int', bound_name=None, prefix=None, set=None):
 		self.typedef(name, storage_type)
 
 		if bound_name is None:
 			bound_name = get_symbol_default_bound_name(name)
 
-		# prefix enum values
+		# prefix enum symbols
 		if prefix is not None:
-			values = [prefix + value for value in values]
+			symbols = [prefix + symbol for symbol in symbols]
 
 		# build enumeration dict
 		enum = {}
-		for i, value in enumerate(values):
-			enum[value] = i
+		for i, symbol in enumerate(symbols):
+			enum[symbol] = i
+
+		# set forced values
+		if set:
+			for symbol, value in set.items():
+				enum[symbol] = value
 
 		self._enums[bound_name] = enum
 
@@ -671,6 +684,18 @@ class FABGen:
 		self.__bind_proxy(proxy_name, conv, protos, 'method %s of %s' % (name, conv.bound_name), expr_eval, 'method')
 
 		conv.methods.append({'name': name, 'proxy_name': proxy_name, 'protos': protos})
+
+	#
+	def bind_static_method(self, conv, name, rval, args, features=[]):
+		self.bind_static_method_overloads(conv, name, [(rval, args, features)])
+
+	def bind_static_method_overloads(self, conv, name, protos):
+		expr_eval = lambda args: '%s::%s(%s);' % (conv.fully_qualified_name, name, ', '.join(args))
+		bound_name = get_symbol_default_bound_name(name)
+		proxy_name = 'py_static_method_%s_of_%s' % (bound_name, conv.bound_name)
+		self.__bind_proxy(proxy_name, conv, protos, 'static method %s of %s' % (name, conv.bound_name), expr_eval, 'static_method')
+
+		conv.static_methods.append({'name': name, 'proxy_name': proxy_name, 'protos': protos})
 
 	#
 	def bind_member(self, conv, member, features=[]):

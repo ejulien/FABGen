@@ -69,6 +69,8 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		out += 'static PyMethodDef %s_tp_methods[] = {\n' % self.bound_name
 		for method in self.methods:
 			out += '	{"%s", (PyCFunction)%s, METH_VARARGS},\n' % (method['name'], method['proxy_name'])
+		for method in self.static_methods:
+			out += '	{"%s", (PyCFunction)%s, METH_VARARGS|METH_STATIC},\n' % (method['name'], method['proxy_name'])
 		out += '	{NULL} /* Sentinel */\n'
 		out += '};\n\n'
 

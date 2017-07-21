@@ -33,6 +33,7 @@ def bind_std(gen, PythonTypeConverterCommon):
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = (%s)PyLong_AsUnsignedLong(o); }\n' % (self.bound_name, self.ctype, self.ctype) +\
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromUnsignedLong(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
 
+	gen.bind_type(PythonUnsignedIntConverter('unsigned int'))
 	gen.bind_type(PythonUnsignedIntConverter('uint8_t'))
 	gen.bind_type(PythonUnsignedIntConverter('uint16_t'))
 	gen.bind_type(PythonUnsignedIntConverter('uint32_t'))

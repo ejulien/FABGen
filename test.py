@@ -48,6 +48,29 @@ def bind_window_system(gen):
 	gen.end_class(window_conv)
 
 
+def bind_scene(gen):
+	gen.add_include('engine/scene.h')
+	gen.add_include('engine/node.h')
+
+	#
+	scene = gen.begin_class('gs::core::Scene', bound_name='Scene_hide_me', noncopyable=True)
+	gen.end_class(scene)
+
+	shared_scene = gen.begin_class('std::shared_ptr<gs::core::Scene>', bound_name='Scene', features={'proxy': lib.std.SharedPtrProxyFeature(scene)})
+	gen.end_class(shared_scene)
+
+	#
+	node = gen.begin_class('gs::core::Node', bound_name='Node_hide_me', noncopyable=True)
+	gen.end_class(node)
+
+	shared_node = gen.begin_class('std::shared_ptr<gs::core::Node>', bound_name='Node', features={'proxy': lib.std.SharedPtrProxyFeature(node)})
+	gen.end_class(shared_node)
+
+	#
+	gen.bind_enum('gs::core::Light::Model', ['Model_Point', 'Model_Linear', 'Model_Spot', 'Model_Last'], prefix='Light')
+	gen.bind_enum('gs::core::Light::Shadow', ['Shadow_None', 'Shadow_ProjectionMap', 'Shadow_Map'], prefix='Light')
+
+
 def bind_gpu(gen):
 	gen.add_include('engine/texture.h')
 
@@ -61,6 +84,13 @@ def bind_gpu(gen):
 def bind_render(gen):
 	gen.bind_enum('gs::render::CullMode', ['CullBack', 'CullFront', 'CullNever'])
 	gen.bind_enum('gs::render::BlendMode', ['BlendOpaque', 'BlendAlpha', 'BlendAdditive'])
+
+	#
+	geometry = gen.begin_class('gs::render::Geometry', bound_name='Geometry_hide_me', noncopyable=True)
+	gen.end_class(geometry)
+
+	shared_geometry = gen.begin_class('std::shared_ptr<gs::render::Geometry>', bound_name='Geometry', features={'proxy': lib.std.SharedPtrProxyFeature(geometry)})
+	gen.end_class(shared_geometry)
 
 
 def bind_plus(gen):
@@ -195,7 +225,101 @@ def bind_plus(gen):
 		('void', ['float x', 'float y', 'float z', 'const char *text', 'float size', 'gs::Color color', 'const char *font_path'], [])
 	])
 
+	gen.bind_method_overloads(plus_conv, 'NewScene', [
+		('std::shared_ptr<gs::core::Scene>', [], []),
+		('std::shared_ptr<gs::core::Scene>', ['bool use_physics'], []),
+		('std::shared_ptr<gs::core::Scene>', ['bool use_physics', 'bool use_lua'], [])
+	])
+	gen.bind_method_overloads(plus_conv, 'UpdateScene', [
+		('void', ['gs::core::Scene &scene'], []),
+		('void', ['gs::core::Scene &scene', 'gs::time_ns dt'], [])
+	])
+
+	gen.bind_method_overloads(plus_conv, 'AddDummy', [
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix'], [])
+	])
+	gen.bind_method_overloads(plus_conv, 'AddCamera', [
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix', 'bool orthographic'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix', 'bool orthographic', 'bool set_as_current'], [])
+	])
+	gen.bind_method_overloads(plus_conv, 'AddLight', [
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix', 'gs::core::Light::Model model'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix', 'gs::core::Light::Model model', 'float range'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix', 'gs::core::Light::Model model', 'float range', 'bool shadow'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix', 'gs::core::Light::Model model', 'float range', 'bool shadow', 'gs::Color diffuse'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix', 'gs::core::Light::Model model', 'float range', 'bool shadow', 'gs::Color diffuse', 'gs::Color specular'], [])
+	])
+	gen.bind_method_overloads(plus_conv, 'AddObject', [
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'std::shared_ptr<gs::render::Geometry> geometry'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'std::shared_ptr<gs::render::Geometry> geometry', 'gs::Matrix4 matrix'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'std::shared_ptr<gs::render::Geometry> geometry', 'gs::Matrix4 matrix', 'bool is_static'], [])
+	])
+	gen.bind_method_overloads(plus_conv, 'AddGeometry', [
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'const char *geometry_path'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'const char *geometry_path', 'gs::Matrix4 matrix'], [])
+	])
+	gen.bind_method_overloads(plus_conv, 'AddPlane', [
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix', 'float size_x', 'float size_z'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix', 'float size_x', 'float size_z', 'const char *material_path'], [])
+	])
+	gen.bind_method_overloads(plus_conv, 'AddCube', [
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix', 'float size_x', 'float size_y', 'float size_z'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix', 'float size_x', 'float size_z', 'float size_z', 'const char *material_path'], [])
+	])
+	gen.bind_method_overloads(plus_conv, 'AddSphere', [
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix', 'float radius'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix', 'float radius', 'int subdiv_x', 'int subdiv_y'], []),
+		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix', 'float radius', 'int subdiv_x', 'int subdiv_y', 'const char *material_path'], [])
+	])
+
+	gen.bind_method(plus_conv, 'ResetClock', 'void', [])
+	gen.bind_method(plus_conv, 'UpdateClock', 'gs::time_ns', [])
+
+	gen.bind_method(plus_conv, 'GetClockDt', 'gs::time_ns', [])
+	gen.bind_method(plus_conv, 'GetClock', 'gs::time_ns', [])
+
 	gen.end_class(plus_conv)
+
+	#
+	fps_controller = gen.begin_class('gs::FPSController')
+
+	gen.bind_constructor_overloads(fps_controller, [
+		([], []),
+		(['float x', 'float y', 'float z'], []),
+		(['float x', 'float y', 'float z', 'float speed', 'float turbo'], [])
+	])
+
+	gen.bind_method(fps_controller, 'Reset', 'void', ['gs::Vector3 position', 'gs::Vector3 rotation'])
+
+	gen.bind_method(fps_controller, 'SetSmoothFactor', 'void', ['float k_pos', 'float k_rot'])
+
+	gen.bind_method(fps_controller, 'ApplyToNode', 'void', ['gs::core::Node &node'])
+
+	gen.bind_method(fps_controller, 'Update', 'void', ['gs::time_ns dt'])
+	gen.bind_method(fps_controller, 'UpdateAndApplyToNode', 'void', ['gs::core::Node &node', 'gs::time_ns dt'])
+
+	gen.bind_method(fps_controller, 'GetPos', 'gs::Vector3', [])
+	gen.bind_method(fps_controller, 'GetRot', 'gs::Vector3', [])
+	gen.bind_method(fps_controller, 'SetPos', 'void', ['const gs::Vector3 &position'])
+	gen.bind_method(fps_controller, 'SetRot', 'void', ['const gs::Vector3 &rotation'])
+
+	gen.bind_method(fps_controller, 'GetSpeed', 'float', [])
+	gen.bind_method(fps_controller, 'SetSpeed', 'void', ['float speed'])
+	gen.bind_method(fps_controller, 'GetTurbo', 'float', [])
+	gen.bind_method(fps_controller, 'SetTurbo', 'void', ['float turbo'])
+
+	gen.end_class(fps_controller)
 
 
 def bind_filesystem(gen):
@@ -253,15 +377,108 @@ def bind_math(gen):
 	gen.decl_class('gs::Matrix4')
 	gen.decl_class('gs::Matrix44')
 
+	#
+	gen.bind_enum('gs::math::RotationOrder', [
+		'RotationOrderZYX',
+		'RotationOrderYZX',
+		'RotationOrderZXY',
+		'RotationOrderXZY',
+		'RotationOrderYXZ',
+		'RotationOrderXYZ',
+		'RotationOrderXY',
+		'RotationOrder_Default'
+		], storage_type='uint8_t', set={'RotationOrder_Default': 4})
+
+	gen.bind_enum('gs::math::Axis', ['AxisX', 'AxisY', 'AxisZ', 'AxisNone'], storage_type='uint8_t')
+
+	# Vector4
 	vector4 = gen.begin_class('gs::Vector4')
+	gen.bind_members(vector4, ['float x', 'float y', 'float z', 'float w'])
+
+	gen.bind_constructor_overloads(vector4, [
+		([], []),
+		(['float x', 'float y', 'float z', 'float w'], [])
+	])
 	gen.end_class(vector4)
 
+	gen.bind_arithmetic_ops_overloads(vector4, ['+', '-', '/'], [('gs::Vector4', ['gs::Vector4 &v'], []), ('gs::Vector4', ['float k'], [])])
+	gen.bind_arithmetic_ops_overloads(vector4, ['*'], [('gs::Vector4', ['gs::Vector4 &v'], []), ('gs::Vector4', ['float k'], []), ('gs::Vector4', ['const gs::Matrix4 &m'], [])])
+
+	gen.bind_inplace_arithmetic_ops_overloads(vector4, ['+=', '-=', '*=', '/='], [('gs::Vector4 &v', []), ('float k', [])])
+
+	gen.bind_method(vector4, 'Abs', 'gs::Vector4', [])
+
+	gen.bind_method(vector4, 'Normalized', 'gs::Vector4', [])
+
+	#
 	matrix3 = gen.begin_class('gs::Matrix3')
 	gen.end_class(matrix3)
 
+	#
 	matrix4 = gen.begin_class('gs::Matrix4')
+
+	gen.bind_constructor_overloads(matrix4, [
+		([], []),
+		(['const gs::Matrix3 &m'], [])
+	])
+
+	gen.bind_method(matrix4, 'GetRow', 'gs::Vector3', ['gs::uint n'])
+	gen.bind_method(matrix4, 'GetColumn', 'gs::Vector4', ['gs::uint n'])
+	gen.bind_method(matrix4, 'SetRow', 'void', ['gs::uint n', 'const gs::Vector3 &v'])
+	gen.bind_method(matrix4, 'SetColumn', 'void', ['gs::uint n', 'const gs::Vector4 &v'])
+
+	gen.bind_method(matrix4, 'GetX', 'gs::Vector3', [])
+	gen.bind_method(matrix4, 'GetY', 'gs::Vector3', [])
+	gen.bind_method(matrix4, 'GetZ', 'gs::Vector3', [])
+	gen.bind_method(matrix4, 'GetT', 'gs::Vector3', [])
+	gen.bind_method(matrix4, 'GetTranslation', 'gs::Vector3', [])
+	#gen.bind_method(matrix4, 'GetRotation', 'gs::Vector3', [])
+	gen.bind_method(matrix4, 'GetScale', 'gs::Vector3', [])
+	gen.bind_method(matrix4, 'GetRotationMatrix', 'gs::Matrix3', [])
+
+	gen.bind_method(matrix4, 'SetX', 'void', ['const gs::Vector3 &X'])
+	gen.bind_method(matrix4, 'SetY', 'void', ['const gs::Vector3 &Y'])
+	gen.bind_method(matrix4, 'SetZ', 'void', ['const gs::Vector3 &Z'])
+	gen.bind_method(matrix4, 'SetTranslation', 'void', ['const gs::Vector3 &T'])
+	gen.bind_method(matrix4, 'SetScale', 'void', ['const gs::Vector3 &scale'])
+
+	gen.bind_method(matrix4, 'Inverse', 'bool', ['gs::Matrix4 &out'])
+	gen.bind_method(matrix4, 'InversedFast', 'gs::Matrix4', [])
+
+	gen.bind_method(matrix4, 'Orthonormalized', 'gs::Matrix4', [])
+
+	#static Matrix4 LerpAsOrthonormalBase(const Matrix4 &a, const Matrix4 &b, float k, bool fast = false);
+
+	#void Decompose(Vector3 *position, Vector3 *scale = nullptr, Matrix3 *rotation = nullptr) const;
+	#void Decompose(Vector3 *position, Vector3 *scale, Vector3 *rotation, math::RotationOrder order = math::RotationOrder_Default) const;
+
+	#void Transform(Vector3 * __restrict out, const Vector3 * __restrict in, uint count = 1) const __restrict;
+	#void Transform(Vector4 * __restrict out, const Vector3 * __restrict in, uint count = 1) const __restrict;
+	#void Rotate(Vector3 * __restrict out, const Vector3 * __restrict in, uint count = 1) const __restrict;
+
+	gen.bind_method_overloads(matrix4, 'LookAt', [
+		('gs::Matrix4', ['const gs::Vector3 &at'], []),
+		('gs::Matrix4', ['const gs::Vector3 &at', 'const gs::Vector3 *up'], [])
+	])
+
+	gen.bind_static_method(matrix4, 'TranslationMatrix', 'gs::Matrix4', ['const gs::Vector3 &t'])
+
+	"""
+	/// Rotation matrix.
+	static Matrix4 RotationMatrix(const Vector3 &euler, math::RotationOrder rorder = math::RotationOrder_Default);
+	/// Scale matrix.
+	static Matrix4 ScaleMatrix(const Vector3 &s);
+	/// Position/scale/rotation matrix.
+	static Matrix4 TransformationMatrix(const Vector3 &p, const Vector3 &r, const Vector3 &s = Vector3::One);
+	/// Position/scale/rotation matrix.
+	static Matrix4 TransformationMatrix(const Vector3 &p, const Matrix3 &r, const Vector3 &s = Vector3::One);
+	/// Create a look toward matrix.
+	static Matrix4 LookToward(const Vector3 &pos, const Vector3 &dir, const Vector3 &scl = Vector3::One, const Vector3 *up = nullptr);
+	"""
+
 	gen.end_class(matrix4)
 
+	#
 	matrix44 = gen.begin_class('gs::Matrix44')
 	gen.end_class(matrix44)
 
@@ -273,7 +490,7 @@ def bind_math(gen):
 	gen.bind_constructor_overloads(vector3, [
 		([], []),
 		(['float x', 'float y', 'float z'], [])
-		])
+	])
 
 	gen.bind_function('gs::Vector3FromVector4', 'gs::Vector3', ['const gs::Vector4 &v'])
 
@@ -505,6 +722,8 @@ def bind_gs(gen):
 	gs::core::Init();
 ''')
 
+	gen.typedef('gs::uint', 'unsigned int')
+
 	bind_time(gen)
 	bind_math(gen)
 	bind_color(gen)
@@ -513,6 +732,7 @@ def bind_gs(gen):
 	bind_window_system(gen)
 	bind_gpu(gen)
 	bind_render(gen)
+	bind_scene(gen)
 	bind_plus(gen)
 	bind_mixer(gen)
 
