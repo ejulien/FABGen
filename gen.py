@@ -296,7 +296,7 @@ class FABGen:
 		self._bound_functions = []  # list of bound functions
 
 		self._custom_init_code = ""
-		self._constants = {}  # module level constants
+		self._enums = {}
 
 		self.output_header()
 		self.output_includes()
@@ -365,10 +365,22 @@ class FABGen:
 		self.__type_convs[type] = conv
 
 	#
-	def bind_enum(self, name, values, storage_type='int'):
+	def bind_enum(self, name, values, storage_type='int', bound_name=None, prefix=None):
 		self.typedef(name, storage_type)
+
+		if bound_name is None:
+			bound_name = get_symbol_default_bound_name(name)
+
+		# prefix enum values
+		if prefix is not None:
+			values = [prefix + value for value in values]
+
+		# build enumeration dict
+		enum = {}
 		for i, value in enumerate(values):
-			self._constants[value] = i
+			enum[value] = i
+
+		self._enums[bound_name] = enum
 
 	#
 	def begin_class(self, type, converter_class=None, noncopyable=False, bound_name=None, features={}):
@@ -412,7 +424,7 @@ class FABGen:
 		if full_qualified_ctype_name in self.__type_convs:
 			return self.__type_convs[full_qualified_ctype_name]
 
-		err_msg = "No converter for type %s" % ctype.unqualified_name
+		err_msg = "Unknown type %s (no converter available)" % ctype
 		assert ctype.unqualified_name in self.__type_convs, err_msg
 
 		return self.__type_convs[ctype.unqualified_name]

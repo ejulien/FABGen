@@ -48,12 +48,45 @@ def bind_window_system(gen):
 	gen.end_class(window_conv)
 
 
+def bind_gpu(gen):
+	gen.add_include('engine/texture.h')
+
+	texture = gen.begin_class('gs::gpu::Texture', bound_name='Texture_hide_me', noncopyable=True)
+	gen.end_class(texture)
+
+	shared_texture = gen.begin_class('std::shared_ptr<gs::gpu::Texture>', bound_name='Texture', features={'proxy': lib.std.SharedPtrProxyFeature(texture)})
+	gen.end_class(shared_texture)
+
+
+def bind_render(gen):
+	gen.bind_enum('gs::render::CullMode', ['CullBack', 'CullFront', 'CullNever'])
+	gen.bind_enum('gs::render::BlendMode', ['BlendOpaque', 'BlendAlpha', 'BlendAdditive'])
+
+
 def bind_plus(gen):
 	gen.add_include('plus/plus.h')
 
 	plus_conv = gen.begin_class('gs::Plus', noncopyable=True)
 
 	gen.bind_constructor(plus_conv, [])
+
+	gen.bind_method(plus_conv, 'CreateWorkers', 'void', [])
+	gen.bind_method(plus_conv, 'DeleteWorkers', 'void', [])
+
+	gen.bind_method(plus_conv, 'MountFilePath', 'void', ['const char *path'])
+
+	#const gpu::sRenderer &GetRenderer() const { return renderer; }
+	#const gpu::sRendererAsync &GetRendererAsync() const { return renderer_async; }
+
+	#const render::sRenderSystem &GetRenderSystem() const { return render_system; }
+	#const render::sRenderSystemAsync &GetRenderSystemAsync() const { return render_system_async; }
+
+	gen.bind_enum('gs::Plus::AppEndCondition', ['EndOnEscapePressed', 'EndOnDefaultWindowClosed', 'EndOnAny'], prefix='App')
+
+	gen.bind_method_overloads(plus_conv, 'IsAppEnded', [
+		('bool', [], []),
+		('bool', ['gs::Plus::AppEndCondition flags'], [])
+	])
 
 	gen.bind_method_overloads(plus_conv, 'RenderInit', [
 		('bool', ['int width', 'int height'], []),
@@ -72,12 +105,102 @@ def bind_plus(gen):
 
 	gen.bind_method(plus_conv, 'UpdateRenderWindow', 'void', ['const gs::RenderWindow &window'])
 
+	#void InitExtern(gpu::sRenderer renderer, gpu::sRendererAsync renderer_async, render::sRenderSystem render_system, render::sRenderSystemAsync render_system_async);
+	#void UninitExtern();
+
+	gen.bind_method(plus_conv, 'Set2DOriginIsTopLeft', 'void', ['bool top_left'])
+
+	gen.bind_method(plus_conv, 'Commit2D', 'void', [])
+	gen.bind_method(plus_conv, 'Commit3D', 'void', [])
+
+	gen.bind_method(plus_conv, 'GetScreenWidth', 'int', [])
+	gen.bind_method(plus_conv, 'GetScreenHeight', 'int', [])
+
+	gen.bind_method(plus_conv, 'Flip', 'void', [])
+
+	gen.bind_method(plus_conv, 'EndFrame', 'void', [])
+
+	gen.bind_method(plus_conv, 'SetBlend2D', 'void', ['gs::render::BlendMode mode'])
+	gen.bind_method(plus_conv, 'GetBlend2D', 'gs::render::BlendMode', [])
+	gen.bind_method(plus_conv, 'SetCulling2D', 'void', ['gs::render::CullMode mode'])
+	gen.bind_method(plus_conv, 'GetCulling2D', 'gs::render::CullMode', [])
+
+	gen.bind_method(plus_conv, 'SetBlend3D', 'void', ['gs::render::BlendMode mode'])
+	gen.bind_method(plus_conv, 'GetBlend3D', 'gs::render::BlendMode', [])
+	gen.bind_method(plus_conv, 'SetCulling3D', 'void', ['gs::render::CullMode mode'])
+	gen.bind_method(plus_conv, 'GetCulling3D', 'gs::render::CullMode', [])
+
+	gen.bind_method(plus_conv, 'SetDepthTest2D', 'void', ['bool enable'])
+	gen.bind_method(plus_conv, 'GetDepthTest2D', 'bool', [])
+	gen.bind_method(plus_conv, 'SetDepthWrite2D', 'void', ['bool enable'])
+	gen.bind_method(plus_conv, 'GetDepthWrite2D', 'bool', [])
+
+	gen.bind_method(plus_conv, 'SetDepthTest3D', 'void', ['bool enable'])
+	gen.bind_method(plus_conv, 'GetDepthTest3D', 'bool', [])
+	gen.bind_method(plus_conv, 'SetDepthWrite3D', 'void', ['bool enable'])
+	gen.bind_method(plus_conv, 'GetDepthWrite3D', 'bool', [])
+
+	gen.bind_method_overloads(plus_conv, 'Clear', [
+		('void', [], []),
+		('void', ['gs::Color color'], [])
+	])
+
+	gen.bind_method_overloads(plus_conv, 'Plot2D', [
+		('void', ['float x', 'float y'], []),
+		('void', ['float x', 'float y', 'gs::Color color'], [])
+	])
+	gen.bind_method_overloads(plus_conv, 'Line2D', [
+		('void', ['float sx', 'float sy', 'float ex', 'float ey'], []),
+		('void', ['float sx', 'float sy', 'float ex', 'float ey', 'gs::Color start_color', 'gs::Color end_color'], [])
+	])
+	gen.bind_method_overloads(plus_conv, 'Triangle2D', [
+		('void', ['float ax', 'float ay', 'float bx', 'float by', 'float cx', 'float cy'], []),
+		('void', ['float ax', 'float ay', 'float bx', 'float by', 'float cx', 'float cy', 'gs::Color a_color', 'gs::Color b_color', 'gs::Color c_color'], [])
+	])
+	gen.bind_method_overloads(plus_conv, 'Quad2D', [
+		('void', ['float ax', 'float ay', 'float bx', 'float by', 'float cx', 'float cy', 'float dx', 'float dy'], []),
+		('void', ['float ax', 'float ay', 'float bx', 'float by', 'float cx', 'float cy', 'float dx', 'float dy', 'gs::Color a_color', 'gs::Color b_color', 'gs::Color c_color', 'gs::Color d_color'], []),
+		('void', ['float ax', 'float ay', 'float bx', 'float by', 'float cx', 'float cy', 'float dx', 'float dy', 'gs::Color a_color', 'gs::Color b_color', 'gs::Color c_color', 'gs::Color d_color', 'std::shared_ptr<gs::gpu::Texture> texture'], []),
+		('void', ['float ax', 'float ay', 'float bx', 'float by', 'float cx', 'float cy', 'float dx', 'float dy', 'gs::Color a_color', 'gs::Color b_color', 'gs::Color c_color', 'gs::Color d_color', 'std::shared_ptr<gs::gpu::Texture> texture', 'float uv_sx', 'float uv_sy', 'float uv_ex', 'float uv_ey'], [])
+	])
+
+	gen.bind_method_overloads(plus_conv, 'Line3D', [
+		('void', ['float sx', 'float sy', 'float sz', 'float ex', 'float ey', 'float ez'], []),
+		('void', ['float sx', 'float sy', 'float sz', 'float ex', 'float ey', 'float ez', 'gs::Color start_color', 'gs::Color end_color'], [])
+	])
+	gen.bind_method_overloads(plus_conv, 'Triangle3D', [
+		('void', ['float ax', 'float ay', 'float az', 'float bx', 'float by', 'float bz', 'float cx', 'float cy', 'float cz'], []),
+		('void', ['float ax', 'float ay', 'float az', 'float bx', 'float by', 'float bz', 'float cx', 'float cy', 'float cz', 'gs::Color a_color', 'gs::Color b_color', 'gs::Color c_color'], [])
+	])
+	gen.bind_method_overloads(plus_conv, 'Quad3D', [
+		('void', ['float ax', 'float ay', 'float az', 'float bx', 'float by', 'float bz', 'float cx', 'float cy', 'float cz', 'float dx', 'float dy', 'float dz'], []),
+		('void', ['float ax', 'float ay', 'float az', 'float bx', 'float by', 'float bz', 'float cx', 'float cy', 'float cz', 'float dx', 'float dy', 'float dz', 'gs::Color a_color', 'gs::Color b_color', 'gs::Color c_color', 'gs::Color d_color'], []),
+		('void', ['float ax', 'float ay', 'float az', 'float bx', 'float by', 'float bz', 'float cx', 'float cy', 'float cz', 'float dx', 'float dy', 'float dz', 'gs::Color a_color', 'gs::Color b_color', 'gs::Color c_color', 'gs::Color d_color', 'std::shared_ptr<gs::gpu::Texture> texture'], []),
+		('void', ['float ax', 'float ay', 'float az', 'float bx', 'float by', 'float bz', 'float cx', 'float cy', 'float cz', 'float dx', 'float dy', 'float dz', 'gs::Color a_color', 'gs::Color b_color', 'gs::Color c_color', 'gs::Color d_color', 'std::shared_ptr<gs::gpu::Texture> texture', 'float uv_sx', 'float uv_sy', 'float uv_ex', 'float uv_ey'], [])
+	])
+
+	gen.bind_method(plus_conv, 'SetFont', 'void', ['const char *path'])
+	gen.bind_method(plus_conv, 'GetFont', 'const char *', [])
+
+	gen.bind_method_overloads(plus_conv, 'Text2D', [
+		('void', ['float x', 'float y', 'const char *text'], []),
+		('void', ['float x', 'float y', 'const char *text', 'float size'], []),
+		('void', ['float x', 'float y', 'const char *text', 'float size', 'gs::Color color'], []),
+		('void', ['float x', 'float y', 'const char *text', 'float size', 'gs::Color color', 'const char *font_path'], [])
+	])
+	gen.bind_method_overloads(plus_conv, 'Text3D', [
+		('void', ['float x', 'float y', 'float z', 'const char *text'], []),
+		('void', ['float x', 'float y', 'float z', 'const char *text', 'float size'], []),
+		('void', ['float x', 'float y', 'float z', 'const char *text', 'float size', 'gs::Color color'], []),
+		('void', ['float x', 'float y', 'float z', 'const char *text', 'float size', 'gs::Color color', 'const char *font_path'], [])
+	])
+
 	gen.end_class(plus_conv)
 
 
 def bind_filesystem(gen):
-	gen.add_include("foundation/filesystem.h")
-	gen.add_include("foundation/io_cfile.h")
+	gen.add_include('foundation/filesystem.h')
+	gen.add_include('foundation/io_cfile.h')
 
 	# binding specific API
 	gen.insert_binding_code('''static bool MountFileDriver(gs::io::sDriver driver) {
@@ -109,69 +232,71 @@ def bind_filesystem(gen):
 	gen.bind_function('MountFileDriver', 'bool', ['std::shared_ptr<gs::io::Driver> driver'])
 
 
-def bind_math(gen):
-	gen.add_include("foundation/color.h")
-	gen.add_include("foundation/vector3.h")
-	gen.add_include("foundation/vector3_api.h")
-	gen.add_include("foundation/vector4.h")
-	gen.add_include("foundation/matrix3.h")
-	gen.add_include("foundation/matrix4.h")
-	gen.add_include("foundation/matrix44.h")
+def bind_color(gen):
+	gen.add_include('foundation/color.h')
 
-	gen.decl_class('gs::Color')
+	color = gen.begin_class('gs::Color')
+	gen.end_class(color)
+
+
+def bind_math(gen):
+	gen.add_include('foundation/vector3.h')
+	gen.add_include('foundation/vector3_api.h')
+	gen.add_include('foundation/vector4.h')
+	gen.add_include('foundation/matrix3.h')
+	gen.add_include('foundation/matrix4.h')
+	gen.add_include('foundation/matrix44.h')
+
 	gen.decl_class('gs::Vector3')
 	gen.decl_class('gs::Vector4')
 	gen.decl_class('gs::Matrix3')
 	gen.decl_class('gs::Matrix4')
 	gen.decl_class('gs::Matrix44')
 
-	color_conv = gen.begin_class('gs::Color')
-	gen.end_class(color_conv)
+	vector4 = gen.begin_class('gs::Vector4')
+	gen.end_class(vector4)
 
-	vector4_conv = gen.begin_class('gs::Vector4')
-	gen.end_class(vector4_conv)
+	matrix3 = gen.begin_class('gs::Matrix3')
+	gen.end_class(matrix3)
 
-	matrix3_conv = gen.begin_class('gs::Matrix3')
-	gen.end_class(matrix3_conv)
+	matrix4 = gen.begin_class('gs::Matrix4')
+	gen.end_class(matrix4)
 
-	matrix4_conv = gen.begin_class('gs::Matrix4')
-	gen.end_class(matrix4_conv)
-
-	matrix44_conv = gen.begin_class('gs::Matrix44')
-	gen.end_class(matrix44_conv)
+	matrix44 = gen.begin_class('gs::Matrix44')
+	gen.end_class(matrix44)
 
 	# Vector3
-	vector3_conv = gen.begin_class('gs::Vector3')
+	vector3 = gen.begin_class('gs::Vector3')
 
-	gen.bind_members(vector3_conv, ['float x', 'float y', 'float z'])
+	gen.bind_members(vector3, ['float x', 'float y', 'float z'])
 
-	gen.bind_constructor_overloads(vector3_conv, [
+	gen.bind_constructor_overloads(vector3, [
 		([], []),
 		(['float x', 'float y', 'float z'], [])
 		])
 
 	gen.bind_function('gs::Vector3FromVector4', 'gs::Vector3', ['const gs::Vector4 &v'])
 
-	gen.bind_arithmetic_ops_overloads(vector3_conv, ['+', '-', '/'], [('gs::Vector3', ['gs::Vector3 &v'], []), ('gs::Vector3', ['float k'], [])])
-	gen.bind_arithmetic_ops_overloads(vector3_conv, ['*'], [('gs::Vector3', ['gs::Vector3 &v'], []), ('gs::Vector3', ['float k'], []), ('gs::Vector3', ['gs::Matrix3 m'], []), ('gs::Vector3', ['gs::Matrix4 m'], [])])
+	gen.bind_arithmetic_ops_overloads(vector3, ['+', '-', '/'], [('gs::Vector3', ['gs::Vector3 &v'], []), ('gs::Vector3', ['float k'], [])])
+	gen.bind_arithmetic_ops_overloads(vector3, ['*'], [('gs::Vector3', ['gs::Vector3 &v'], []), ('gs::Vector3', ['float k'], []), ('gs::Vector3', ['gs::Matrix3 m'], []), ('gs::Vector3', ['gs::Matrix4 m'], [])])
 
-	gen.bind_inplace_arithmetic_ops_overloads(vector3_conv, ['+=', '-=', '*=', '/='], [('gs::Vector3 &v', []), ('float k', [])])
+	gen.bind_inplace_arithmetic_ops_overloads(vector3, ['+=', '-=', '*=', '/='], [('gs::Vector3 &v', []), ('float k', [])])
 
 	gen.bind_function('gs::Dot', 'float', ['const gs::Vector3 &u', 'const gs::Vector3 &v'])
 	gen.bind_function('gs::Cross', 'gs::Vector3', ['const gs::Vector3 &u', 'const gs::Vector3 &v'])
 
-	gen.bind_method(vector3_conv, 'Reverse', 'void', [])
-	gen.bind_method(vector3_conv, 'Inverse', 'void', [])
-	gen.bind_method(vector3_conv, 'Normalize', 'void', [])
-	gen.bind_method(vector3_conv, 'Normalized', 'gs::Vector3', [])
-	gen.bind_method_overloads(vector3_conv, 'Clamped', [('gs::Vector3', ['float min', 'float max'], []), ('gs::Vector3', ['const gs::Vector3 &min', 'const gs::Vector3 &max'], [])])
-	gen.bind_method(vector3_conv, 'ClampedMagnitude', 'gs::Vector3', ['float min', 'float max'])
-	gen.bind_method(vector3_conv, 'Reversed', 'gs::Vector3', [])
-	gen.bind_method(vector3_conv, 'Inversed', 'gs::Vector3', [])
-	gen.bind_method(vector3_conv, 'Abs', 'gs::Vector3', [])
-	gen.bind_method(vector3_conv, 'Sign', 'gs::Vector3', [])
-	gen.bind_method(vector3_conv, 'Maximum', 'gs::Vector3', ['const gs::Vector3 &left', 'const gs::Vector3 &right'])
-	gen.bind_method(vector3_conv, 'Minimum', 'gs::Vector3', ['const gs::Vector3 &left', 'const gs::Vector3 &right'])
+	gen.bind_method(vector3, 'Reverse', 'void', [])
+	gen.bind_method(vector3, 'Inverse', 'void', [])
+	gen.bind_method(vector3, 'Normalize', 'void', [])
+	gen.bind_method(vector3, 'Normalized', 'gs::Vector3', [])
+	gen.bind_method_overloads(vector3, 'Clamped', [('gs::Vector3', ['float min', 'float max'], []), ('gs::Vector3', ['const gs::Vector3 &min', 'const gs::Vector3 &max'], [])])
+	gen.bind_method(vector3, 'ClampedMagnitude', 'gs::Vector3', ['float min', 'float max'])
+	gen.bind_method(vector3, 'Reversed', 'gs::Vector3', [])
+	gen.bind_method(vector3, 'Inversed', 'gs::Vector3', [])
+	gen.bind_method(vector3, 'Abs', 'gs::Vector3', [])
+	gen.bind_method(vector3, 'Sign', 'gs::Vector3', [])
+	gen.bind_method(vector3, 'Maximum', 'gs::Vector3', ['const gs::Vector3 &left', 'const gs::Vector3 &right'])
+	gen.bind_method(vector3, 'Minimum', 'gs::Vector3', ['const gs::Vector3 &left', 'const gs::Vector3 &right'])
 
 	gen.bind_function('gs::Reflect', 'gs::Vector3', ['const gs::Vector3 &v', 'const gs::Vector3 &normal'])
 	gen.bind_function_overloads('gs::Refract', [
@@ -179,17 +304,58 @@ def bind_math(gen):
 		('gs::Vector3', ['const gs::Vector3 &v', 'const gs::Vector3 &normal', 'float index_of_refraction_in', 'float index_of_refraction_out'], [])
 		])
 
-	gen.bind_method(vector3_conv, 'Len2', 'float', [])
-	gen.bind_method(vector3_conv, 'Len', 'float', [])
-	gen.bind_method(vector3_conv, 'Floor', 'gs::Vector3', [])
-	gen.bind_method(vector3_conv, 'Ceil', 'gs::Vector3', [])
+	gen.bind_method(vector3, 'Len2', 'float', [])
+	gen.bind_method(vector3, 'Len', 'float', [])
+	gen.bind_method(vector3, 'Floor', 'gs::Vector3', [])
+	gen.bind_method(vector3, 'Ceil', 'gs::Vector3', [])
 
-	gen.end_class(vector3_conv)
+	gen.end_class(vector3)
 
 
 def bind_mixer(gen):
 	gen.add_include('engine/engine_factories.h')
 	gen.add_include('engine/mixer.h')
+
+	# gs::AudioFormat
+	gen.bind_enum('gs::AudioFormat::Encoding', ['PCM', 'WiiADPCM'], 'uint8_t', bound_name='AudioFormatEncoding', prefix='AudioFormat')
+	gen.bind_enum('gs::AudioFormat::Type', ['Integer', 'Float'], 'uint8_t', bound_name='AudioFormatType', prefix='AudioType')
+
+	audio_format = gen.begin_class('gs::AudioFormat')
+	gen.bind_constructor_overloads(audio_format, [
+			([], []),
+			(['gs::AudioFormat::Encoding encoding'], []),
+			(['gs::AudioFormat::Encoding encoding', 'uint8_t channels'], []),
+			(['gs::AudioFormat::Encoding encoding', 'uint8_t channels', 'uint32_t frequency'], []),
+			(['gs::AudioFormat::Encoding encoding', 'uint8_t channels', 'uint32_t frequency', 'uint8_t resolution'], []),
+			(['gs::AudioFormat::Encoding encoding', 'uint8_t channels', 'uint32_t frequency', 'uint8_t resolution', 'gs::AudioFormat::Type type'], [])
+		])
+	gen.bind_members(audio_format, ['gs::AudioFormat::Encoding encoding', 'uint8_t channels', 'uint32_t frequency', 'uint8_t resolution', 'gs::AudioFormat::Type type'])
+	gen.end_class(audio_format)
+
+	# gs::AudioData
+	gen.bind_enum('gs::AudioData::State', ['Ready', 'Ended', 'Disconnected'], bound_name='AudioDataState', prefix='AudioData')
+
+	audio_data = gen.begin_class('gs::AudioData', bound_name='AudioData_hide_me', noncopyable=True)
+	gen.end_class(audio_data)
+
+	shared_audio_data = gen.begin_class('std::shared_ptr<gs::AudioData>', bound_name='AudioData', features={'proxy': lib.std.SharedPtrProxyFeature(audio_data)})
+
+	gen.bind_method(shared_audio_data, 'GetFormat', 'gs::AudioFormat', [], ['proxy'])
+
+	gen.bind_method(shared_audio_data, 'Open', 'bool', ['const char *path'], ['proxy'])
+	gen.bind_method(shared_audio_data, 'Close', 'void', [], ['proxy'])
+
+	gen.bind_method(shared_audio_data, 'GetState', 'gs::AudioData::State', [], ['proxy'])
+
+	gen.bind_method(shared_audio_data, 'Seek', 'bool', ['gs::time_ns t'], ['proxy'])
+
+	#gen.bind_method(shared_audio_data, 'GetFrame', 'size_t', ['void *data', 'gs::time_ns &frame_t'], ['proxy']) TODO
+	gen.bind_method(shared_audio_data, 'GetFrameSize', 'size_t', [], ['proxy'])
+
+	gen.bind_method(shared_audio_data, 'SetTransform', 'void', ['const gs::Matrix4 &m'], ['proxy'])
+	gen.bind_method(shared_audio_data, 'GetDataSize', 'size_t', [], ['proxy'])
+
+	gen.end_class(shared_audio_data)
 
 	# binding specific API
 	gen.insert_binding_code('''static std::shared_ptr<gs::audio::Mixer> CreateMixer(const char *name) { return gs::core::g_mixer_factory.get().Instantiate(name); }
@@ -197,8 +363,8 @@ static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixe
 	''', 'Mixer custom API')
 
 	#
-	gen.bind_enum('gs::audio::MixerLoopMode', ['MixerNoLoop', 'MixerRepeat', 'MixerLoopInvalidChannel'], 'uint8_t');
-	gen.bind_enum('gs::audio::MixerPlayState', ['MixerStopped', 'MixerPlaying', 'MixerPaused', 'MixerStateInvalidChannel'], 'uint8_t');
+	gen.bind_enum('gs::audio::MixerLoopMode', ['MixerNoLoop', 'MixerRepeat', 'MixerLoopInvalidChannel'], 'uint8_t')
+	gen.bind_enum('gs::audio::MixerPlayState', ['MixerStopped', 'MixerPlaying', 'MixerPaused', 'MixerStateInvalidChannel'], 'uint8_t')
 
 	gen.typedef('gs::audio::MixerChannel', 'int')
 	gen.typedef('gs::audio::MixerPriority', 'int')
@@ -226,6 +392,14 @@ static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixe
 	gen.end_class(sound)
 
 	shared_sound = gen.begin_class('std::shared_ptr<gs::audio::Sound>', bound_name='Sound', features={'proxy': lib.std.SharedPtrProxyFeature(sound)})
+	gen.bind_constructor_overloads(shared_sound, [
+		([], ['proxy']),
+		(['const char *name'], ['proxy'])
+	])
+	gen.bind_method(shared_sound, 'GetName', 'const char *', [], ['proxy'])
+	gen.bind_method(shared_sound, 'IsReady', 'bool', [], ['proxy'])
+	gen.bind_method(shared_sound, 'SetReady', 'void', [], ['proxy'])
+	gen.bind_method(shared_sound, 'SetNotReady', 'void', [], ['proxy'])
 	gen.end_class(shared_sound)
 
 	#
@@ -242,12 +416,25 @@ static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixe
 
 		gen.bind_method(conv, 'EnableSpatialization', 'bool', ['bool enable'], features)
 
-		gen.bind_method(conv, 'LoadSound', 'std::shared_ptr<gs::audio::Sound>', ['const char *path'], features)
 		gen.bind_method_overloads(conv, 'Start', [
 			('gs::audio::MixerChannel', ['gs::audio::Sound &sound'], features),
 			('gs::audio::MixerChannel', ['gs::audio::Sound &sound', 'gs::audio::MixerChannelState state'], features),
 			('gs::audio::MixerChannel', ['gs::audio::Sound &sound', 'gs::audio::MixerChannelLocation location'], features),
 			('gs::audio::MixerChannel', ['gs::audio::Sound &sound', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state'], features)
+		])
+		gen.bind_method_overloads(conv, 'StreamData', [
+			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data'], features),
+			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'bool paused'], features),
+			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'bool paused', 'gs::time_ns t_start'], features),
+			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelState state'], features),
+			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelState state', 'bool paused'], features),
+			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], features),
+			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location'], features),
+			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'bool paused'], features),
+			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'bool paused', 'gs::time_ns t_start'], features),
+			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state'], features),
+			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused'], features),
+			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], features)
 		])
 
 		gen.bind_method(conv, 'GetPlayState', 'gs::audio::MixerPlayState', ['gs::audio::MixerChannel channel'], features)
@@ -258,10 +445,45 @@ static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixe
 		gen.bind_method(conv, 'GetChannelLocation', 'gs::audio::MixerChannelLocation', ['gs::audio::MixerChannel channel'], features)
 		gen.bind_method(conv, 'SetChannelLocation', 'void', ['gs::audio::MixerChannel channel', 'gs::audio::MixerChannelLocation location'], features)
 
+		gen.bind_method(conv, 'GetChannelTimestamp', 'gs::time_ns', ['gs::audio::MixerChannel channel'], features)
+
 		gen.bind_method(conv, 'Stop', 'void', ['gs::audio::MixerChannel channel'], features)
 		gen.bind_method(conv, 'Pause', 'void', ['gs::audio::MixerChannel channel'], features)
 		gen.bind_method(conv, 'Resume', 'void', ['gs::audio::MixerChannel channel'], features)
 		gen.bind_method(conv, 'StopAll', 'void', [], features)
+
+		gen.bind_method(conv, 'SetStreamLoopPoint', 'void', ['gs::audio::MixerChannel channel', 'gs::time_ns t'], features)
+		gen.bind_method(conv, 'SeekStream', 'void', ['gs::audio::MixerChannel channel', 'gs::time_ns t'], features)
+		gen.bind_method(conv, 'GetStreamBufferingPercentage', 'int', ['gs::audio::MixerChannel channel'], features)
+
+		gen.bind_method(conv, 'SetChannelStreamDataTransform', 'void', ['gs::audio::MixerChannel channel', 'const gs::Matrix4 &transform'], features)
+		gen.bind_method(conv, 'FlushChannelBuffers', 'void', ['gs::audio::MixerChannel channel'], features)
+
+		gen.bind_method(conv, 'GetListener', 'gs::Matrix4', [], features)
+		gen.bind_method(conv, 'SetListener', 'void', ['const gs::Matrix4 &transform'], features)
+
+		gen.bind_method_overloads(conv, 'Stream', [
+			('gs::audio::MixerChannel', ['const char *path'], features),
+			('gs::audio::MixerChannel', ['const char *path', 'bool paused'], features),
+			('gs::audio::MixerChannel', ['const char *path', 'bool paused', 'gs::time_ns t_start'], features),
+			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelState state'], features),
+			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelState state', 'bool paused'], features),
+			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], features),
+			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location'], features),
+			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'bool paused'], features),
+			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'bool paused', 'gs::time_ns t_start'], features),
+			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state'], features),
+			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused'], features),
+			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], features)
+		])
+
+		gen.bind_method_overloads(conv, 'LoadSoundData', [
+			('std::shared_ptr<gs::audio::Sound>', ['std::shared_ptr<gs::AudioData> data'], features),
+			('std::shared_ptr<gs::audio::Sound>', ['std::shared_ptr<gs::AudioData> data', 'const char *path'], features)
+		])
+
+		gen.bind_method(conv, 'LoadSound', 'std::shared_ptr<gs::audio::Sound>', ['const char *path'], features)
+		gen.bind_method(conv, 'FreeSound', 'void', ['gs::audio::Sound &sound'], features)
 
 	audio_mixer = gen.begin_class('gs::audio::Mixer', bound_name='Mixer_hide_me', noncopyable=True)
 	gen.end_class(audio_mixer)
@@ -284,11 +506,14 @@ def bind_gs(gen):
 ''')
 
 	bind_time(gen)
+	bind_math(gen)
+	bind_color(gen)
 	bind_plugins(gen)
 	bind_filesystem(gen)
 	bind_window_system(gen)
+	bind_gpu(gen)
+	bind_render(gen)
 	bind_plus(gen)
-	bind_math(gen)
 	bind_mixer(gen)
 
 	gen.finalize()

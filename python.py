@@ -53,16 +53,17 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		out += '};\n\n'
 
 		# output binding code for static class members
-		out += 'static void bind_%s_static_members(PyObject *o) {\n' % self.bound_name
-		out += '	PyObject *tmp;\n\n'
+		if len(self.static_members) > 0:
+			out += 'static void bind_%s_static_members(PyObject *o) {\n' % self.bound_name
+			out += '	PyObject *tmp;\n\n'
 
-		for i, attr in enumerate(self.static_members):
-			if attr['getter']:
-				out += '	// %s::%s\n' % (self.fully_qualified_name, attr['name'])
-				out += '	tmp = %s(o, NULL);\n' % attr['getter']
-				out += '	PyObject_SetAttrString(o, "%s", tmp);\n' % attr['name']
-				out += '	Py_DECREF(tmp);\n'
-		out += '}\n\n'
+			for i, attr in enumerate(self.static_members):
+				if attr['getter']:
+					out += '	// %s::%s\n' % (self.fully_qualified_name, attr['name'])
+					out += '	tmp = %s(o, NULL);\n' % attr['getter']
+					out += '	PyObject_SetAttrString(o, "%s", tmp);\n' % attr['name']
+					out += '	Py_DECREF(tmp);\n'
+			out += '}\n\n'
 
 		# methods
 		out += 'static PyMethodDef %s_tp_methods[] = {\n' % self.bound_name
@@ -160,7 +161,8 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 	def finalize_type(self):
 		out = '	%s_type = PyType_FromSpec(&%s_spec);\n' % (self.bound_name, self.bound_name)
-		out += '	bind_%s_static_members(%s_type);\n' % (self.bound_name, self.bound_name)
+		if len(self.static_members) > 0:
+			out += '	bind_%s_static_members(%s_type);\n' % (self.bound_name, self.bound_name)
 		out += '	PyModule_AddObject(m, "%s", %s_type);\n' % (self.bound_name, self.bound_name)
 		return out
 
@@ -336,10 +338,11 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 ''' % module_def
 
 		# module constants
-		if len(self._constants) > 0:
-			self._source += '	// module-level constants\n'
-			for name, value in self._constants.items():
-				self._source += '	PyModule_AddIntConstant(m, "%s", %d);\n' % (name, value)
+		if len(self._enums) > 0:
+			for name, enum in self._enums.items():
+				self._source += '	// enumeration %s\n' % name
+				for name, value in enum.items():
+					self._source += '	PyModule_AddIntConstant(m, "%s", %d);\n' % (name, value)
 			self._source += '\n'
 
 		# finalize bound types
