@@ -163,12 +163,20 @@ static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixe
 	''', 'Mixer custom API')
 
 	#
+	gen.bind_enum('gs::audio::MixerLoopMode', ['MixerNoLoop', 'MixerRepeat', 'MixerLoopInvalidChannel'], 'uint8_t');
+	gen.bind_enum('gs::audio::MixerPlayState', ['MixerStopped', 'MixerPlaying', 'MixerPaused', 'MixerStateInvalidChannel'], 'uint8_t');
+
+	gen.typedef('gs::audio::MixerChannel', 'int')
+	gen.typedef('gs::audio::MixerPriority', 'int')
+
+	#
 	mixer_channel_state = gen.begin_class('gs::audio::MixerChannelState')
 	gen.bind_constructor_overloads(mixer_channel_state, [
 		([], []),
 		(['float volume'], []),
 		(['float volume', 'bool direct'], [])
 	])
+	gen.bind_members(mixer_channel_state, ['gs::audio::MixerPriority priority', 'gs::audio::MixerLoopMode loop_mode', 'float volume', 'float pitch', 'bool direct'])
 	gen.end_class(mixer_channel_state)
 
 	mixer_channel_location = gen.begin_class('gs::audio::MixerChannelLocation')
@@ -178,8 +186,6 @@ static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixe
 	])
 	gen.bind_members(mixer_channel_location, ['gs::Vector3 position', 'gs::Vector3 velocity'])
 	gen.end_class(mixer_channel_location)
-
-	gen.typedef('gs::audio::MixerChannel', 'int')
 
 	#
 	sound = gen.begin_class('gs::audio::Sound', bound_name='Sound_hide_me', noncopyable=True)
@@ -206,6 +212,17 @@ static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixe
 			('gs::audio::MixerChannel', ['gs::audio::Sound &sound', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state'], features)
 		])
 
+		gen.bind_method(conv, 'GetPlayState', 'gs::audio::MixerPlayState', ['gs::audio::MixerChannel channel'], features)
+
+		gen.bind_method(conv, 'GetChannelState', 'gs::audio::MixerChannelState', ['gs::audio::MixerChannel channel'], features)
+		gen.bind_method(conv, 'SetChannelState', 'void', ['gs::audio::MixerChannel channel', 'gs::audio::MixerChannelState state'], features)
+
+		gen.bind_method(conv, 'GetChannelLocation', 'gs::audio::MixerChannelLocation', ['gs::audio::MixerChannel channel'], features)
+		gen.bind_method(conv, 'SetChannelLocation', 'void', ['gs::audio::MixerChannel channel', 'gs::audio::MixerChannelLocation location'], features)
+
+		gen.bind_method(conv, 'Stop', 'void', ['gs::audio::MixerChannel channel'], features)
+		gen.bind_method(conv, 'Pause', 'void', ['gs::audio::MixerChannel channel'], features)
+		gen.bind_method(conv, 'Resume', 'void', ['gs::audio::MixerChannel channel'], features)
 		gen.bind_method(conv, 'StopAll', 'void', [], features)
 
 	audio_mixer = gen.begin_class('gs::audio::Mixer', bound_name='Mixer_hide_me', noncopyable=True)

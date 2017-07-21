@@ -20,6 +20,8 @@ def bind_std(gen, PythonTypeConverterCommon):
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromLong(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
 
 	gen.bind_type(PythonIntConverter('int'))
+	gen.bind_type(PythonIntConverter('int32_t'))
+	gen.bind_type(PythonIntConverter('uint8_t'))
 
 	class PythonFloatConverter(PythonTypeConverterCommon):
 		def __init__(self, type):

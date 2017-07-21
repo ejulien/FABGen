@@ -335,10 +335,18 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 
 ''' % module_def
 
+		# module constants
+		if len(self._constants) > 0:
+			self._source += '	// module-level constants\n'
+			for name, value in self._constants.items():
+				self._source += '	PyModule_AddIntConstant(m, "%s", %d);\n' % (name, value)
+			self._source += '\n'
+
 		# finalize bound types
-		self._source += '	// custom types finalization\n'
-		for conv in self._bound_types:
-			self._source += conv.finalize_type()
+		if len(self._bound_types) > 0:
+			self._source += '	// custom types finalization\n'
+			for conv in self._bound_types:
+				self._source += conv.finalize_type()
 
 		self._source += '''\
 	return m;

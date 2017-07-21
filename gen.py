@@ -295,13 +295,14 @@ class FABGen:
 		self._bound_types = []  # list of bound types
 		self._bound_functions = []  # list of bound functions
 
+		self._custom_init_code = ""
+		self._constants = {}  # module level constants
+
 		self.output_header()
 		self.output_includes()
 
 		self._source += 'enum OwnershipPolicy { NonOwning, Copy, Owning };\n\n'
 		self._source += 'void *_type_tag_cast(void *in_p, const char *in_type_tag, const char *out_type_tag);\n\n'
-
-		self._custom_init_code = ""
 
 	def add_include(self, path, is_system_include = False):
 		if is_system_include:
@@ -352,9 +353,22 @@ class FABGen:
 		self.end_type(conv)
 
 	#
-	def typedef(self, name, alias_of):
-		conv = self.__type_convs[alias_of]
-		self.__type_convs[name] = conv
+	def typedef(self, type, alias_of, storage_type=None):
+		conv = copy.deepcopy(self.__type_convs[alias_of])
+
+		default_storage_type = type if storage_type is None else storage_type
+
+		conv.fully_qualified_name = type
+		conv.ctype = parse(type, _CType)
+		conv.storage_ctype = parse(default_storage_type, _CType)
+
+		self.__type_convs[type] = conv
+
+	#
+	def bind_enum(self, name, values, storage_type='int'):
+		self.typedef(name, storage_type)
+		for i, value in enumerate(values):
+			self._constants[value] = i
 
 	#
 	def begin_class(self, type, converter_class=None, noncopyable=False, bound_name=None, features={}):
