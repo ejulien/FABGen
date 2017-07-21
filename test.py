@@ -4,7 +4,41 @@ import python
 import lib.std
 
 
-def bind_globals(gen):
+def bind_time(gen):
+	gen.add_include('foundation/time.h')
+
+	gen.typedef('gs::time_ns', 'int64_t')
+
+	gen.bind_function('gs::time_to_sec_f', 'float', ['gs::time_ns t'])
+	gen.bind_function('gs::time_to_ms_f', 'float', ['gs::time_ns t'])
+	gen.bind_function('gs::time_to_us_f', 'float', ['gs::time_ns t'])
+
+	gen.bind_function('gs::time_to_day', 'int64_t', ['gs::time_ns t'])
+	gen.bind_function('gs::time_to_hour', 'int64_t', ['gs::time_ns t'])
+	gen.bind_function('gs::time_to_min', 'int64_t', ['gs::time_ns t'])
+	gen.bind_function('gs::time_to_sec', 'int64_t', ['gs::time_ns t'])
+	gen.bind_function('gs::time_to_ms', 'int64_t', ['gs::time_ns t'])
+	gen.bind_function('gs::time_to_us', 'int64_t', ['gs::time_ns t'])
+	gen.bind_function('gs::time_to_ns', 'int64_t', ['gs::time_ns t'])
+
+	gen.bind_function('gs::time_from_sec_f', 'gs::time_ns', ['float sec'])
+	gen.bind_function('gs::time_from_ms_f', 'gs::time_ns', ['float ms'])
+	gen.bind_function('gs::time_from_us_f', 'gs::time_ns', ['float us'])
+
+	gen.bind_function('gs::time_from_day', 'gs::time_ns', ['int64_t day'])
+	gen.bind_function('gs::time_from_hour', 'gs::time_ns', ['int64_t hour'])
+	gen.bind_function('gs::time_from_min', 'gs::time_ns', ['int64_t min'])
+	gen.bind_function('gs::time_from_sec', 'gs::time_ns', ['int64_t sec'])
+	gen.bind_function('gs::time_from_ms', 'gs::time_ns', ['int64_t ms'])
+	gen.bind_function('gs::time_from_us', 'gs::time_ns', ['int64_t us'])
+	gen.bind_function('gs::time_from_ns', 'gs::time_ns', ['int64_t ns'])
+
+	gen.bind_function('gs::time_now', 'gs::time_ns', [])
+
+	gen.bind_function('gs::time_to_string', 'std::string', ['gs::time_ns t'])
+
+
+def bind_plugins(gen):
 	gen.bind_function_overloads('gs::core::LoadPlugins', [('bool', [], []), ('bool', ['const char *path'], [])])
 	gen.bind_function('gs::core::UnloadPlugins', 'void', [])
 
@@ -196,6 +230,10 @@ static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixe
 
 	#
 	def bind_mixer_api(conv, features=[]):
+		gen.bind_static_members(conv, [
+			'const gs::audio::MixerChannelState DefaultState', 'const gs::audio::MixerChannelState RepeatState', 'const gs::audio::MixerChannelLocation DefaultLocation',
+			'const gs::audio::MixerPriority DefaultPriority', 'const gs::audio::MixerChannel ChannelError'], features)
+
 		gen.bind_method(conv, 'Open', 'bool', [], features)
 		gen.bind_method(conv, 'Close', 'void', [], features)
 
@@ -245,7 +283,8 @@ def bind_gs(gen):
 	gs::core::Init();
 ''')
 
-	bind_globals(gen)
+	bind_time(gen)
+	bind_plugins(gen)
 	bind_filesystem(gen)
 	bind_window_system(gen)
 	bind_plus(gen)

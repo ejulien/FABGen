@@ -20,8 +20,44 @@ def bind_std(gen, PythonTypeConverterCommon):
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromLong(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
 
 	gen.bind_type(PythonIntConverter('int'))
+	gen.bind_type(PythonIntConverter('int8_t'))
+	gen.bind_type(PythonIntConverter('int16_t'))
 	gen.bind_type(PythonIntConverter('int32_t'))
-	gen.bind_type(PythonIntConverter('uint8_t'))
+
+	class PythonUnsignedIntConverter(PythonTypeConverterCommon):
+		def __init__(self, type):
+			super().__init__(type)
+
+		def get_type_glue(self, module_name):
+			return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.bound_name +\
+			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyLong_AsUnsignedLong(o); }\n' % (self.bound_name, self.ctype) +\
+			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromUnsignedLong(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
+
+	gen.bind_type(PythonUnsignedIntConverter('uint8_t'))
+	gen.bind_type(PythonUnsignedIntConverter('uint16_t'))
+	gen.bind_type(PythonUnsignedIntConverter('uint32_t'))
+
+	class PythonInt64Converter(PythonTypeConverterCommon):
+		def __init__(self, type):
+			super().__init__(type)
+
+		def get_type_glue(self, module_name):
+			return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.bound_name +\
+			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyLong_AsLongLong(o); }\n' % (self.bound_name, self.ctype) +\
+			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromLongLong(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
+
+	gen.bind_type(PythonInt64Converter('int64_t'))
+
+	class PythonUnsignedInt64Converter(PythonTypeConverterCommon):
+		def __init__(self, type):
+			super().__init__(type)
+
+		def get_type_glue(self, module_name):
+			return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.bound_name +\
+			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyLong_AsUnsignedLongLong(o); }\n' % (self.bound_name, self.ctype) +\
+			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromUnsignedLongLong(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
+
+	gen.bind_type(PythonUnsignedInt64Converter('uint64_t'))
 
 	class PythonFloatConverter(PythonTypeConverterCommon):
 		def __init__(self, type):

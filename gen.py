@@ -458,13 +458,18 @@ class FABGen:
 
 		return _protos
 
+	def __assert_conv_feature(self, conv, feature):
+		assert feature in conv._features, "Type converter for %s does not support the %s feature" % (conv.ctype, feature)
+
 	def __proto_call(self, self_conv, proto, expr_eval, ctx, fixed_arg_count=None):
 		features = proto['features']
 
 		enable_proxy = 'proxy' in features
 		if enable_proxy:
 			assert ctx != 'function', "Proxy feature cannot be used for a function call"
-			assert 'proxy' in self_conv._features, "Type converter does not support the proxy feature"
+
+			if self_conv is not None:
+				self.__assert_conv_feature(self_conv, 'proxy')
 
 		rval = proto['rval']['ctype']
 		rval_conv = proto['rval']['conv']
@@ -693,7 +698,12 @@ class FABGen:
 		if getter_ctype.get_ref() == '':
 			getter_ctype = getter_ctype.add_ref('&')
 
-		expr_eval = lambda args: '%s::%s;' % (conv.fully_qualified_name, arg.name)
+		if 'proxy' in features:
+			self.__assert_conv_feature(conv, 'proxy')
+			expr_eval = lambda args: '%s::%s;' % (conv._features['proxy'].wrapped_conv.fully_qualified_name, arg.name)
+		else:
+			expr_eval = lambda args: '%s::%s;' % (conv.fully_qualified_name, arg.name)
+
 		getter_protos = [(get_fully_qualified_ctype_name(getter_ctype), [], features)]
 		getter_proxy_name = 'py_get_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name)
 		self.__bind_proxy(getter_proxy_name, None, getter_protos, 'get static member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'getter', 0)
@@ -708,6 +718,10 @@ class FABGen:
 			setter_proxy_name = None
 
 		conv.static_members.append({'name': arg.name, 'getter': getter_proxy_name, 'setter': setter_proxy_name})
+
+	def bind_static_members(self, conv, members, features=[]):
+		for member in members:
+			self.bind_static_member(conv, member, features)
 
 	#
 	def bind_arithmetic_op(self, conv, op, rval, args, features=[]):

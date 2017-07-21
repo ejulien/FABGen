@@ -13,6 +13,6 @@ PyObject *utf8_pyobj = PyUnicode_AsUTF8String(o);
 Py_DECREF(utf8_pyobj);
 }
 ''' % (self.bound_name, self.ctype) +\
-			'PyObject *from_c_%s(void *obj) { return PyUnicode_FromString(((%s*)obj)->c_str()); }\n' % (self.bound_name, self.ctype)
+			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyUnicode_FromString(((%s*)obj)->c_str()); }\n' % (self.bound_name, self.ctype)
 
 	gen.bind_type(PythonStringConverter('std::string'))
