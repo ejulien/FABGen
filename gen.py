@@ -373,25 +373,15 @@ class FABGen:
 		self.__type_convs[type] = conv
 
 	#
-	def bind_enum(self, name, symbols, storage_type='int', bound_name=None, prefix=None, set=None):
+	def bind_enum(self, name, symbols, storage_type='int', bound_name=None, prefix=''):
 		self.typedef(name, storage_type)
 
 		if bound_name is None:
 			bound_name = get_symbol_default_bound_name(name)
 
-		# prefix enum symbols
-		if prefix is not None:
-			symbols = [prefix + symbol for symbol in symbols]
-
-		# build enumeration dict
 		enum = {}
-		for i, symbol in enumerate(symbols):
-			enum[symbol] = i
-
-		# set forced values
-		if set:
-			for symbol, value in set.items():
-				enum[symbol] = value
+		for symbol in symbols:
+			enum[prefix + symbol] = '%s::%s' % (name, symbol)
 
 		self._enums[bound_name] = enum
 
@@ -674,28 +664,30 @@ class FABGen:
 		conv.constructor = {'proxy_name': proxy_name, 'protos': protos}
 
 	#
-	def bind_method(self, conv, name, rval, args, features=[]):
-		self.bind_method_overloads(conv, name, [(rval, args, features)])
+	def bind_method(self, conv, name, rval, args, features=[], bound_name=None):
+		self.bind_method_overloads(conv, name, [(rval, args, features)], bound_name)
 
-	def bind_method_overloads(self, conv, name, protos):
+	def bind_method_overloads(self, conv, name, protos, bound_name=None):
 		expr_eval = lambda args: '_self->%s(%s);' % (name, ', '.join(args))
-		bound_name = get_symbol_default_bound_name(name)
+		if bound_name is None:
+			bound_name = get_symbol_default_bound_name(name)
 		proxy_name = 'py_method_%s_of_%s' % (bound_name, conv.bound_name)
-		self.__bind_proxy(proxy_name, conv, protos, 'method %s of %s' % (name, conv.bound_name), expr_eval, 'method')
+		self.__bind_proxy(proxy_name, conv, protos, 'method %s of %s' % (bound_name, conv.bound_name), expr_eval, 'method')
 
-		conv.methods.append({'name': name, 'proxy_name': proxy_name, 'protos': protos})
+		conv.methods.append({'name': bound_name, 'proxy_name': proxy_name, 'protos': protos})
 
 	#
-	def bind_static_method(self, conv, name, rval, args, features=[]):
-		self.bind_static_method_overloads(conv, name, [(rval, args, features)])
+	def bind_static_method(self, conv, name, rval, args, features=[], bound_name=None):
+		self.bind_static_method_overloads(conv, name, [(rval, args, features)], bound_name)
 
-	def bind_static_method_overloads(self, conv, name, protos):
+	def bind_static_method_overloads(self, conv, name, protos, bound_name=None):
 		expr_eval = lambda args: '%s::%s(%s);' % (conv.fully_qualified_name, name, ', '.join(args))
-		bound_name = get_symbol_default_bound_name(name)
+		if bound_name is None:
+			bound_name = get_symbol_default_bound_name(name)
 		proxy_name = 'py_static_method_%s_of_%s' % (bound_name, conv.bound_name)
-		self.__bind_proxy(proxy_name, conv, protos, 'static method %s of %s' % (name, conv.bound_name), expr_eval, 'static_method')
+		self.__bind_proxy(proxy_name, conv, protos, 'static method %s of %s' % (bound_name, conv.bound_name), expr_eval, 'static_method')
 
-		conv.static_methods.append({'name': name, 'proxy_name': proxy_name, 'protos': protos})
+		conv.static_methods.append({'name': bound_name, 'proxy_name': proxy_name, 'protos': protos})
 
 	#
 	def bind_member(self, conv, member, features=[]):

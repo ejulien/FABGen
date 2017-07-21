@@ -38,6 +38,61 @@ def bind_time(gen):
 	gen.bind_function('gs::time_to_string', 'std::string', ['gs::time_ns t'])
 
 
+def bind_input(gen):
+	gen.bind_enum('gs::InputDevice::Type', [
+		'TypeAny', 'TypeKeyboard', 'TypeMouse', 'TypePad', 'TypeTouch', 'TypeHMD', 'TypeController'
+	], bound_name='InputType', prefix='Input')
+
+	gen.bind_enum('gs::InputDevice::KeyCode', [
+		'KeyLShift', 'KeyRShift', 'KeyLCtrl', 'KeyRCtrl', 'KeyLAlt', 'KeyRAlt', 'KeyLWin', 'KeyRWin',
+		'KeyTab', 'KeyCapsLock', 'KeySpace', 'KeyBackspace', 'KeyInsert', 'KeySuppr', 'KeyHome', 'KeyEnd', 'KeyPageUp', 'KeyPageDown',
+		'KeyUp', 'KeyDown', 'KeyLeft', 'KeyRight',
+		'KeyEscape',
+		'KeyF1', 'KeyF2', 'KeyF3', 'KeyF4', 'KeyF5', 'KeyF6', 'KeyF7', 'KeyF8', 'KeyF9', 'KeyF10', 'KeyF11', 'KeyF12',
+		'KeyPrintScreen', 'KeyScrollLock', 'KeyPause', 'KeyNumLock', 'KeyReturn',
+		'KeyNumpad0', 'KeyNumpad1', 'KeyNumpad2', 'KeyNumpad3', 'KeyNumpad4', 'KeyNumpad5', 'KeyNumpad6', 'KeyNumpad7', 'KeyNumpad8', 'KeyNumpad9',
+		'KeyAdd', 'KeySub', 'KeyMul', 'KeyDiv', 'KeyEnter',
+		'KeyA', 'KeyB', 'KeyC', 'KeyD', 'KeyE', 'KeyF', 'KeyG', 'KeyH', 'KeyI', 'KeyJ', 'KeyK', 'KeyL', 'KeyM', 'KeyN', 'KeyO', 'KeyP', 'KeyQ', 'KeyR', 'KeyS', 'KeyT', 'KeyU', 'KeyV', 'KeyW', 'KeyX', 'KeyY', 'KeyZ',
+		'KeyLast'
+	])
+
+	gen.bind_enum('gs::InputDevice::ButtonCode', [
+		'Button0', 'Button1', 'Button2', 'Button3', 'Button4', 'Button5', 'Button6', 'Button7', 'Button8', 'Button9', 'Button10',
+		'Button11', 'Button12', 'Button13', 'Button14', 'Button15', 'Button16', 'Button17', 'Button18', 'Button19', 'Button20',
+		'Button21', 'Button22', 'Button23', 'Button24', 'Button25', 'Button26', 'Button27', 'Button28', 'Button29', 'Button30',
+		'Button31', 'Button32', 'Button33', 'Button34', 'Button35', 'Button36', 'Button37', 'Button38', 'Button39', 'Button40',
+		'Button41', 'Button42', 'Button43', 'Button44', 'Button45', 'Button46', 'Button47', 'Button48', 'Button49', 'Button50',
+		'Button51', 'Button52', 'Button53', 'Button54', 'Button55', 'Button56', 'Button57', 'Button58', 'Button59', 'Button60',
+		'Button61', 'Button62', 'Button63', 'Button64', 'Button65', 'Button66', 'Button67', 'Button68', 'Button69', 'Button70',
+		'Button71', 'Button72', 'Button73', 'Button74', 'Button75', 'Button76', 'Button77', 'Button78', 'Button79', 'Button80',
+		'Button81', 'Button82', 'Button83', 'Button84', 'Button85', 'Button86', 'Button87', 'Button88', 'Button89', 'Button90',
+		'Button91', 'Button92', 'Button93', 'Button94', 'Button95', 'Button96', 'Button97', 'Button98', 'Button99', 'Button100',
+		'Button101', 'Button102', 'Button103', 'Button104', 'Button105', 'Button106', 'Button107', 'Button108', 'Button109',
+		'Button110', 'Button111', 'Button112', 'Button113', 'Button114', 'Button115', 'Button116', 'Button117', 'Button118',
+		'Button119', 'Button120', 'Button121', 'Button122', 'Button123', 'Button124', 'Button125', 'Button126', 'Button127',
+		'ButtonBack', 'ButtonStart', 'ButtonSelect', 'ButtonL1', 'ButtonL2', 'ButtonL3', 'ButtonR1', 'ButtonR2', 'ButtonR3',
+		'ButtonCrossUp', 'ButtonCrossDown', 'ButtonCrossLeft', 'ButtonCrossRight',
+		'ButtonLast'
+	])
+
+	gen.bind_enum('gs::InputDevice::InputCode', [
+		'InputAxisX', 'InputAxisY', 'InputAxisZ', 'InputAxisS', 'InputAxisT', 'InputAxisR',
+		'InputRotX', 'InputRotY', 'InputRotZ', 'InputRotS', 'InputRotT', 'InputRotR',
+		'InputButton0', 'InputButton1', 'InputButton2', 'InputButton3', 'InputButton4', 'InputButton5', 'InputButton6', 'InputButton7', 'InputButton8', 'InputButton9', 'InputButton10', 'InputButton11', 'InputButton12', 'InputButton13', 'InputButton14', 'InputButton15',
+		'InputLast'
+	])
+
+	gen.bind_enum('gs::InputDevice::Effect', ['Vibrate', 'VibrateLeft', 'VibrateRight', 'ConstantForce'], bound_name='InputEffect', prefix='Input')
+	gen.bind_enum('gs::InputDevice::MatrixCode', ['MatrixHead'], bound_name='InputMatrixCode', prefix='Input')
+
+	#
+	input_device = gen.begin_class('gs::InputDevice', bound_name='InputDevice_hide_me', noncopyable=True)
+	gen.end_class(input_device)
+
+	shared_input_device = gen.begin_class('std::shared_ptr<gs::InputDevice>', bound_name='InputDevice', features={'proxy': lib.std.SharedPtrProxyFeature(input_device)})
+	gen.end_class(shared_input_device)
+
+
 def bind_plugins(gen):
 	gen.bind_function_overloads('gs::core::LoadPlugins', [('bool', [], []), ('bool', ['const char *path'], [])])
 	gen.bind_function('gs::core::UnloadPlugins', 'void', [])
@@ -50,23 +105,79 @@ def bind_window_system(gen):
 
 def bind_scene(gen):
 	gen.add_include('engine/scene.h')
-	gen.add_include('engine/node.h')
 
-	#
 	scene = gen.begin_class('gs::core::Scene', bound_name='Scene_hide_me', noncopyable=True)
 	gen.end_class(scene)
 
 	shared_scene = gen.begin_class('std::shared_ptr<gs::core::Scene>', bound_name='Scene', features={'proxy': lib.std.SharedPtrProxyFeature(scene)})
+
+	gen.bind_method(shared_scene, 'Clear', 'void', [], ['proxy'])
+	gen.bind_method(shared_scene, 'Dispose', 'void', [], ['proxy'])
+	gen.bind_method(shared_scene, 'IsReady', 'bool', [], ['proxy'])
+
+	gen.bind_method_overloads(shared_scene, 'Update', [
+		('void', [], ['proxy']),
+		('void', ['gs::time_ns dt'], ['proxy'])
+	])
+	gen.bind_method_overloads(shared_scene, 'WaitUpdate', [
+		('bool', [], ['proxy']),
+		('bool', ['bool blocking'], ['proxy'])
+	])
+	gen.bind_method(shared_scene, 'Commit', 'void', [], ['proxy'])
+	gen.bind_method_overloads(shared_scene, 'WaitCommit', [
+		('bool', [], ['proxy']),
+		('bool', ['bool blocking'], ['proxy'])
+	])
+
+	gen.bind_method_overloads(shared_scene, 'UpdateAndCommitWaitAll', [
+		('void', [], ['proxy']),
+		('void', ['gs::time_ns dt'], ['proxy'])
+	])
+
 	gen.end_class(shared_scene)
 
 	#
+	gen.add_include('engine/component.h')
+
+	component = gen.begin_class('gs::core::Component', bound_name='Component_hide_me', noncopyable=True)
+	gen.end_class(component)
+
+	shared_component = gen.begin_class('std::shared_ptr<gs::core::Component>', bound_name='Component', features={'proxy': lib.std.SharedPtrProxyFeature(component)})
+	gen.end_class(shared_component)
+
+	#
+	gen.add_include('engine/transform.h')
+
+	transform = gen.begin_class('gs::core::Transform', bound_name='Transform_hide_me', noncopyable=True)
+	gen.end_class(transform)
+
+	shared_transform = gen.begin_class('std::shared_ptr<gs::core::Transform>', bound_name='Transform', features={'proxy': lib.std.SharedPtrProxyFeature(transform)})
+	gen.bind_method(shared_transform, 'GetPreviousWorld', 'gs::Matrix4', [], ['proxy'])
+	gen.bind_method(shared_transform, 'GetWorld', 'gs::Matrix4', [], ['proxy'])
+
+	gen.bind_method(shared_transform, 'GetPosition', 'gs::Vector3', [], ['proxy'])
+	gen.bind_method(shared_transform, 'SetPosition', 'void', ['const gs::Vector3 &position'], ['proxy'])
+	gen.bind_method(shared_transform, 'GetRotation', 'gs::Vector3', [], ['proxy'])
+	gen.bind_method(shared_transform, 'SetRotation', 'void', ['const gs::Vector3 &rotation'], ['proxy'])
+	gen.bind_method(shared_transform, 'GetScale', 'gs::Vector3', [], ['proxy'])
+	gen.bind_method(shared_transform, 'SetScale', 'void', ['const gs::Vector3 &scale'], ['proxy'])
+
+	gen.bind_method(shared_transform, 'SetRotationMatrix', 'void', ['const gs::Matrix3 &rotation'], ['proxy'])
+	gen.end_class(shared_transform)
+
+	#
+	gen.add_include('engine/node.h')
+
 	node = gen.begin_class('gs::core::Node', bound_name='Node_hide_me', noncopyable=True)
 	gen.end_class(node)
 
 	shared_node = gen.begin_class('std::shared_ptr<gs::core::Node>', bound_name='Node', features={'proxy': lib.std.SharedPtrProxyFeature(node)})
+	gen.bind_method(shared_node, 'GetComponent<gs::core::Transform>', 'std::shared_ptr<gs::core::Transform>', [], ['proxy'], bound_name='GetTransform')
 	gen.end_class(shared_node)
 
 	#
+	gen.add_include('engine/light.h')
+
 	gen.bind_enum('gs::core::Light::Model', ['Model_Point', 'Model_Linear', 'Model_Spot', 'Model_Last'], prefix='Light')
 	gen.bind_enum('gs::core::Light::Shadow', ['Shadow_None', 'Shadow_ProjectionMap', 'Shadow_Map'], prefix='Light')
 
@@ -86,6 +197,8 @@ def bind_render(gen):
 	gen.bind_enum('gs::render::BlendMode', ['BlendOpaque', 'BlendAlpha', 'BlendAdditive'])
 
 	#
+	gen.add_include('engine/render_geometry.h')
+
 	geometry = gen.begin_class('gs::render::Geometry', bound_name='Geometry_hide_me', noncopyable=True)
 	gen.end_class(geometry)
 
@@ -283,6 +396,22 @@ def bind_plus(gen):
 		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix', 'float radius', 'int subdiv_x', 'int subdiv_y', 'const char *material_path'], [])
 	])
 
+	#
+	gen.bind_method(plus_conv, 'GetMouse', 'std::shared_ptr<gs::InputDevice>', [])
+	gen.bind_method(plus_conv, 'GetKeyboard', 'std::shared_ptr<gs::InputDevice>', [])
+
+	#void GetMousePos(float &x, float &y) const;
+	#void GetMouseDt(float &x, float &y) const;
+
+	gen.bind_method_overloads(plus_conv, 'MouseButtonDown', [
+		('bool', [], []),
+		('bool', ['gs::InputDevice::ButtonCode button'], [])
+	])
+	gen.bind_method(plus_conv, 'KeyDown', 'bool', ['gs::InputDevice::KeyCode key'])
+	gen.bind_method(plus_conv, 'KeyPress', 'bool', ['gs::InputDevice::KeyCode key'])
+	gen.bind_method(plus_conv, 'KeyReleased', 'bool', ['gs::InputDevice::KeyCode key'])
+
+	#
 	gen.bind_method(plus_conv, 'ResetClock', 'void', [])
 	gen.bind_method(plus_conv, 'UpdateClock', 'gs::time_ns', [])
 
@@ -387,7 +516,7 @@ def bind_math(gen):
 		'RotationOrderXYZ',
 		'RotationOrderXY',
 		'RotationOrder_Default'
-		], storage_type='uint8_t', set={'RotationOrder_Default': 4})
+		], storage_type='uint8_t')
 
 	gen.bind_enum('gs::math::Axis', ['AxisX', 'AxisY', 'AxisZ', 'AxisNone'], storage_type='uint8_t')
 
@@ -462,19 +591,22 @@ def bind_math(gen):
 	])
 
 	gen.bind_static_method(matrix4, 'TranslationMatrix', 'gs::Matrix4', ['const gs::Vector3 &t'])
-
-	"""
-	/// Rotation matrix.
-	static Matrix4 RotationMatrix(const Vector3 &euler, math::RotationOrder rorder = math::RotationOrder_Default);
-	/// Scale matrix.
-	static Matrix4 ScaleMatrix(const Vector3 &s);
-	/// Position/scale/rotation matrix.
-	static Matrix4 TransformationMatrix(const Vector3 &p, const Vector3 &r, const Vector3 &s = Vector3::One);
-	/// Position/scale/rotation matrix.
-	static Matrix4 TransformationMatrix(const Vector3 &p, const Matrix3 &r, const Vector3 &s = Vector3::One);
-	/// Create a look toward matrix.
-	static Matrix4 LookToward(const Vector3 &pos, const Vector3 &dir, const Vector3 &scl = Vector3::One, const Vector3 *up = nullptr);
-	"""
+	gen.bind_static_method_overloads(matrix4, 'RotationMatrix', [
+		('gs::Matrix4', ['const gs::Vector3 &euler'], []),
+		('gs::Matrix4', ['const gs::Vector3 &euler', 'gs::math::RotationOrder order'], [])
+	])
+	gen.bind_static_method(matrix4, 'ScaleMatrix', 'gs::Matrix4', ['const gs::Vector3 &scale'])
+	gen.bind_static_method_overloads(matrix4, 'TransformationMatrix', [
+		('gs::Matrix4', ['const gs::Vector3 &position', 'const gs::Vector3 &rotation'], []),
+		('gs::Matrix4', ['const gs::Vector3 &euler', 'const gs::Vector3 &rotation', 'const gs::Vector3 &scale'], []),
+		('gs::Matrix4', ['const gs::Vector3 &position', 'const gs::Matrix3 &rotation'], []),
+		('gs::Matrix4', ['const gs::Vector3 &euler', 'const gs::Matrix3 &rotation', 'const gs::Vector3 &scale'], [])
+	])
+	gen.bind_static_method_overloads(matrix4, 'LookToward', [
+		('gs::Matrix4', ['const gs::Vector3 &position', 'const gs::Vector3 &direction'], []),
+		('gs::Matrix4', ['const gs::Vector3 &position', 'const gs::Vector3 &direction', 'const gs::Vector3 &scale'], []),
+		('gs::Matrix4', ['const gs::Vector3 &position', 'const gs::Vector3 &direction', 'const gs::Vector3 &scale', 'const gs::Vector3 *up'], [])
+	])
 
 	gen.end_class(matrix4)
 
@@ -733,6 +865,7 @@ def bind_gs(gen):
 	bind_gpu(gen)
 	bind_render(gen)
 	bind_scene(gen)
+	bind_input(gen)
 	bind_plus(gen)
 	bind_mixer(gen)
 
