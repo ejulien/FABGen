@@ -17,8 +17,8 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 	def to_c_call(self, in_var, out_var_p):
 		return 'to_c_%s(%s, (void *)%s);\n' % (self.bound_name, in_var, out_var_p)
 
-	def from_c_call(self, out_var, in_var_p, ownership_policy):
-		return "PyObject *%s = from_c_%s((void *)%s, %s);\n" % (out_var, self.bound_name, in_var_p, ownership_policy)
+	def from_c_call(self, out_var, expr, ownership):
+		return "PyObject *%s = from_c_%s((void *)%s, %s);\n" % (out_var, self.bound_name, expr, ownership)
 
 	def check_call(self, in_var):
 		return "check_%s(%s)" % (self.bound_name, in_var)
@@ -296,8 +296,8 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 	def return_void_from_c(self):
 		return 'return 0;'
 
-	def rval_from_c_ptr(self, ctype, var, conv, rval_p, ownership_policy):
-		self._source += conv.from_c_call(var + '_pyobj', rval_p, ownership_policy)
+	def rval_from_c_ptr(self, conv, out_var, expr, ownership):
+		self._source += conv.from_c_call(out_var + '_pyobj', expr, ownership)
 
 	def commit_rvals(self, rval, ctx):
 		if ctx == 'setter':

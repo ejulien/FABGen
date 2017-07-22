@@ -252,10 +252,10 @@ class TypeConverter:
 	def finalize_type(self):
 		return ''
 
-	def to_c_call(self, out_var, in_var_p):
+	def to_c_call(self, out_var, expr):
 		assert 'to_c_call not implemented in converter'
 
-	def from_c_call(self, ctype, out_var, in_var_p):
+	def from_c_call(self, out_var, expr, ownership):
 		assert 'from_c_call not implemented in converter'
 
 	def prepare_var_for_conv(self, var, var_ref):
@@ -548,7 +548,7 @@ class FABGen:
 				self._source += 'new %s(%s);\n' % (rval, ', '.join(c_call_args))
 
 			ownership = 'Owning'  # constructor output is owned by VM
-			self.rval_from_c_ptr(rval_ptr, 'rval', rval_conv, ctype_ref_to(rval_ptr.get_ref(), rval_conv.ctype.get_ref() + '*') + 'rval', ownership)
+			self.rval_from_c_ptr(rval_conv, 'rval', ctype_ref_to(rval_ptr.get_ref(), rval_conv.ctype.get_ref() + '*') + 'rval', ownership)
 		else:
 			# return value is optional for a function call
 			if rval_conv:
@@ -558,7 +558,7 @@ class FABGen:
 
 			if rval_conv:
 				ownership = self.__ref_to_ownership_policy(rval)
-				self.rval_from_c_ptr(rval, 'rval', rval_conv, ctype_ref_to(rval.get_ref(), rval_conv.ctype.get_ref() + '*') + 'rval', ownership)
+				self.rval_from_c_ptr(rval_conv, 'rval', ctype_ref_to(rval.get_ref(), rval_conv.ctype.get_ref() + '*') + 'rval', ownership)
 
 		self.commit_rvals(rval, ctx)
 
