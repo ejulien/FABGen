@@ -12,7 +12,7 @@ def get_fully_qualified_ctype_name(ctype):
 		out += 'signed '
 	if ctype.unsigned:
 		out += 'unsigned '
-	out += ctype.unqualified_name
+	out += ctype.name
 	if hasattr(ctype, 'template'):
 		out += '<%s>' % ctype.template[0]
 	if ctype.const_ref:
@@ -42,7 +42,7 @@ def get_clean_ctype_name(ctype):
 	if ctype.unsigned:
 		parts.append('unsigned')
 
-	parts.append(ctype.unqualified_name.replace(':', '_'))
+	parts.append(ctype.name.replace(':', '_'))
 
 	if hasattr(ctype, 'template'):
 		parts.append('of_%s' % get_clean_ctype_name(ctype.template[0]))
@@ -56,7 +56,7 @@ def get_clean_ctype_name(ctype):
 
 def get_ctype_default_bound_name(ctype):
 	ctype = copy.deepcopy(ctype)
-	ctype.unqualified_name = ctype.unqualified_name.split('::')[-1]  # strip namespace
+	ctype.name = ctype.name.split('::')[-1]  # strip namespace
 	return get_clean_ctype_name(ctype)
 
 
@@ -153,7 +153,7 @@ class _CType:
 
 
 _TemplateParameters.grammar = "<", optional(csl(_CType)), ">"
-_CType.grammar = flag("const", K("const")), optional(flag("signed", K("signed"))), optional(flag("unsigned", K("unsigned"))), attr("unqualified_name", typename), optional(attr("template", _TemplateParameters)), optional(attr("ref", ref_re)), flag("const_ref", K("const"))
+_CType.grammar = flag("const", K("const")), optional(flag("signed", K("signed"))), optional(flag("unsigned", K("unsigned"))), attr("name", typename), optional(attr("template", _TemplateParameters)), optional(attr("ref", ref_re)), flag("const_ref", K("const"))
 
 
 #
@@ -427,9 +427,9 @@ class FABGen:
 			return self.__type_convs[full_qualified_ctype_name]
 
 		err_msg = "Unknown type %s (no converter available)" % ctype
-		assert ctype.unqualified_name in self.__type_convs, err_msg
+		assert ctype.name in self.__type_convs, err_msg
 
-		return self.__type_convs[ctype.unqualified_name]
+		return self.__type_convs[ctype.name]
 
 	def get_conv(self, type):
 		return self.__type_convs[type]
