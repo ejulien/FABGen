@@ -498,6 +498,13 @@ class FABGen:
 		out += conv.to_c_call(self.get_arg(idx, ctx), '&%s' % var)
 		return out
 
+	def prepare_c_rval(self, conv, ctype, var, ownership=None):
+		if ownership is None:
+			ownership = self.__ref_to_ownership_policy(ctype)
+		# transform from {T&, T*, T**, ...} to T* where T is conv.ctype
+		expr = transform_var_ref_to(var, ctype.get_ref(), conv.ctype.add_ref('*').get_ref())
+		return self.rval_from_c_ptr(conv, var, expr, ownership)
+
 	def __proto_call(self, self_conv, proto, expr_eval, ctx, fixed_arg_count=None):
 		features = proto['features']
 
@@ -547,8 +554,7 @@ class FABGen:
 				self._source += self.decl_var(rval_ptr, 'rval', ' = ')
 				self._source += 'new %s(%s);\n' % (rval, ', '.join(c_call_args))
 
-			ownership = 'Owning'  # constructor output is owned by VM
-			self.rval_from_c_ptr(rval_conv, 'rval', ctype_ref_to(rval_ptr.get_ref(), rval_conv.ctype.get_ref() + '*') + 'rval', ownership)
+			self._source += self.prepare_c_rval(rval_conv, rval_ptr, 'rval', 'Owning')  # constructor output is always owned by VM
 		else:
 			# return value is optional for a function call
 			if rval_conv:
@@ -557,8 +563,7 @@ class FABGen:
 			self._source += expr_eval(c_call_args) + '\n'
 
 			if rval_conv:
-				ownership = self.__ref_to_ownership_policy(rval)
-				self.rval_from_c_ptr(rval_conv, 'rval', ctype_ref_to(rval.get_ref(), rval_conv.ctype.get_ref() + '*') + 'rval', ownership)
+				self._source += self.prepare_c_rval(rval_conv, rval, 'rval')
 
 		self.commit_rvals(rval, ctx)
 

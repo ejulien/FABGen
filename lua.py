@@ -127,7 +127,7 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 		return 'return 0;'
 
 	def rval_from_c_ptr(self, conv, out_var, expr, ownership):
-		self._source += 'rval_count += ' + conv.from_c_call(out_var, expr)
+		return 'rval_count += ' + conv.from_c_call(out_var, expr)
 
 	def commit_rvals(self, rval):
 		self._source += "return rval_count;\n"

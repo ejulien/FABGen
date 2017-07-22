@@ -297,7 +297,7 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 		return 'return 0;'
 
 	def rval_from_c_ptr(self, conv, out_var, expr, ownership):
-		self._source += conv.from_c_call(out_var + '_pyobj', expr, ownership)
+		return conv.from_c_call(out_var + '_pyobj', expr, ownership)
 
 	def commit_rvals(self, rval, ctx):
 		if ctx == 'setter':
