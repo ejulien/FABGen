@@ -90,9 +90,9 @@ def bind_std(gen, PythonTypeConverterCommon):
 		def get_type_glue(self, module_name):
 			return 'bool check_%s(PyObject *o) { return PyUnicode_Check(o) ? true : false; }\n' % self.bound_name +\
 			'''void to_c_%s(PyObject *o, void *obj) {
-PyObject *utf8_pyobj = PyUnicode_AsUTF8String(o);
-*((%s*)obj) = PyBytes_AsString(utf8_pyobj);
-Py_DECREF(utf8_pyobj);
+	PyObject *utf8_pyobj = PyUnicode_AsUTF8String(o);
+	*((%s*)obj) = PyBytes_AsString(utf8_pyobj);
+	Py_DECREF(utf8_pyobj);
 }
 ''' % (self.bound_name, self.ctype) +\
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyUnicode_FromString(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)

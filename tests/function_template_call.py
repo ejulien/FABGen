@@ -3,12 +3,11 @@ def bind_test(gen):
 
 	# inject test code in the wrapper
 	gen.insert_code('''\
-template <typename T> T get() { return 8; }
+template <typename T> T get() { return T(8); }
 ''', True, False)
 
-	gen.decl_function_template('get', ['T'], 'T', [])
-	gen.bind_function_template('get', 'get_int', ['int'])
-	gen.bind_function_template('get', 'get_float', ['float'])
+	gen.bind_function('get<int>', 'int', [], bound_name='get_int')
+	gen.bind_function('get<float>', 'float', [], bound_name='get_float')
 
 	gen.finalize()
 	return gen.get_output()

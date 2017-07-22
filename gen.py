@@ -298,7 +298,6 @@ class FABGen:
 		self.__system_includes, self.__user_includes = [], []
 
 		self.__type_convs = {}
-		self.__function_templates = {}
 
 		self._bound_types = []  # list of bound types
 		self._bound_functions = []  # list of bound functions
@@ -638,12 +637,13 @@ class FABGen:
 		self._source += '\n'
 
 	#
-	def bind_function(self, name, rval, args, features=[]):
-		self.bind_function_overloads(name, [(rval, args, features)])
+	def bind_function(self, name, rval, args, features=[], bound_name=None):
+		self.bind_function_overloads(name, [(rval, args, features)], bound_name)
 
-	def bind_function_overloads(self, name, protos):
+	def bind_function_overloads(self, name, protos, bound_name=None):
 		expr_eval = lambda args: '%s(%s);' % (name, ', '.join(args))
-		bound_name = get_symbol_default_bound_name(name)
+		if bound_name is None:
+			bound_name = get_symbol_default_bound_name(name)
 		proxy_name = 'py_' + bound_name
 		self.__bind_proxy(proxy_name, None, protos, 'function %s' % bound_name, expr_eval, 'function')
 
@@ -674,7 +674,7 @@ class FABGen:
 		proxy_name = 'py_method_%s_of_%s' % (bound_name, conv.bound_name)
 		self.__bind_proxy(proxy_name, conv, protos, 'method %s of %s' % (bound_name, conv.bound_name), expr_eval, 'method')
 
-		conv.methods.append({'name': bound_name, 'proxy_name': proxy_name, 'protos': protos})
+		conv.methods.append({'name': name, 'bound_name': bound_name, 'proxy_name': proxy_name, 'protos': protos})
 
 	#
 	def bind_static_method(self, conv, name, rval, args, features=[], bound_name=None):
@@ -687,7 +687,7 @@ class FABGen:
 		proxy_name = 'py_static_method_%s_of_%s' % (bound_name, conv.bound_name)
 		self.__bind_proxy(proxy_name, conv, protos, 'static method %s of %s' % (bound_name, conv.bound_name), expr_eval, 'static_method')
 
-		conv.static_methods.append({'name': bound_name, 'proxy_name': proxy_name, 'protos': protos})
+		conv.static_methods.append({'name': name, 'bound_name': bound_name, 'proxy_name': proxy_name, 'protos': protos})
 
 	#
 	def bind_member(self, conv, member, features=[]):
@@ -816,35 +816,6 @@ class FABGen:
 	def bind_comparison_ops_overloads(self, conv, ops, protos):
 		for op in ops:
 			self.bind_comparison_op_overloads(conv, op, protos)
-
-	# global function template
-	def decl_function_template(self, tmpl_name, tmpl_args, rval, args):
-		self.__function_templates[tmpl_name] = {'tmpl_args': tmpl_args, 'rval': rval, 'args': args}
-
-	def bind_function_template(self, tmpl_name, bound_name, bind_args):
-		tmpl = self.__function_templates[tmpl_name]
-		tmpl_args = tmpl['tmpl_args']
-
-		assert len(tmpl_args) == len(bind_args)
-
-		def bind_tmpl_arg(arg):
-			return bind_args[tmpl_args.index(arg)] if arg in tmpl_args else arg
-
-		bound_rval = bind_tmpl_arg(tmpl['rval'])
-		bound_args = [bind_tmpl_arg(arg) for arg in tmpl['args']]
-
-		bound_named_args = ['%s arg%d' % (arg, idx) for idx, arg in enumerate(bound_args)]
-
-		# output wrapper
-		self._source += '// %s<%s> wrapper\n' % (tmpl_name, ', '.join(bind_args))
-		self._source += 'static %s %s(%s) { ' % (bound_rval, bound_name, ', '.join(bound_named_args))
-		if bound_rval != 'void':
-			self._source += 'return '
-		self._source += '%s<%s>(%s);' % (tmpl_name, ', '.join(bind_args), ', '.join(['arg%d' % i for i in range(len(bound_args))]))
-		self._source += ' }\n\n'
-
-		# bind wrapper
-		self.bind_function(bound_name, bound_rval, bound_args)
 
 	#
 	def output_summary(self):

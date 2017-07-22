@@ -68,9 +68,9 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		# methods
 		out += 'static PyMethodDef %s_tp_methods[] = {\n' % self.bound_name
 		for method in self.methods:
-			out += '	{"%s", (PyCFunction)%s, METH_VARARGS},\n' % (method['name'], method['proxy_name'])
+			out += '	{"%s", (PyCFunction)%s, METH_VARARGS},\n' % (method['bound_name'], method['proxy_name'])
 		for method in self.static_methods:
-			out += '	{"%s", (PyCFunction)%s, METH_VARARGS|METH_STATIC},\n' % (method['name'], method['proxy_name'])
+			out += '	{"%s", (PyCFunction)%s, METH_VARARGS|METH_STATIC},\n' % (method['bound_name'], method['proxy_name'])
 		out += '	{NULL} /* Sentinel */\n'
 		out += '};\n\n'
 
@@ -344,7 +344,7 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 			for name, enum in self._enums.items():
 				self._source += '	// enumeration %s\n' % name
 				for name, value in enum.items():
-					self._source += '	PyModule_AddIntConstant(m, "%s", %d);\n' % (name, value)
+					self._source += '	PyModule_AddIntConstant(m, "%s", %s);\n' % (name, value)
 			self._source += '\n'
 
 		# finalize bound types
