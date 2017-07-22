@@ -32,6 +32,19 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	def get_type_glue(self, gen, module_name):
 		out = ''
 
+		# repr feature support
+		has_repr = 'repr' in self._features
+
+		if has_repr:
+			repr = self._features['repr']
+
+			out += 'static PyObject *%s_tp_repr(PyObject *self) {\n' % self.bound_name
+			out += '	std::string repr;\n'
+			out += gen._prepare_c_arg_self(self, '_self')
+			out += repr.get_repr('_self', 'repr')
+			out += '	return PyUnicode_FromString(repr.c_str());\n'
+			out += '}\n\n'
+
 		# sequence feature support
 		has_sequence = 'sequence' in self._features
 
@@ -144,6 +157,8 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		out += '	{Py_tp_getset, &%s_tp_getset},\n' % self.bound_name
 		out += '	{Py_tp_methods, &%s_tp_methods},\n' % self.bound_name
 		out += '	{Py_tp_richcompare, &%s_tp_richcompare},\n' % self.bound_name
+		if has_repr:
+			out += '	{Py_tp_repr, &%s_tp_repr},\n' % self.bound_name
 		out += get_operator_slot('Py_nb_add', '+')
 		out += get_operator_slot('Py_nb_subtract', '-')
 		out += get_operator_slot('Py_nb_multiply', '*')

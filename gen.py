@@ -345,11 +345,13 @@ class FABGen:
 		self._source += conv.get_type_api(self._name)
 
 		conv._features = features
-		for feature, feature_obj in conv._features.items():
-			feature_obj.init_type_converter(self, conv)  # init converter feature
 
 		self._bound_types.append(conv)
 		self.__type_convs[conv.fully_qualified_name] = conv
+
+		feats = list(conv._features.values())
+		for feat in feats:
+			feat.init_type_converter(self, conv)  # init converter feature
 		return conv
 
 	def end_type(self, conv):
