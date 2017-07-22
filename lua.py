@@ -15,8 +15,8 @@ class LuaTypeConverterCommon(gen.TypeConverter):
 	def to_c_call(self, var, var_p):
 		return 'to_c_%s(L, %s, %s);\n' % (self.clean_name, var, var_p)
 
-	def from_c_call(self, ctype, var, var_p, ownership_policy):
-		return "from_c_%s(L, %s, %s);\n" % (self.clean_name, var_p, ownership_policy)
+	def from_c_call(self, out_var, expr, ownership):
+		return "from_c_%s(L, %s, %s);\n" % (self.clean_name, expr, ownership)
 
 
 #
@@ -126,11 +126,11 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 	def return_void_from_c(self):
 		return 'return 0;'
 
-	def rval_from_c_ptr(self, ctype, var, conv, rval_p):
-		self._source += 'rval_count += ' + conv.from_c_call(ctype, var, rval_p)
+	def rval_from_c_ptr(self, conv, out_var, expr, ownership):
+		return 'rval_count += ' + conv.from_c_call(out_var, expr)
 
-	def commit_rvals(self, rval):
-		self._source += "return rval_count;\n"
+	def commit_rvals(self, rval, ctx='default'):
+		return "return rval_count;\n"
 
 	#
 	def get_class_default_converter(self):

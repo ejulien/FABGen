@@ -17,8 +17,8 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 	def to_c_call(self, in_var, out_var_p):
 		return 'to_c_%s(%s, (void *)%s);\n' % (self.bound_name, in_var, out_var_p)
 
-	def from_c_call(self, out_var, in_var_p, ownership_policy):
-		return "PyObject *%s = from_c_%s((void *)%s, %s);\n" % (out_var, self.bound_name, in_var_p, ownership_policy)
+	def from_c_call(self, out_var, expr, ownership):
+		return "PyObject *%s = from_c_%s((void *)%s, %s);\n" % (out_var, self.bound_name, expr, ownership)
 
 	def check_call(self, in_var):
 		return "check_%s(%s)" % (self.bound_name, in_var)
@@ -29,9 +29,58 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	def __init__(self, type, storage_type=None, bound_name=None):
 		super().__init__(type, storage_type, bound_name)
 
-	def get_type_glue(self, module_name):
+	def get_type_glue(self, gen, module_name):
+		out = ''
+
+		# sequence feature support
+		has_sequence = 'sequence' in self._features
+
+		if has_sequence:
+			out += '// sequence protocol for %s\n' % self.bound_name
+			seq = self._features['sequence']
+
+			# get_size
+			out += 'static Py_ssize_t %s_sq_length(PyObject *self) {\n' % self.bound_name
+			out += gen._prepare_c_arg_self(self, '_self')
+			out += '	Py_ssize_t size = -1;\n'
+			out += seq.get_size('_self', 'size')
+			out += '	return size;\n'
+			out += '}\n\n'
+
+			# get_item
+			out += 'static PyObject *%s_sq_item(PyObject *self, Py_ssize_t idx) {\n' % self.bound_name
+			out += gen._prepare_c_arg_self(self, '_self')
+			out += gen.decl_var(seq.wrapped_conv.ctype, 'rval')
+			out += 'bool error = false;\n'
+			out += seq.get_item('_self', 'idx', 'rval', 'error')
+			out += '''if (error) {
+	PyErr_Format(PyExc_TypeError, "invalid lookup");
+	return NULL;
+}\n'''
+			out += gen.prepare_c_rval(seq.wrapped_conv, seq.wrapped_conv.ctype, 'rval')
+			out += gen.commit_rvals('rval')
+			out += '}\n\n'
+
+			# set_item
+			out += 'static int %s_sq_ass_item(PyObject *self, Py_ssize_t idx, PyObject *val) {\n' % self.bound_name
+			out += '	if (!%s) {\n' % seq.wrapped_conv.check_call('val')
+			out += '		PyErr_Format(PyExc_TypeError, "invalid type in assignation, expected %s");\n' % seq.wrapped_conv.ctype
+			out += '		return -1;\n'
+			out += '	}\n\n'
+			out += gen._prepare_c_arg_self(self, '_self')
+			out += gen._prepare_c_arg(0, seq.wrapped_conv, 'cval', 'setter')
+			out += 'bool error = false;\n'
+			out += seq.set_item('_self', 'idx', 'cval', 'error')
+			out += '''if (error) {
+	PyErr_Format(PyExc_TypeError, "invalid assignation");
+	return -1;
+}\n'''
+			out += '	return 0;\n'
+			out += '}\n\n'
+
 		# type
-		out = 'static PyObject *%s_type;\n\n' % self.bound_name
+		out += '// type %s\n' % self.bound_name
+		out += 'static PyObject *%s_type;\n\n' % self.bound_name
 
 		# constructor
 		out += 'static PyObject *%s_tp_new(PyTypeObject *subtype, PyObject *args, PyObject *kwds) {\n' % self.bound_name
@@ -75,21 +124,11 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		out += '};\n\n'
 
 		# comparison operators dispatcher
+		op_to_py_op = {'<': 'Py_LT', '<=': 'Py_LE', '==': 'Py_EQ', '!=': 'Py_NE', '>': 'Py_GT', '>=': 'Py_GE'}
+
 		out += 'static PyObject *%s_tp_richcompare(PyObject *o1, PyObject *o2, int op) {\n' % self.bound_name
 		for i, ops in enumerate(self.comparison_ops):
-			op = ops['op']
-			if op == '<':
-				out += "	if (op == Py_LT) return %s(o1, o2);\n" % ops['proxy_name']
-			elif op == '<=':
-				out += "	if (op == Py_LE) return %s(o1, o2);\n" % ops['proxy_name']
-			elif op == '==':
-				out += "	if (op == Py_EQ) return %s(o1, o2);\n" % ops['proxy_name']
-			elif op == '!=':
-				out += "	if (op == Py_NE) return %s(o1, o2);\n" % ops['proxy_name']
-			elif op == '>':
-				out += "	if (op == Py_GT) return %s(o1, o2);\n" % ops['proxy_name']
-			elif op == '>=':
-				out += "	if (op == Py_GE) return %s(o1, o2);\n" % ops['proxy_name']
+			out += "	if (op == %s) return %s(o1, o2);\n" % (op_to_py_op[ops['op']], ops['proxy_name'])
 		out += '	return Py_NotImplemented;\n'
 		out += '}\n\n'
 
@@ -109,6 +148,10 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		out += get_operator_slot('Py_nb_subtract', '-')
 		out += get_operator_slot('Py_nb_multiply', '*')
 		out += get_operator_slot('Py_nb_true_divide', '/')
+		if has_sequence:
+			out += '	{Py_sq_length, &%s_sq_length},\n' % self.bound_name
+			out += '	{Py_sq_item, &%s_sq_item},\n' % self.bound_name
+			out += '	{Py_sq_ass_item, &%s_sq_ass_item},\n' % self.bound_name
 		out += '''	{0, NULL}
 };
 \n'''
@@ -283,24 +326,26 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 	def return_void_from_c(self):
 		return 'return 0;'
 
-	def rval_from_c_ptr(self, ctype, var, conv, rval_p, ownership_policy):
-		self._source += conv.from_c_call(var + '_pyobj', rval_p, ownership_policy)
+	def rval_from_c_ptr(self, conv, out_var, expr, ownership):
+		return conv.from_c_call(out_var + '_pyobj', expr, ownership)
 
-	def commit_rvals(self, rval, ctx):
+	def commit_rvals(self, rval, ctx='default'):
+		out = ''
 		if ctx == 'setter':
-			self._source += 'return 0;\n'
+			out += 'return 0;\n'
 		elif ctx == 'inplace_arithmetic_op':
 			self_var = self.get_self(ctx)
-			self._source += 'Py_INCREF(%s);\nreturn %s;\n' % (self_var, self_var)
+			out += 'Py_INCREF(%s);\nreturn %s;\n' % (self_var, self_var)
 		else:
 			rval_count = 1 if repr(rval) != 'void' else 0
 
 			if rval_count == 0:
-				self._source += 'Py_INCREF(Py_None);\nreturn Py_None;\n'
+				out += 'Py_INCREF(Py_None);\nreturn Py_None;\n'
 			elif rval_count == 1:
-				self._source += 'return rval_pyobj;\n'
+				out += 'return rval_pyobj;\n'
 			else:
-				self._source += '// TODO make tuple, append rvals, return tuple\n'
+				out += '// TODO make tuple, append rvals, return tuple\n'
+		return out
 
 	#
 	def output_module_functions_table(self):

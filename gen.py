@@ -45,7 +45,7 @@ def get_clean_ctype_name(ctype):
 	parts.append(ctype.unqualified_name.replace(':', '_'))
 
 	if hasattr(ctype, 'template'):
-		parts.append('tmpl_%s' % get_clean_ctype_name(ctype.template[0]))
+		parts.append('of_%s' % get_clean_ctype_name(ctype.template[0]))
 	if ctype.const_ref:
 		parts.append('const')
 	if hasattr(ctype, 'ref'):
@@ -252,10 +252,10 @@ class TypeConverter:
 	def finalize_type(self):
 		return ''
 
-	def to_c_call(self, out_var, in_var_p):
+	def to_c_call(self, out_var, expr):
 		assert 'to_c_call not implemented in converter'
 
-	def from_c_call(self, ctype, out_var, in_var_p):
+	def from_c_call(self, out_var, expr, ownership):
 		assert 'from_c_call not implemented in converter'
 
 	def prepare_var_for_conv(self, var, var_ref):
@@ -311,8 +311,8 @@ class FABGen:
 		self._source += 'enum OwnershipPolicy { NonOwning, Copy, Owning };\n\n'
 		self._source += 'void *_type_tag_cast(void *in_p, const char *in_type_tag, const char *out_type_tag);\n\n'
 
-	def add_include(self, path, is_system_include = False):
-		if is_system_include:
+	def add_include(self, path, is_system=False):
+		if is_system:
 			self.__system_includes.append(path)
 		else:
 			self.__user_includes.append(path)
@@ -346,14 +346,14 @@ class FABGen:
 
 		conv._features = features
 		for feature, feature_obj in conv._features.items():
-			feature_obj.init(self, conv)  # init converter feature
+			feature_obj.init_type_converter(self, conv)  # init converter feature
 
 		self._bound_types.append(conv)
 		self.__type_convs[conv.fully_qualified_name] = conv
 		return conv
 
 	def end_type(self, conv):
-		self._source += conv.get_type_glue(self._name) + '\n'
+		self._source += conv.get_type_glue(self, self._name) + '\n'
 
 	def bind_type(self, conv, features={}):
 		self.begin_type(conv, features)
@@ -431,6 +431,9 @@ class FABGen:
 
 		return self.__type_convs[ctype.unqualified_name]
 
+	def get_conv(self, type):
+		return self.__type_convs[type]
+
 	#
 	def decl_var(self, ctype, name, eol=';\n'):
 		return '%s %s%s' % (get_fully_qualified_ctype_name(ctype), name, eol)
@@ -475,6 +478,33 @@ class FABGen:
 	def __assert_conv_feature(self, conv, feature):
 		assert feature in conv._features, "Type converter for %s does not support the %s feature" % (conv.ctype, feature)
 
+	def _prepare_c_arg_self(self, conv, out_var, ctx='none', features=[]):
+		out = ''
+		if 'proxy' in features:
+			proxy = conv._features['proxy']
+
+			out += '	' + self.decl_var(conv.storage_ctype, '%s_wrapped' % out_var)
+			out += '	' + conv.to_c_call(self.get_self(ctx), '&%s_wrapped' % out_var)
+
+			out += '	' + self.decl_var(proxy.wrapped_conv.storage_ctype, out_var)
+			out += proxy.unwrap('%s_wrapped' % out_var, out_var)
+		else:
+			out += '	' + self.decl_var(conv.storage_ctype, out_var)
+			out += '	' + conv.to_c_call(self.get_self(ctx), '&%s' % out_var)
+		return out
+
+	def _prepare_c_arg(self, idx, conv, var, ctx='default', features=[]):
+		out = self.decl_var(conv.storage_ctype, var)
+		out += conv.to_c_call(self.get_arg(idx, ctx), '&%s' % var)
+		return out
+
+	def prepare_c_rval(self, conv, ctype, var, ownership=None):
+		if ownership is None:
+			ownership = self.__ref_to_ownership_policy(ctype)
+		# transform from {T&, T*, T**, ...} to T* where T is conv.ctype
+		expr = transform_var_ref_to(var, ctype.get_ref(), conv.ctype.add_ref('*').get_ref())
+		return self.rval_from_c_ptr(conv, var, expr, ownership)
+
 	def __proto_call(self, self_conv, proto, expr_eval, ctx, fixed_arg_count=None):
 		features = proto['features']
 
@@ -491,17 +521,7 @@ class FABGen:
 		# prepare C call self argument
 		if self_conv:
 			if ctx in ['getter', 'setter', 'method', 'arithmetic_op', 'inplace_arithmetic_op', 'comparison_op']:
-				if enable_proxy:
-					proxy = self_conv._features['proxy']
-
-					self._source += '	' + self.decl_var(self_conv.storage_ctype, '_self_wrapped')
-					self._source += '	' + self_conv.to_c_call(self.get_self(ctx), '&_self_wrapped')
-
-					self._source += '	' + self.decl_var(proxy.wrapped_conv.storage_ctype, '_self')
-					self._source += proxy.unwrap('_self_wrapped', '_self')
-				else:
-					self._source += '	' + self.decl_var(self_conv.storage_ctype, '_self')
-					self._source += '	' + self_conv.to_c_call(self.get_self(ctx), '&_self')
+				self._source += self._prepare_c_arg_self(self_conv, '_self', ctx, features)
 
 		# prepare C call arguments
 		args = proto['args']
@@ -513,8 +533,7 @@ class FABGen:
 				continue
 
 			arg_name = 'arg%d' % idx
-			self._source += self.decl_var(conv.storage_ctype, arg_name)
-			self._source += conv.to_c_call(self.get_arg(idx, ctx), '&' + arg_name)
+			self._source += self._prepare_c_arg(idx, conv, arg_name, ctx, features)
 
 			c_call_arg_transform = ctype_ref_to(conv.storage_ctype.get_ref(), arg['carg'].ctype.get_ref())
 			c_call_args.append(c_call_arg_transform + arg_name)
@@ -535,8 +554,7 @@ class FABGen:
 				self._source += self.decl_var(rval_ptr, 'rval', ' = ')
 				self._source += 'new %s(%s);\n' % (rval, ', '.join(c_call_args))
 
-			ownership = 'Owning'  # constructor output is owned by VM
-			self.rval_from_c_ptr(rval_ptr, 'rval', rval_conv, ctype_ref_to(rval_ptr.get_ref(), rval_conv.ctype.get_ref() + '*') + 'rval', ownership)
+			self._source += self.prepare_c_rval(rval_conv, rval_ptr, 'rval', 'Owning')  # constructor output is always owned by VM
 		else:
 			# return value is optional for a function call
 			if rval_conv:
@@ -545,10 +563,9 @@ class FABGen:
 			self._source += expr_eval(c_call_args) + '\n'
 
 			if rval_conv:
-				ownership = self.__ref_to_ownership_policy(rval)
-				self.rval_from_c_ptr(rval, 'rval', rval_conv, ctype_ref_to(rval.get_ref(), rval_conv.ctype.get_ref() + '*') + 'rval', ownership)
+				self._source += self.prepare_c_rval(rval_conv, rval, 'rval')
 
-		self.commit_rvals(rval, ctx)
+		self._source += self.commit_rvals(rval, ctx)
 
 	def __bind_proxy(self, name, self_conv, protos, desc, expr_eval, ctx, fixed_arg_count=None):
 		protos = self.__prepare_protos(protos)
