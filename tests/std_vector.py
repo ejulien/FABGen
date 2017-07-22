@@ -17,8 +17,19 @@ def bind_test(gen):
 		def get_size(self, self_var, out_var):
 			return '%s = %s->size();\n' % (out_var, self_var)
 
-		def get_item(self, self_var, idx, out_var):
-			return '%s = %s->at(%s);\n' % (out_var, self_var, idx)
+		def get_item(self, self_var, idx, out_var, error_var):
+			out = 'if (%s < %s->size())\n' % (idx, self_var)
+			out += '	%s = (*%s)[%s];\n' % (out_var, self_var, idx)
+			out += 'else\n'
+			out += '	%s = true;\n' % error_var
+			return out
+
+		def set_item(self, self_var, idx, in_var, error_var):
+			out = 'if (%s < %s->size())\n' % (idx, self_var)
+			out += '	(*%s)[%s] = %s;\n' % (self_var, idx, in_var)
+			out += 'else\n'
+			out += '	%s = true;\n' % error_var
+			return out
 
 	std_vector_int = gen.begin_class('std::vector<int>', features={'sequence': StdVectorSequence(gen.get_conv('int'))})
 	gen.bind_constructor(std_vector_int, [])

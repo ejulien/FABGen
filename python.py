@@ -30,8 +30,57 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		super().__init__(type, storage_type, bound_name)
 
 	def get_type_glue(self, gen, module_name):
+		out = ''
+
+		# sequence feature support
+		has_sequence = 'sequence' in self._features
+
+		if has_sequence:
+			out += '// sequence protocol for %s\n' % self.bound_name
+			seq = self._features['sequence']
+
+			# get_size
+			out += 'static Py_ssize_t %s_sq_length(PyObject *self) {\n' % self.bound_name
+			out += gen._prepare_c_arg_self(self, '_self')
+			out += '	Py_ssize_t size = -1;\n'
+			out += seq.get_size('_self', 'size')
+			out += '	return size;\n'
+			out += '}\n\n'
+
+			# get_item
+			out += 'static PyObject *%s_sq_item(PyObject *self, Py_ssize_t idx) {\n' % self.bound_name
+			out += gen._prepare_c_arg_self(self, '_self')
+			out += gen.decl_var(seq.wrapped_conv.ctype, 'rval')
+			out += 'bool error = false;\n'
+			out += seq.get_item('_self', 'idx', 'rval', 'error')
+			out += '''if (error) {
+	PyErr_Format(PyExc_TypeError, "invalid lookup");
+	return NULL;
+}\n'''
+			out += gen.prepare_c_rval(seq.wrapped_conv, seq.wrapped_conv.ctype, 'rval')
+			out += gen.commit_rvals('rval')
+			out += '}\n\n'
+
+			# set_item
+			out += 'static int %s_sq_ass_item(PyObject *self, Py_ssize_t idx, PyObject *val) {\n' % self.bound_name
+			out += '	if (!%s) {\n' % seq.wrapped_conv.check_call('val')
+			out += '		PyErr_Format(PyExc_TypeError, "invalid type in assignation, expected %s");\n' % seq.wrapped_conv.ctype
+			out += '		return -1;\n'
+			out += '	}\n\n'
+			out += gen._prepare_c_arg_self(self, '_self')
+			out += gen._prepare_c_arg(0, seq.wrapped_conv, 'cval', 'setter')
+			out += 'bool error = false;\n'
+			out += seq.set_item('_self', 'idx', 'cval', 'error')
+			out += '''if (error) {
+	PyErr_Format(PyExc_TypeError, "invalid assignation");
+	return -1;
+}\n'''
+			out += '	return 0;\n'
+			out += '}\n\n'
+
 		# type
-		out = 'static PyObject *%s_type;\n\n' % self.bound_name
+		out += '// type %s\n' % self.bound_name
+		out += 'static PyObject *%s_type;\n\n' % self.bound_name
 
 		# constructor
 		out += 'static PyObject *%s_tp_new(PyTypeObject *subtype, PyObject *args, PyObject *kwds) {\n' % self.bound_name
@@ -83,29 +132,6 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		out += '	return Py_NotImplemented;\n'
 		out += '}\n\n'
 
-		# sequence feature support
-		has_sequence = 'sequence' in self._features
-
-		if has_sequence:
-			out += '// Sequence protocol support for %s\n' % self.bound_name
-			seq = self._features['sequence']
-
-			# get_size
-			out += 'static Py_ssize_t %s_sq_length(PyObject *self) {\n' % self.bound_name
-			out += gen._prepare_c_arg_self(self, '_self')
-			out += '	Py_ssize_t size = -1;\n'
-			out += seq.get_size('_self', 'size')
-			out += '	return size;\n'
-			out += '}\n\n'
-
-			# get_item
-			out += 'static PyObject *%s_sq_item(PyObject *self, Py_ssize_t idx) {\n' % self.bound_name
-			out += gen._prepare_c_arg_self(self, '_self')
-			out += gen.decl_var(seq.wrapped_conv.storage_ctype, 'rval')
-			out += seq.get_item('_self', 'idx', 'rval')
-			out += '	return 0;\n'
-			out += '}\n\n'
-
 		# slots
 		def get_operator_slot(slot, op):
 			op = self.get_operator(op)
@@ -122,6 +148,10 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		out += get_operator_slot('Py_nb_subtract', '-')
 		out += get_operator_slot('Py_nb_multiply', '*')
 		out += get_operator_slot('Py_nb_true_divide', '/')
+		if has_sequence:
+			out += '	{Py_sq_length, &%s_sq_length},\n' % self.bound_name
+			out += '	{Py_sq_item, &%s_sq_item},\n' % self.bound_name
+			out += '	{Py_sq_ass_item, &%s_sq_ass_item},\n' % self.bound_name
 		out += '''	{0, NULL}
 };
 \n'''
@@ -299,21 +329,23 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 	def rval_from_c_ptr(self, conv, out_var, expr, ownership):
 		return conv.from_c_call(out_var + '_pyobj', expr, ownership)
 
-	def commit_rvals(self, rval, ctx):
+	def commit_rvals(self, rval, ctx='default'):
+		out = ''
 		if ctx == 'setter':
-			self._source += 'return 0;\n'
+			out += 'return 0;\n'
 		elif ctx == 'inplace_arithmetic_op':
 			self_var = self.get_self(ctx)
-			self._source += 'Py_INCREF(%s);\nreturn %s;\n' % (self_var, self_var)
+			out += 'Py_INCREF(%s);\nreturn %s;\n' % (self_var, self_var)
 		else:
 			rval_count = 1 if repr(rval) != 'void' else 0
 
 			if rval_count == 0:
-				self._source += 'Py_INCREF(Py_None);\nreturn Py_None;\n'
+				out += 'Py_INCREF(Py_None);\nreturn Py_None;\n'
 			elif rval_count == 1:
-				self._source += 'return rval_pyobj;\n'
+				out += 'return rval_pyobj;\n'
 			else:
-				self._source += '// TODO make tuple, append rvals, return tuple\n'
+				out += '// TODO make tuple, append rvals, return tuple\n'
+		return out
 
 	#
 	def output_module_functions_table(self):

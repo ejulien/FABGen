@@ -493,7 +493,7 @@ class FABGen:
 			out += '	' + conv.to_c_call(self.get_self(ctx), '&%s' % out_var)
 		return out
 
-	def _prepare_c_arg(self, idx, conv, var, ctx='none', features=[]):
+	def _prepare_c_arg(self, idx, conv, var, ctx='default', features=[]):
 		out = self.decl_var(conv.storage_ctype, var)
 		out += conv.to_c_call(self.get_arg(idx, ctx), '&%s' % var)
 		return out
@@ -565,7 +565,7 @@ class FABGen:
 			if rval_conv:
 				self._source += self.prepare_c_rval(rval_conv, rval, 'rval')
 
-		self.commit_rvals(rval, ctx)
+		self._source += self.commit_rvals(rval, ctx)
 
 	def __bind_proxy(self, name, self_conv, protos, desc, expr_eval, ctx, fixed_arg_count=None):
 		protos = self.__prepare_protos(protos)
