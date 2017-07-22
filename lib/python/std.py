@@ -3,7 +3,7 @@ def bind_std(gen, PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
-		def get_type_glue(self, module_name):
+		def get_type_glue(self, gen, module_name):
 			return 'bool check_%s(PyObject *o) { return PyBool_Check(o) ? true : false; }\n' % self.bound_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = o == Py_True; }\n' % (self.bound_name, self.ctype) +\
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyBool_FromLong(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
@@ -14,7 +14,7 @@ def bind_std(gen, PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
-		def get_type_glue(self, module_name):
+		def get_type_glue(self, gen, module_name):
 			return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.bound_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = (%s)PyLong_AsLong(o); }\n' % (self.bound_name, self.ctype, self.ctype) +\
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromLong(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
@@ -28,7 +28,7 @@ def bind_std(gen, PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
-		def get_type_glue(self, module_name):
+		def get_type_glue(self, gen, module_name):
 			return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.bound_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = (%s)PyLong_AsUnsignedLong(o); }\n' % (self.bound_name, self.ctype, self.ctype) +\
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromUnsignedLong(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
@@ -42,7 +42,7 @@ def bind_std(gen, PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
-		def get_type_glue(self, module_name):
+		def get_type_glue(self, gen, module_name):
 			return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.bound_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyLong_AsLongLong(o); }\n' % (self.bound_name, self.ctype) +\
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromLongLong(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
@@ -53,7 +53,7 @@ def bind_std(gen, PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
-		def get_type_glue(self, module_name):
+		def get_type_glue(self, gen, module_name):
 			return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.bound_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyLong_AsUnsignedLongLong(o); }\n' % (self.bound_name, self.ctype) +\
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromUnsignedLongLong(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
@@ -64,7 +64,7 @@ def bind_std(gen, PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
-		def get_type_glue(self, module_name):
+		def get_type_glue(self, gen, module_name):
 			return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.bound_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyLong_AsSize_t(o); }\n' % (self.bound_name, self.ctype) +\
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromSize_t(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
@@ -75,7 +75,7 @@ def bind_std(gen, PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
-		def get_type_glue(self, module_name):
+		def get_type_glue(self, gen, module_name):
 			return 'bool check_%s(PyObject *o) { return PyFloat_Check(o) || PyLong_Check(o) ? true : false; }\n' % self.bound_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = (%s)PyFloat_AsDouble(o); }\n' % (self.bound_name, self.ctype, self.ctype) +\
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyFloat_FromDouble(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
@@ -87,7 +87,7 @@ def bind_std(gen, PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
-		def get_type_glue(self, module_name):
+		def get_type_glue(self, gen, module_name):
 			return 'bool check_%s(PyObject *o) { return PyUnicode_Check(o) ? true : false; }\n' % self.bound_name +\
 			'''void to_c_%s(PyObject *o, void *obj) {
 	PyObject *utf8_pyobj = PyUnicode_AsUTF8String(o);

@@ -5,7 +5,7 @@ def bind_stl(gen, PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
-		def get_type_glue(self, module_name):
+		def get_type_glue(self, gen, module_name):
 			return 'bool check_%s(PyObject *o) { return PyUnicode_Check(o) ? true : false; }\n' % self.bound_name +\
 			'''void to_c_%s(PyObject *o, void *obj) {
 PyObject *utf8_pyobj = PyUnicode_AsUTF8String(o);

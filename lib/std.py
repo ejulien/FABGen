@@ -2,7 +2,7 @@ class SharedPtrProxyFeature:
 	def __init__(self, wrapped_conv):
 		self.wrapped_conv = wrapped_conv
 
-	def init(self, gen, conv):
+	def init_type_converter(self, gen, conv):
 		# declare shared_ptr<T> to T cast support
 		cast_function_name = 'cast_%s_to_%s' % (conv.bound_name, self.wrapped_conv.bound_name)
 

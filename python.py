@@ -29,7 +29,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	def __init__(self, type, storage_type=None, bound_name=None):
 		super().__init__(type, storage_type, bound_name)
 
-	def get_type_glue(self, module_name):
+	def get_type_glue(self, gen, module_name):
 		# type
 		out = 'static PyObject *%s_type;\n\n' % self.bound_name
 
@@ -75,23 +75,36 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		out += '};\n\n'
 
 		# comparison operators dispatcher
+		op_to_py_op = {'<': 'Py_LT', '<=': 'Py_LE', '==': 'Py_EQ', '!=': 'Py_NE', '>': 'Py_GT', '>=': 'Py_GE'}
+
 		out += 'static PyObject *%s_tp_richcompare(PyObject *o1, PyObject *o2, int op) {\n' % self.bound_name
 		for i, ops in enumerate(self.comparison_ops):
-			op = ops['op']
-			if op == '<':
-				out += "	if (op == Py_LT) return %s(o1, o2);\n" % ops['proxy_name']
-			elif op == '<=':
-				out += "	if (op == Py_LE) return %s(o1, o2);\n" % ops['proxy_name']
-			elif op == '==':
-				out += "	if (op == Py_EQ) return %s(o1, o2);\n" % ops['proxy_name']
-			elif op == '!=':
-				out += "	if (op == Py_NE) return %s(o1, o2);\n" % ops['proxy_name']
-			elif op == '>':
-				out += "	if (op == Py_GT) return %s(o1, o2);\n" % ops['proxy_name']
-			elif op == '>=':
-				out += "	if (op == Py_GE) return %s(o1, o2);\n" % ops['proxy_name']
+			out += "	if (op == %s) return %s(o1, o2);\n" % (op_to_py_op[ops['op']], ops['proxy_name'])
 		out += '	return Py_NotImplemented;\n'
 		out += '}\n\n'
+
+		# sequence feature support
+		has_sequence = 'sequence' in self._features
+
+		if has_sequence:
+			out += '// Sequence protocol support for %s\n' % self.bound_name
+			seq = self._features['sequence']
+
+			# get_size
+			out += 'static Py_ssize_t %s_sq_length(PyObject *self) {\n' % self.bound_name
+			out += gen._prepare_c_arg_self(self, '_self')
+			out += '	Py_ssize_t size = -1;\n'
+			out += seq.get_size('_self', 'size')
+			out += '	return size;\n'
+			out += '}\n\n'
+
+			# get_item
+			out += 'static PyObject *%s_sq_item(PyObject *self, Py_ssize_t idx) {\n' % self.bound_name
+			out += gen._prepare_c_arg_self(self, '_self')
+			out += gen.decl_var(seq.wrapped_conv.storage_ctype, 'rval')
+			out += seq.get_item('_self', 'idx', 'rval')
+			out += '	return 0;\n'
+			out += '}\n\n'
 
 		# slots
 		def get_operator_slot(slot, op):
