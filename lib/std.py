@@ -43,7 +43,7 @@ def bind_future_T(gen, T, bound_name=None):
 
 	gen.bind_enum('std::future_status', ['deferred', 'ready', 'timeout'], prefix='future_')
 
-	future = gen.begin_class('std::future<%s>' % T, bound_name=bound_name, noncopyable=True)
+	future = gen.begin_class('std::future<%s>' % T, bound_name=bound_name, noncopyable=True, moveable=True)
 
 	gen.bind_method(future, 'get', T, [])
 	gen.bind_method(future, 'valid', 'bool', [])

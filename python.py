@@ -200,7 +200,10 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 \n''' % (self.bound_name, self.type_tag)
 
 		if self._non_copyable:
-			copy_code = '''PyErr_SetString(PyExc_RuntimeError, "type %s is non-copyable");
+			if self._moveable:
+				copy_code = 'obj = new %s(std::move(*(%s *)obj));' % (self.fully_qualified_name, self.fully_qualified_name)
+			else:
+				copy_code = '''PyErr_SetString(PyExc_RuntimeError, "type %s is non-copyable and non-moveable");
 		return NULL;''' % self.bound_name
 		else:
 			copy_code = 'obj = new %s(*(%s *)obj);' % (self.fully_qualified_name, self.fully_qualified_name)

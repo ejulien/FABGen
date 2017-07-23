@@ -721,6 +721,10 @@ def bind_color(gen):
 	gen.add_include('foundation/color.h')
 
 	color = gen.begin_class('gs::Color')
+
+	gen.bind_static_members(color, ['const gs::Color Zero', 'const gs::Color One', 'const gs::Color White', 'const gs::Color Grey', 'const gs::Color Black', 'const gs::Color Red', 'const gs::Color Green', 'const gs::Color Blue', 'const gs::Color Yellow', 'const gs::Color Orange', 'const gs::Color Purple', 'const gs::Color Transparent'])
+	gen.bind_members(color, ['float r', 'float g', 'float b', 'float a'])
+
 	gen.end_class(color)
 
 

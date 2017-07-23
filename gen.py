@@ -248,6 +248,7 @@ class TypeConverter:
 		self.comparison_ops = []
 
 		self._non_copyable = False
+		self._moveable = False
 
 		self._features = {}
 		self._casts = []  # valid casts
@@ -408,7 +409,7 @@ class FABGen:
 		self._enums[bound_name] = enum
 
 	#
-	def begin_class(self, type, converter_class=None, noncopyable=False, bound_name=None, features={}):
+	def begin_class(self, type, converter_class=None, noncopyable=False, moveable=False, bound_name=None, features={}):
 		"""Begin a class declaration."""
 		if type in self.__type_convs:
 			return self.__type_convs[type]  # type already declared
@@ -419,6 +420,7 @@ class FABGen:
 		conv = self.begin_type(conv, features)
 
 		conv._non_copyable = noncopyable
+		conv._moveable = moveable
 		return conv
 
 	def end_class(self, conv):
