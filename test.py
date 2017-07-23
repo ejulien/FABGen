@@ -58,7 +58,7 @@ def bind_binary_blob(gen):
 
 	# implicit cast to various base types
 	float_ptr = gen.bind_ptr('float *', bound_name='PointerToFloat')
-	gen.add_cast(binary_blob, float_ptr, lambda in_var, out_var: '*((float **)%s) = (float *)((gs::BinaryBlob *)%s)->GetData();\n' % (out_var, in_var))
+	gen.add_cast(binary_blob, float_ptr, lambda in_var, out_var: '%s = ((gs::BinaryBlob *)%s)->GetData();\n' % (out_var, in_var))
 
 	#
 	gen.bind_function('BinaryBlobBlur3d', 'void', ['gs::BinaryBlob &data', 'uint32_t width', 'uint32_t height', 'uint32_t depth'])
@@ -328,6 +328,10 @@ def bind_render(gen):
 	gen.end_class(geometry)
 
 	shared_geometry = gen.begin_class('std::shared_ptr<gs::render::Geometry>', bound_name='RenderGeometry', features={'proxy': lib.std.SharedPtrProxyFeature(geometry)})
+	gen.bind_constructor_overloads(shared_geometry, [
+		([], ['proxy']),
+		(['const char *name'], ['proxy']),
+	])
 	gen.end_class(shared_geometry)
 
 	# render::RenderSystem

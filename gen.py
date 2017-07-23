@@ -323,7 +323,8 @@ class FABGen:
 		self.output_includes()
 
 		self._source += 'enum OwnershipPolicy { NonOwning, Copy, Owning };\n\n'
-		self._source += 'void *_type_tag_cast(void *in_p, const char *in_type_tag, const char *out_type_tag);\n\n'
+		self._source += 'bool _type_tag_can_cast(const char *in_type_tag, const char *out_type_tag);\n'
+		self._source += 'void *_type_tag_cast(void *in_T0, const char *in_type_tag, const char *out_type_tag);\n\n'
 
 	def add_include(self, path, is_system=False):
 		if is_system:
@@ -884,36 +885,52 @@ class FABGen:
 		self._source += '\n'
 
 	def get_type_tag_cast_function(self):
-		out = '''\
-// type_tag based cast system
-void *_type_tag_cast(void *in_p, const char *in_type_tag, const char *out_type_tag) {
-	if (out_type_tag == in_type_tag)
-		return in_p;
+		out = '// type_tag based cast system\n'
 
-	void *out_p = NULL;
-\n'''
+		def output_type_tag_cast_tree(expr):
+			out = ''
 
-		i = 0
-		for conv in self._bound_types:
-			if len(conv._casts) == 0:
-				continue
+			i = 0
+			for conv in self._bound_types:
+				if len(conv._casts) == 0:
+					continue
 
-			out += '	' if i == 0 else ' else '
-			out += 'if (in_type_tag == %s) {\n' % conv.type_tag
+				out += '	' if i == 0 else ' else '
+				out += 'if (in_type_tag == %s) {\n' % conv.type_tag
 
-			for j, cast in enumerate(conv._casts):
-				out += '	' if j == 0 else ' else '
-				out += 'if (out_type_tag == %s) {\n' % cast[0].type_tag
-				out += cast[1]('in_p', 'out_p')
+				for j, cast in enumerate(conv._casts):
+					out += '	' if j == 0 else ' else '
+					out += 'if (out_type_tag == %s) {\n' % cast[0].type_tag
+					out += expr(cast)
+					out += '}\n'
+
 				out += '}\n'
+				i += 1
 
-			out += '}\n'
-			i += 1
+			return out
 
-		out += '''
+		# can cast
+		out += '''\
+bool _type_tag_can_cast(const char *in_type_tag, const char *out_type_tag) {
+	if (out_type_tag == in_type_tag)
+		return true;
 
-	return out_p;
-}\n\n'''
+	%s
+	return false;
+}\n\n''' % output_type_tag_cast_tree(lambda cast: '	return true;\n')
+
+		# cast
+		out += '''\
+void *_type_tag_cast(void *in_ptr, const char *in_type_tag, const char *out_type_tag) {
+	if (out_type_tag == in_type_tag)
+		return in_ptr;
+
+	void *out_ptr = NULL;
+	%s
+
+	return out_ptr;
+}\n\n''' % output_type_tag_cast_tree(lambda cast: cast[1]('in_ptr', 'out_ptr'))
+
 		return out
 
 	def __print_stats(self):

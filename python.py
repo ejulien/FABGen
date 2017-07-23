@@ -189,15 +189,15 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	wrapped_PyObject *w = cast_to_wrapped_PyObject_safe(o);
 	if (!w)
 		return false;
-	return _type_tag_cast(o, w->type_tag, %s) != nullptr;
+	return _type_tag_can_cast(w->type_tag, %s);
 }
 \n''' % (self.bound_name, self.type_tag)
 
 		out += '''void to_c_%s(PyObject *o, void *obj) {
 	wrapped_PyObject *w = cast_to_wrapped_PyObject_unsafe(o);
-	*(%s **)obj = (%s *)_type_tag_cast(w->obj, w->type_tag, %s);
+	*(void **)obj = _type_tag_cast(w->obj, w->type_tag, %s);
 }
-\n''' % (self.bound_name, self.fully_qualified_name, self.fully_qualified_name, self.type_tag)
+\n''' % (self.bound_name, self.type_tag)
 
 		if self._non_copyable:
 			copy_code = '''PyErr_SetString(PyExc_RuntimeError, "type %s is non-copyable");
@@ -237,18 +237,18 @@ class PythonPtrTypeDefaultConverter(PythonTypeConverterCommon):
 	if (PyLong_Check(o))
 		return true;
 	if (wrapped_PyObject *w = cast_to_wrapped_PyObject_safe(o))
-		if (_type_tag_cast(w->obj, w->type_tag, %s))
+		if (_type_tag_can_cast(w->type_tag, %s))
 			return true;
 	return false;
 }\n''' % (self.bound_name, self.type_tag)
 
 		out += '''void to_c_%s(PyObject *o, void *obj) {
 	if (PyLong_Check(o)) {
-		*((%s*)obj) = (%s)PyLong_AsVoidPtr(o);
+		*(void **)obj = PyLong_AsVoidPtr(o);
 	} else if (wrapped_PyObject *w = cast_to_wrapped_PyObject_unsafe(o)) {
-		*((%s*)obj) = (%s)_type_tag_cast(w->obj, w->type_tag, %s);
+		*(void **)obj = _type_tag_cast(w->obj, w->type_tag, %s);
 	}
-}\n''' % (self.bound_name, self.ctype, self.ctype, self.ctype, self.ctype, self.type_tag)
+}\n''' % (self.bound_name, self.type_tag)
 
 		out += '''PyObject *from_c_%s(void *obj, OwnershipPolicy) {
 	return PyLong_FromVoidPtr(obj);
