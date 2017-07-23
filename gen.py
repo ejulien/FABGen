@@ -250,7 +250,6 @@ class TypeConverter:
 		self._non_copyable = False
 
 		self._features = {}
-		self._upcasts = []  # valid upcasts
 		self._casts = []  # valid casts
 
 	def get_operator(self, op):
@@ -431,12 +430,12 @@ class FABGen:
 		return conv
 
 	#
-	def add_upcast(self, derived_conv, base_conv):
-		derived_conv._upcasts.append(base_conv)
-
 	def add_cast(self, src_conv, tgt_conv, cast_delegate):
 		"""Declare a cast delegate from one type to another."""
 		src_conv._casts.append((tgt_conv, cast_delegate))
+
+	def add_upcast(self, derived_conv, base_conv):
+		derived_conv._casts.append((base_conv, lambda in_var, out_var: '%s = (%s *)((%s *)%s);\n' % (out_var, base_conv.ctype, derived_conv.ctype, in_var)))
 
 	#
 	def select_ctype_conv(self, ctype):
@@ -872,19 +871,6 @@ class FABGen:
 		self._source += '\n'
 
 	def get_type_tag_cast_function(self):
-		downcasts = {}
-		for type in self._bound_types:
-			downcasts[type] = []
-
-		def register_upcast(type, upcasts):
-			for base in upcasts:
-				downcasts[base].append(type)
-				register_upcast(type, base._upcasts)
-
-		for type in self._bound_types:
-			register_upcast(type, type._upcasts)
-
-		#
 		out = '''\
 // type_tag based cast system
 void *_type_tag_cast(void *in_p, const char *in_type_tag, const char *out_type_tag) {
@@ -892,32 +878,7 @@ void *_type_tag_cast(void *in_p, const char *in_type_tag, const char *out_type_t
 		return in_p;
 
 	void *out_p = NULL;
-
-	// upcast
-'''
-
-		i = 0
-		for base in self._bound_types:
-			if len(downcasts[base]) == 0:
-				continue
-
-			out += '	' if i == 0 else ' else '
-			out += 'if (out_type_tag == %s) {\n' % base.type_tag
-
-			for j, downcast in enumerate(downcasts[base]):
-				out += '		' if j == 0 else '		else '
-				out += 'if (in_type_tag == %s)\n' % downcast.type_tag
-				out += '			out_p = (%s *)((%s *)in_p);\n' % (get_fully_qualified_ctype_name(base.ctype), get_fully_qualified_ctype_name(downcast.ctype))
-
-			out += '	}\n'
-			i += 1
-
-		out += '''
-	if (out_p)
-		return out_p;
-
-	// additional casts
-'''
+\n'''
 
 		i = 0
 		for conv in self._bound_types:
@@ -928,6 +889,7 @@ void *_type_tag_cast(void *in_p, const char *in_type_tag, const char *out_type_t
 			out += 'if (in_type_tag == %s) {\n' % conv.type_tag
 
 			for j, cast in enumerate(conv._casts):
+				out += '	' if j == 0 else ' else '
 				out += 'if (out_type_tag == %s) {\n' % cast[0].type_tag
 				out += cast[1]('in_p', 'out_p')
 				out += '}\n'
