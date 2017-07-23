@@ -228,8 +228,39 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 
 #
+class PythonPtrTypeDefaultConverter(PythonTypeConverterCommon):
+	def __init__(self, type, storage_type=None, bound_name=None):
+		super().__init__(type, storage_type, bound_name)
+
+	def get_type_glue(self, gen, module_name):
+		out = '''bool check_%s(PyObject *o) {
+	if (PyLong_Check(o))
+		return true;
+	if (wrapped_PyObject *w = cast_to_wrapped_PyObject_safe(o))
+		if (_type_tag_cast(w->obj, w->type_tag, %s))
+			return true;
+	return false;
+}\n''' % (self.bound_name, self.type_tag)
+
+		out += '''void to_c_%s(PyObject *o, void *obj) {
+	if (PyLong_Check(o)) {
+		*((%s*)obj) = (%s)PyLong_AsVoidPtr(o);
+	} else if (wrapped_PyObject *w = cast_to_wrapped_PyObject_unsafe(o)) {
+		*((%s*)obj) = (%s)_type_tag_cast(w->obj, w->type_tag, %s);
+	}
+}\n''' % (self.bound_name, self.ctype, self.ctype, self.ctype, self.ctype, self.type_tag)
+
+		out += '''PyObject *from_c_%s(void *obj, OwnershipPolicy) {
+	return PyLong_FromVoidPtr(obj);
+}\n''' % self.bound_name
+
+		return out
+
+
+#
 class PythonGenerator(gen.FABGen):
 	default_class_converter = PythonClassTypeDefaultConverter
+	default_ptr_converter = PythonPtrTypeDefaultConverter
 
 	def get_langage(self):
 		return "Python"

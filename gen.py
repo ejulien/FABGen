@@ -143,12 +143,18 @@ class _CType:
 			return self.const
 		return self.const_ref
 
-	def non_const(self):
+	def const_storage(self):
+		"""Return a CType suitable for R/W storage of const type values"""
 		t = copy.deepcopy(self)
 		if self.get_ref() == '':
 			t.const = False
 		else:
 			t.const_ref = False
+		return t
+
+	def non_const(self):
+		t = copy.deepcopy(self)
+		t.const = False
 		return t
 
 
@@ -218,7 +224,7 @@ class TypeConverter:
 		self.ctype = parse(type, _CType)
 
 		if not storage_type:
-			self.storage_ctype = self.ctype.non_const()
+			self.storage_ctype = self.ctype.const_storage()
 		else:
 			self.storage_ctype = parse(storage_type, _CType)
 
@@ -405,9 +411,16 @@ class FABGen:
 		"""End a class declaration."""
 		self.end_type(conv)
 
+	#
 	def decl_class(self, type, converter_class=None):
 		"""Forward declare a class."""
 		return self.begin_class(type, converter_class)
+
+	#
+	def bind_ptr(self, type, converter_class=None, bound_name=None):
+		conv = self.default_ptr_converter(type, None, bound_name) if converter_class is None else converter_class(type, None, bound_name)
+		self.bind_type(conv)
+		return conv
 
 	#
 	def add_upcast(self, derived_conv, base_conv):
@@ -420,18 +433,23 @@ class FABGen:
 	#
 	def select_ctype_conv(self, ctype):
 		"""Select a type converter."""
-		full_qualified_ctype_name = get_fully_qualified_ctype_name(ctype)
+		type = get_fully_qualified_ctype_name(ctype)
 
-		if full_qualified_ctype_name == 'void':
+		if type == 'void':
 			return None
 
-		if full_qualified_ctype_name in self.__type_convs:
-			return self.__type_convs[full_qualified_ctype_name]
+		if type in self.__type_convs:
+			return self.__type_convs[type]
 
-		err_msg = "Unknown type %s (no converter available)" % ctype
-		assert ctype.name in self.__type_convs, err_msg
+		non_const_type = get_fully_qualified_ctype_name(ctype.non_const())
 
-		return self.__type_convs[ctype.name]
+		if non_const_type in self.__type_convs:
+			return self.__type_convs[non_const_type]
+
+		if ctype.name in self.__type_convs:
+			return self.__type_convs[ctype.name]
+
+		assert True, "Unknown type %s (no converter available)" % ctype
 
 	def get_conv(self, type):
 		return self.__type_convs[type]
@@ -461,7 +479,7 @@ class FABGen:
 			assert len(proto) == 3, "prototype incomplete. Expected 3 entries (type, [arguments], [features]), found %d" % len(proto)
 
 			rval = parse(proto[0], _CType)
-			_proto = {'rval': {'ctype': rval.non_const(), 'conv': self.select_ctype_conv(rval)}, 'args': [], 'features': proto[2]}
+			_proto = {'rval': {'ctype': rval.const_storage(), 'conv': self.select_ctype_conv(rval)}, 'args': [], 'features': proto[2]}
 
 			args = proto[1]
 			if not type(args) is type([]):
