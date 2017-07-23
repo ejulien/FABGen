@@ -1,4 +1,4 @@
-from lib.std import StdVectorSequenceFeature
+import lib.std
 
 
 def bind_test(gen):
@@ -18,7 +18,7 @@ void consume_pointer_to_int(const int *p) {
 
 	gen.add_include('vector', is_system=True)
 
-	std_vector_int = gen.begin_class('std::vector<int>', features={'sequence': StdVectorSequenceFeature(gen.get_conv('int'))})
+	std_vector_int = gen.begin_class('std::vector<int>', features={'sequence': lib.std.VectorSequenceFeature(gen.get_conv('int'))})
 	gen.bind_constructor(std_vector_int, [])
 
 	gen.bind_method(std_vector_int, 'size', 'int', [])

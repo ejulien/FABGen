@@ -313,6 +313,14 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 
 	PyObject_Del(self); // tp_free should be used but PyType_GetSlot is 3.4+
 }
+
+static inline bool CheckArgsTuple(PyObject *args) {
+	if (!PyTuple_Check(args)) {
+		PyErr_SetString(PyExc_RuntimeError, "invalid arguments object (expected a tuple)");
+		return false;
+	}
+	return true;
+}
 \n'''
 
 		std.bind_std(self, PythonTypeConverterCommon)
@@ -337,21 +345,17 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 
 	def open_proxy(self, name, max_arg_count, ctx):
 		if ctx == 'getter':
-			self._source += "static PyObject *%s(PyObject *self, void *closure) {\n" % name
+			self._source += 'static PyObject *%s(PyObject *self, void *closure) {\n' % name
 		elif ctx == 'setter':
-			self._source += "static int %s(PyObject *self, PyObject *val, void *closure) {\n" % name
+			self._source += 'static int %s(PyObject *self, PyObject *val, void *closure) {\n' % name
 		elif ctx in ['arithmetic_op', 'inplace_arithmetic_op', 'comparison_op']:
-			self._source += "static PyObject *%s(PyObject *o1, PyObject *o2) {\n" % name
+			self._source += 'static PyObject *%s(PyObject *o1, PyObject *o2) {\n' % name
 		else:
-			self._source += "static PyObject *%s(PyObject *self, PyObject *args) {\n" % name
-
-			self._source += '\
-	if (!PyTuple_Check(args)) {\n\
-		PyErr_SetString(PyExc_RuntimeError, "invalid arguments object (expected a tuple)");\n\
-		return NULL;\n\
-	}\n\
-	int arg_count = PyTuple_Size(args);\n\
-\n'
+			self._source += 'static PyObject *%s(PyObject *self, PyObject *args) {\n' % name
+			self._source += '''	if (!CheckArgsTuple(args))
+		return NULL;
+	int arg_count = PyTuple_Size(args);
+\n'''
 
 			if max_arg_count > 0:
 				self._source += '\
@@ -435,7 +439,7 @@ static void wrapped_PyObject_tp_dealloc(PyObject *self) {
 			for name, enum in self._enums.items():
 				self._source += '	// enumeration %s\n' % name
 				for name, value in enum.items():
-					self._source += '	PyModule_AddIntConstant(m, "%s", %s);\n' % (name, value)
+					self._source += '	PyModule_AddIntConstant(m, "%s", (long)%s);\n' % (name, value)
 			self._source += '\n'
 
 		# finalize bound types

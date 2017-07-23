@@ -21,7 +21,7 @@ class SharedPtrProxyFeature:
 		return '%s = new std::shared_ptr<%s>(%s);\n' % (out_var, self.wrapped_conv.fully_qualified_name, in_var)
 
 
-class StdVectorSequenceFeature:
+class VectorSequenceFeature:
 	def __init__(self, wrapped_conv):
 		self.wrapped_conv = wrapped_conv
 
@@ -44,3 +44,20 @@ class StdVectorSequenceFeature:
 		out += 'else\n'
 		out += '	%s = true;\n' % error_var
 		return out
+
+
+def bind_future_T(gen, T, bound_name=None):
+	gen.add_include('future', is_system=True)
+
+	gen.bind_enum('std::future_status', ['deferred', 'ready', 'timeout'], prefix='future_')
+
+	future = gen.begin_class('std::future<%s>' % T, bound_name=bound_name, noncopyable=True)
+
+	gen.bind_method(future, 'get', T, [])
+	gen.bind_method(future, 'valid', 'bool', [])
+	gen.bind_method(future, 'wait', 'void', [])
+	#gen.bind_method(future, 'wait_for', 'std::future_status', ['const std::chrono::duration<Rep,Period> &timeout_duration'])
+	#gen.bind_method(future, 'wait_until', 'std::future_status', ['const std::chrono::time_point<Clock,Duration> &timeout_time'])
+
+	gen.end_class(future)
+	return future

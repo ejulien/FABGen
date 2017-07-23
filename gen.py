@@ -157,6 +157,12 @@ class _CType:
 		t.const = False
 		return t
 
+	def ref_stripped(self):
+		t = copy.deepcopy(self)
+		if hasattr(t, 'ref'):
+			delattr(t, 'ref')
+		return t
+
 
 _TemplateParameters.grammar = "<", optional(csl(_CType)), ">"
 _CType.grammar = flag("const", K("const")), optional(flag("signed", K("signed"))), optional(flag("unsigned", K("unsigned"))), attr("name", typename), optional(attr("template", _TemplateParameters)), optional(attr("ref", ref_re)), flag("const_ref", K("const"))
@@ -319,9 +325,11 @@ class FABGen:
 
 	def add_include(self, path, is_system=False):
 		if is_system:
-			self.__system_includes.append(path)
+			if path not in self.__system_includes:
+				self.__system_includes.append(path)
 		else:
-			self.__user_includes.append(path)
+			if path not in self.__user_includes:
+				self.__user_includes.append(path)
 
 	def insert_code(self, code, in_source=True, in_header=True):
 		if in_header:
@@ -446,10 +454,12 @@ class FABGen:
 		if non_const_type in self.__type_convs:
 			return self.__type_convs[non_const_type]
 
-		if ctype.name in self.__type_convs:
-			return self.__type_convs[ctype.name]
+		non_const_ref_stripped_type = get_fully_qualified_ctype_name(ctype.non_const().ref_stripped())
 
-		assert True, "Unknown type %s (no converter available)" % ctype
+		if non_const_ref_stripped_type in self.__type_convs:
+			return self.__type_convs[non_const_ref_stripped_type]
+
+		raise Exception("Unknown type %s (no converter available)" % ctype)
 
 	def get_conv(self, type):
 		return self.__type_convs[type]

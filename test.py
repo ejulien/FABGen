@@ -4,6 +4,59 @@ import python
 import lib.std
 
 
+def bind_binary_blob(gen):
+	gen.add_include('foundation/binary_blob.h')
+
+	binary_blob = gen.begin_class('gs::BinaryBlob', bound_name='BinaryData')
+
+	gen.bind_constructor_overloads(binary_blob, [
+		([], []),
+		(['const gs::BinaryBlob &data'], [])
+	])
+
+	gen.bind_method(binary_blob, 'GetDataSize', 'size_t', [])
+
+	gen.bind_method(binary_blob, 'GetCursor', 'size_t', [])
+	gen.bind_method(binary_blob, 'SetCursor', 'void', ['size_t position'])
+
+	gen.bind_method(binary_blob, 'GetCursorPtr', 'const char *', [])
+	gen.bind_method(binary_blob, 'GetDataSizeAtCursor', 'size_t', [])
+
+	gen.bind_method(binary_blob, 'Reset', 'void', [])
+
+	gen.bind_method(binary_blob, 'Commit', 'void', ['size_t size'])
+	gen.bind_method(binary_blob, 'Grow', 'void', ['size_t size'])
+	gen.bind_method(binary_blob, 'Skip', 'void', ['size_t size'])
+
+	gen.bind_method(binary_blob, 'Write<int8_t>', 'void', ['const int8_t &v'], bound_name='WriteInt8')
+	gen.bind_method(binary_blob, 'Write<int16_t>', 'void', ['const int16_t &v'], bound_name='WriteInt16')
+	gen.bind_method(binary_blob, 'Write<int32_t>', 'void', ['const int32_t &v'], bound_name='WriteInt32')
+	gen.bind_method(binary_blob, 'Write<int64_t>', 'void', ['const int64_t &v'], bound_name='WriteInt64')
+	gen.bind_method(binary_blob, 'Write<uint8_t>', 'void', ['const uint8_t &v'], bound_name='WriteUInt8')
+	gen.bind_method(binary_blob, 'Write<uint16_t>', 'void', ['const uint16_t &v'], bound_name='WriteUInt16')
+	gen.bind_method(binary_blob, 'Write<uint32_t>', 'void', ['const uint32_t &v'], bound_name='WriteUInt32')
+	gen.bind_method(binary_blob, 'Write<uint64_t>', 'void', ['const uint64_t &v'], bound_name='WriteUInt64')
+	gen.bind_method(binary_blob, 'Write<float>', 'void', ['const float &v'], bound_name='WriteFloat')
+	gen.bind_method(binary_blob, 'Write<double>', 'void', ['const double &v'], bound_name='WriteDouble')
+
+	gen.bind_method(binary_blob, 'WriteAt<int8_t>', 'void', ['const int8_t &v', 'size_t position'], bound_name='WriteAtInt8')
+	gen.bind_method(binary_blob, 'WriteAt<int16_t>', 'void', ['const int16_t &v', 'size_t position'], bound_name='WriteAtInt16')
+	gen.bind_method(binary_blob, 'WriteAt<int32_t>', 'void', ['const int32_t &v', 'size_t position'], bound_name='WriteAtInt32')
+	gen.bind_method(binary_blob, 'WriteAt<int64_t>', 'void', ['const int64_t &v', 'size_t position'], bound_name='WriteAtInt64')
+	gen.bind_method(binary_blob, 'WriteAt<uint8_t>', 'void', ['const uint8_t &v', 'size_t position'], bound_name='WriteAtUInt8')
+	gen.bind_method(binary_blob, 'WriteAt<uint16_t>', 'void', ['const uint16_t &v', 'size_t position'], bound_name='WriteAtUInt16')
+	gen.bind_method(binary_blob, 'WriteAt<uint32_t>', 'void', ['const uint32_t &v', 'size_t position'], bound_name='WriteAtUInt32')
+	gen.bind_method(binary_blob, 'WriteAt<uint64_t>', 'void', ['const uint64_t &v', 'size_t position'], bound_name='WriteAtUInt64')
+	gen.bind_method(binary_blob, 'WriteAt<float>', 'void', ['const float &v', 'size_t position'], bound_name='WriteAtFloat')
+	gen.bind_method(binary_blob, 'WriteAt<double>', 'void', ['const double &v', 'size_t position'], bound_name='WriteAtDouble')
+
+	# TODO Read<T> requires tuple return value
+
+	gen.bind_method(binary_blob, 'Free', 'void', [])
+
+	gen.end_class(binary_blob)
+
+
 def bind_time(gen):
 	gen.add_include('foundation/time.h')
 
@@ -106,6 +159,14 @@ def bind_window_system(gen):
 def bind_scene(gen):
 	gen.add_include('engine/scene.h')
 
+	# gs::core::SceneSystem
+	scene_system = gen.begin_class('gs::core::SceneSystem', bound_name='SceneSystem_hide_me', noncopyable=True)
+	gen.end_class(scene_system)
+
+	#
+
+
+	# gs::core::Scene
 	scene = gen.begin_class('gs::core::Scene', bound_name='Scene_hide_me', noncopyable=True)
 	gen.end_class(scene)
 
@@ -136,7 +197,7 @@ def bind_scene(gen):
 
 	gen.end_class(shared_scene)
 
-	#
+	# gs::core::Component
 	gen.add_include('engine/component.h')
 
 	component = gen.begin_class('gs::core::Component', bound_name='Component_hide_me', noncopyable=True)
@@ -182,28 +243,118 @@ def bind_scene(gen):
 	gen.bind_enum('gs::core::Light::Shadow', ['Shadow_None', 'Shadow_ProjectionMap', 'Shadow_Map'], prefix='Light')
 
 
+def bind_core(gen):
+	# core::Geometry
+	gen.add_include('engine/geometry.h')
+
+	geometry = gen.begin_class('gs::core::Geometry', bound_name='Geometry_hide_me', noncopyable=True)
+	gen.end_class(geometry)
+
+	shared_geometry = gen.begin_class('std::shared_ptr<gs::core::Geometry>', bound_name='Geometry', features={'proxy': lib.std.SharedPtrProxyFeature(geometry)})
+	gen.end_class(shared_geometry)
+
+	#
+
+
 def bind_gpu(gen):
 	gen.add_include('engine/texture.h')
 
+	# gpu::Texture
 	texture = gen.begin_class('gs::gpu::Texture', bound_name='Texture_hide_me', noncopyable=True)
 	gen.end_class(texture)
 
 	shared_texture = gen.begin_class('std::shared_ptr<gs::gpu::Texture>', bound_name='Texture', features={'proxy': lib.std.SharedPtrProxyFeature(texture)})
 	gen.end_class(shared_texture)
 
+	# gpu::Renderer
+	gen.add_include('engine/renderer.h')
+
+	renderer = gen.begin_class('gs::gpu::Renderer', bound_name='Renderer_hide_me', noncopyable=True)
+	gen.end_class(renderer)
+
+	shared_renderer = gen.begin_class('std::shared_ptr<gs::gpu::Renderer>', bound_name='Renderer', features={'proxy': lib.std.SharedPtrProxyFeature(renderer)})
+	gen.end_class(shared_renderer)
+
+	# gpu::RendererAsync
+	gen.add_include('engine/renderer_async.h')
+
+	renderer_async = gen.begin_class('gs::gpu::RendererAsync', bound_name='RendererAsync_hide_me', noncopyable=True)
+	gen.end_class(renderer_async)
+
+	shared_renderer_async = gen.begin_class('std::shared_ptr<gs::gpu::RendererAsync>', bound_name='RendererAsync', features={'proxy': lib.std.SharedPtrProxyFeature(renderer_async)})
+	gen.end_class(shared_renderer_async)
+
 
 def bind_render(gen):
 	gen.bind_enum('gs::render::CullMode', ['CullBack', 'CullFront', 'CullNever'])
 	gen.bind_enum('gs::render::BlendMode', ['BlendOpaque', 'BlendAlpha', 'BlendAdditive'])
 
-	#
+	# render::Material
+	gen.add_include('engine/render_material.h')
+
+	material = gen.begin_class('gs::render::Material', bound_name='RenderMaterial_hide_me', noncopyable=True)
+	gen.end_class(material)
+
+	shared_material = gen.begin_class('std::shared_ptr<gs::render::Material>', bound_name='RenderMaterial', features={'proxy': lib.std.SharedPtrProxyFeature(material)})
+	gen.end_class(shared_material)
+
+	# render::Geometry
 	gen.add_include('engine/render_geometry.h')
 
-	geometry = gen.begin_class('gs::render::Geometry', bound_name='Geometry_hide_me', noncopyable=True)
+	geometry = gen.begin_class('gs::render::Geometry', bound_name='RenderGeometry_hide_me', noncopyable=True)
 	gen.end_class(geometry)
 
-	shared_geometry = gen.begin_class('std::shared_ptr<gs::render::Geometry>', bound_name='Geometry', features={'proxy': lib.std.SharedPtrProxyFeature(geometry)})
+	shared_geometry = gen.begin_class('std::shared_ptr<gs::render::Geometry>', bound_name='RenderGeometry', features={'proxy': lib.std.SharedPtrProxyFeature(geometry)})
 	gen.end_class(shared_geometry)
+
+	# render::RenderSystem
+	gen.add_include('engine/render_system.h')
+
+	render_system = gen.begin_class('gs::render::RenderSystem', bound_name='RenderSystem_hide_me', noncopyable=True)
+	gen.end_class(render_system)
+
+	shared_render_system = gen.begin_class('std::shared_ptr<gs::render::RenderSystem>', bound_name='RenderSystem', features={'proxy': lib.std.SharedPtrProxyFeature(render_system)})
+	gen.end_class(shared_render_system)
+
+	# render::RenderSystem
+	gen.add_include('engine/render_system_async.h')
+
+	render_system_async = gen.begin_class('gs::render::RenderSystemAsync', bound_name='RenderSystemAsync_hide_me', noncopyable=True)
+	gen.end_class(render_system_async)
+
+	shared_render_system_async = gen.begin_class('std::shared_ptr<gs::render::RenderSystemAsync>', bound_name='RenderSystemAsync', features={'proxy': lib.std.SharedPtrProxyFeature(render_system_async)})
+	gen.end_class(shared_render_system_async)
+
+
+def bind_iso_surface(gen):
+	gen.add_include('engine/iso_surface.h')
+
+	iso_surface = gen.begin_class('gs::core::IsoSurface', bound_name='IsoSurface_hide_me')
+	gen.end_class(iso_surface)
+
+	shared_iso_surface = gen.begin_class('std::shared_ptr<gs::core::IsoSurface>', bound_name='IsoSurface', features={'proxy': lib.std.SharedPtrProxyFeature(iso_surface)})
+	gen.bind_constructor(shared_iso_surface, [], ['proxy'])
+	gen.bind_method(shared_iso_surface, 'Clear', 'void', [], ['proxy'])
+	gen.bind_method(shared_iso_surface, 'AddTriangle', 'void', ['const gs::Vector3 &p0', 'const gs::Vector3 &p1', 'const gs::Vector3 &p2'], ['proxy'])
+	gen.bind_method(shared_iso_surface, 'GetTriangleCount', 'gs::uint', [], ['proxy'])
+	gen.end_class(shared_iso_surface)
+
+	#
+	lib.std.bind_future_T(gen, 'void', 'FutureVoid')
+
+	gen.bind_ptr('float *')
+
+	gen.bind_function_overloads('PolygoniseIsoSurface', [
+		('void', ['gs::uint width', 'gs::uint height', 'gs::uint depth', 'const float *field', 'float isolevel', 'gs::core::IsoSurface &out'], []),
+		('void', ['gs::uint width', 'gs::uint height', 'gs::uint depth', 'const float *field', 'float isolevel', 'gs::core::IsoSurface &out', 'const gs::Vector3 &unit'], [])
+	])
+	gen.bind_function('IsoSurfaceToCoreGeometry', 'void', ['const gs::core::IsoSurface &iso', 'gs::core::Geometry &out'])
+
+	gen.bind_function('IsoSurfaceToRenderGeometry', 'std::future<void>', ['std::shared_ptr<gs::render::RenderSystem> render_system', 'std::shared_ptr<gs::core::IsoSurface> iso', 'std::shared_ptr<gs::render::Geometry> geo', 'std::shared_ptr<gs::render::Material> mat'])
+	gen.bind_function_overloads('PolygoniseIsoSurfaceToRenderGeometry', [
+		('std::future<void>', ['std::shared_ptr<gs::render::RenderSystem> render_system', 'std::shared_ptr<gs::render::Geometry> geo', 'std::shared_ptr<gs::render::Material> mat', 'gs::uint width', 'gs::uint height', 'gs::uint depth', 'const float *field', 'float isolevel', 'std::shared_ptr<gs::core::IsoSurface> iso'], []),
+		('std::future<void>', ['std::shared_ptr<gs::render::RenderSystem> render_system', 'std::shared_ptr<gs::render::Geometry> geo', 'std::shared_ptr<gs::render::Material> mat', 'gs::uint width', 'gs::uint height', 'gs::uint depth', 'const float *field', 'float isolevel', 'std::shared_ptr<gs::core::IsoSurface> iso', 'const gs::Vector3 &unit'], [])
+	])
 
 
 def bind_plus(gen):
@@ -218,11 +369,11 @@ def bind_plus(gen):
 
 	gen.bind_method(plus_conv, 'MountFilePath', 'void', ['const char *path'])
 
-	#const gpu::sRenderer &GetRenderer() const { return renderer; }
-	#const gpu::sRendererAsync &GetRendererAsync() const { return renderer_async; }
+	gen.bind_method(plus_conv, 'GetRenderer', 'std::shared_ptr<gs::gpu::Renderer>', [])
+	gen.bind_method(plus_conv, 'GetRendererAsync', 'std::shared_ptr<gs::gpu::RendererAsync>', [])
 
-	#const render::sRenderSystem &GetRenderSystem() const { return render_system; }
-	#const render::sRenderSystemAsync &GetRenderSystemAsync() const { return render_system_async; }
+	gen.bind_method(plus_conv, 'GetRenderSystem', 'std::shared_ptr<gs::render::RenderSystem>', [])
+	gen.bind_method(plus_conv, 'GetRenderSystemAsync', 'std::shared_ptr<gs::render::RenderSystemAsync>', [])
 
 	gen.bind_enum('gs::Plus::AppEndCondition', ['EndOnEscapePressed', 'EndOnDefaultWindowClosed', 'EndOnAny'], prefix='App')
 
@@ -248,8 +399,8 @@ def bind_plus(gen):
 
 	gen.bind_method(plus_conv, 'UpdateRenderWindow', 'void', ['const gs::RenderWindow &window'])
 
-	#void InitExtern(gpu::sRenderer renderer, gpu::sRendererAsync renderer_async, render::sRenderSystem render_system, render::sRenderSystemAsync render_system_async);
-	#void UninitExtern();
+	gen.bind_method(plus_conv, 'InitExtern', 'void', ['std::shared_ptr<gs::gpu::Renderer> renderer', 'std::shared_ptr<gs::gpu::RendererAsync> renderer_async', 'std::shared_ptr<gs::render::RenderSystem> render_system', 'std::shared_ptr<gs::render::RenderSystemAsync> render_system_async'])
+	gen.bind_method(plus_conv, 'UninitExtern', 'void', [])
 
 	gen.bind_method(plus_conv, 'Set2DOriginIsTopLeft', 'void', ['bool top_left'])
 
@@ -338,6 +489,55 @@ def bind_plus(gen):
 		('void', ['float x', 'float y', 'float z', 'const char *text', 'float size', 'gs::Color color', 'const char *font_path'], [])
 	])
 
+	gen.bind_method_overloads(plus_conv, 'Sprite2D', [
+		('void', ['float x', 'float y', 'float size', 'const char *image_path'], []),
+		('void', ['float x', 'float y', 'float size', 'const char *image_path', 'gs::Color tint'], []),
+		('void', ['float x', 'float y', 'float size', 'const char *image_path', 'gs::Color tint', 'float pivot_x', 'float pivot_y'], []),
+		('void', ['float x', 'float y', 'float size', 'const char *image_path', 'gs::Color tint', 'float pivot_x', 'float pivot_y', 'bool flip_h', 'bool flip_v'], [])
+	])
+	gen.bind_method_overloads(plus_conv, 'Image2D', [
+		('void', ['float x', 'float y', 'float scale', 'const char *image_path'], []),
+		('void', ['float x', 'float y', 'float scale', 'const char *image_path', 'gs::Color tint'], [])
+	])
+	gen.bind_method_overloads(plus_conv, 'Blit2D', [
+		('void', ['float src_x', 'float src_y', 'float src_w', 'float src_h', 'float dst_x', 'float dst_y', 'float dst_w', 'float dst_h', 'const char *image_path'], []),
+		('void', ['float src_x', 'float src_y', 'float src_w', 'float src_h', 'float dst_x', 'float dst_y', 'float dst_w', 'float dst_h', 'const char *image_path', 'gs::Color tint'], [])
+	])
+	gen.bind_method_overloads(plus_conv, 'Texture2D', [
+		('void', ['float x', 'float y', 'float scale', 'const std::shared_ptr<gs::gpu::Texture> &texture'], []),
+		('void', ['float x', 'float y', 'float scale', 'const std::shared_ptr<gs::gpu::Texture> &texture', 'gs::Color tint'], []),
+		('void', ['float x', 'float y', 'float scale', 'const std::shared_ptr<gs::gpu::Texture> &texture', 'gs::Color tint', 'float flip_h', 'float flip_v'], [])
+	])
+
+	gen.bind_method(plus_conv, 'LoadTexture', 'std::shared_ptr<gs::gpu::Texture>', ['const char *path'])
+	gen.bind_method(plus_conv, 'LoadMaterial', 'std::shared_ptr<gs::render::Material>', ['const char *path'])
+	gen.bind_method(plus_conv, 'LoadGeometry', 'std::shared_ptr<gs::render::Geometry>', ['const char *path'])
+	gen.bind_method_overloads(plus_conv, 'CreateGeometry', [
+		('std::shared_ptr<gs::render::Geometry>', ['const std::shared_ptr<gs::core::Geometry> &geometry'], []),
+		('std::shared_ptr<gs::render::Geometry>', ['const std::shared_ptr<gs::core::Geometry> &geometry', 'bool use_cache'], [])
+	])
+
+	gen.bind_method_overloads(plus_conv, 'Geometry2D', [
+		('void', ['float x', 'float y', 'const std::shared_ptr<gs::render::Geometry> &geometry'], []),
+		('void', ['float x', 'float y', 'const std::shared_ptr<gs::render::Geometry> &geometry', 'float angle_x', 'float angle_y', 'float angle_z'], []),
+		('void', ['float x', 'float y', 'const std::shared_ptr<gs::render::Geometry> &geometry', 'float angle_x', 'float angle_y', 'float angle_z', 'float scale'], [])
+	])
+	gen.bind_method_overloads(plus_conv, 'Geometry3D', [
+		('void', ['float x', 'float y', 'float z', 'const std::shared_ptr<gs::render::Geometry> &geometry'], []),
+		('void', ['float x', 'float y', 'float z',  'const std::shared_ptr<gs::render::Geometry> &geometry', 'float angle_x', 'float angle_y', 'float angle_z'], []),
+		('void', ['float x', 'float y', 'float z',  'const std::shared_ptr<gs::render::Geometry> &geometry', 'float angle_x', 'float angle_y', 'float angle_z', 'float scale'], [])
+	])
+
+	gen.bind_method_overloads(plus_conv, 'SetCamera3D', [
+		('void', ['float x', 'float y', 'float z'], []),
+		('void', ['float x', 'float y', 'float z', 'float angle_x', 'float angle_y', 'float angle_z'], []),
+		('void', ['float x', 'float y', 'float z', 'float angle_x', 'float angle_y', 'float angle_z', 'float fov'], []),
+		('void', ['float x', 'float y', 'float z', 'float angle_x', 'float angle_y', 'float angle_z', 'float fov', 'float z_near', 'float z_far'], []),
+		('void', ['const gs::Matrix4 &view', 'const gs::Matrix44 &projection'], [])
+	])
+	gen.bind_method(plus_conv, 'GetCamera3DMatrix', 'gs::Matrix4', [])
+	gen.bind_method(plus_conv, 'GetCamera3DProjectionMatrix', 'gs::Matrix44', [])
+
 	gen.bind_method_overloads(plus_conv, 'NewScene', [
 		('std::shared_ptr<gs::core::Scene>', [], []),
 		('std::shared_ptr<gs::core::Scene>', ['bool use_physics'], []),
@@ -420,7 +620,7 @@ def bind_plus(gen):
 
 	gen.end_class(plus_conv)
 
-	#
+	# gs::FPSController
 	fps_controller = gen.begin_class('gs::FPSController')
 
 	gen.bind_constructor_overloads(fps_controller, [
@@ -459,6 +659,9 @@ def bind_filesystem(gen):
 	gen.insert_binding_code('''static bool MountFileDriver(gs::io::sDriver driver) {
 	return gs::g_fs.get().Mount(driver);
 }
+static bool MountFileDriver(gs::io::sDriver driver, const char *prefix) {
+	return gs::g_fs.get().Mount(driver, prefix);
+}
 	''', 'Filesystem custom API')
 
 	#
@@ -482,8 +685,10 @@ def bind_filesystem(gen):
 	gen.bind_method_overloads(shared_io_cfile, 'SetRootPath', [('void', ['const std::string &path'], ['proxy']), ('void', ['const std::string &path', 'bool sandbox'], ['proxy'])])
 	gen.end_class(shared_io_cfile)
 
-	gen.bind_function('MountFileDriver', 'bool', ['std::shared_ptr<gs::io::Driver> driver'])
-
+	gen.bind_function_overloads('MountFileDriver', [
+		('bool', ['std::shared_ptr<gs::io::Driver> driver'], []),
+		('bool', ['std::shared_ptr<gs::io::Driver> driver', 'const char *prefix'], [])
+	])
 
 def bind_color(gen):
 	gen.add_include('foundation/color.h')
@@ -541,10 +746,13 @@ def bind_math(gen):
 
 	#
 	matrix3 = gen.begin_class('gs::Matrix3')
+	gen.bind_static_members(matrix3, ['const gs::Matrix3 Zero', 'const gs::Matrix3 Identity'])
 	gen.end_class(matrix3)
 
 	#
 	matrix4 = gen.begin_class('gs::Matrix4')
+
+	gen.bind_static_members(matrix4, ['const gs::Matrix4 Zero', 'const gs::Matrix4 Identity'])
 
 	gen.bind_constructor_overloads(matrix4, [
 		([], []),
@@ -612,11 +820,13 @@ def bind_math(gen):
 
 	#
 	matrix44 = gen.begin_class('gs::Matrix44')
+	gen.bind_static_members(matrix44, ['const gs::Matrix44 Zero', 'const gs::Matrix44 Identity'])
 	gen.end_class(matrix44)
 
 	# Vector3
 	vector3 = gen.begin_class('gs::Vector3')
 
+	gen.bind_static_members(vector3, ['const gs::Vector3 Zero', 'const gs::Vector3 One', 'const gs::Vector3 Left', 'const gs::Vector3 Right', 'const gs::Vector3 Up', 'const gs::Vector3 Down', 'const gs::Vector3 Front', 'const gs::Vector3 Back'])
 	gen.bind_members(vector3, ['float x', 'float y', 'float z'])
 
 	gen.bind_constructor_overloads(vector3, [
@@ -856,14 +1066,17 @@ def bind_gs(gen):
 
 	gen.typedef('gs::uint', 'unsigned int')
 
+	bind_binary_blob(gen)
 	bind_time(gen)
 	bind_math(gen)
 	bind_color(gen)
 	bind_plugins(gen)
 	bind_filesystem(gen)
 	bind_window_system(gen)
+	bind_core(gen)
 	bind_gpu(gen)
 	bind_render(gen)
+	bind_iso_surface(gen)
 	bind_scene(gen)
 	bind_input(gen)
 	bind_plus(gen)
