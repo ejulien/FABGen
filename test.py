@@ -39,22 +39,29 @@ def bind_binary_blob(gen):
 	gen.bind_method(binary_blob, 'Write<float>', 'void', ['const float &v'], bound_name='WriteFloat')
 	gen.bind_method(binary_blob, 'Write<double>', 'void', ['const double &v'], bound_name='WriteDouble')
 
-	gen.bind_method(binary_blob, 'WriteAt<int8_t>', 'void', ['const int8_t &v', 'size_t position'], bound_name='WriteAtInt8')
-	gen.bind_method(binary_blob, 'WriteAt<int16_t>', 'void', ['const int16_t &v', 'size_t position'], bound_name='WriteAtInt16')
-	gen.bind_method(binary_blob, 'WriteAt<int32_t>', 'void', ['const int32_t &v', 'size_t position'], bound_name='WriteAtInt32')
-	gen.bind_method(binary_blob, 'WriteAt<int64_t>', 'void', ['const int64_t &v', 'size_t position'], bound_name='WriteAtInt64')
-	gen.bind_method(binary_blob, 'WriteAt<uint8_t>', 'void', ['const uint8_t &v', 'size_t position'], bound_name='WriteAtUInt8')
-	gen.bind_method(binary_blob, 'WriteAt<uint16_t>', 'void', ['const uint16_t &v', 'size_t position'], bound_name='WriteAtUInt16')
-	gen.bind_method(binary_blob, 'WriteAt<uint32_t>', 'void', ['const uint32_t &v', 'size_t position'], bound_name='WriteAtUInt32')
-	gen.bind_method(binary_blob, 'WriteAt<uint64_t>', 'void', ['const uint64_t &v', 'size_t position'], bound_name='WriteAtUInt64')
-	gen.bind_method(binary_blob, 'WriteAt<float>', 'void', ['const float &v', 'size_t position'], bound_name='WriteAtFloat')
-	gen.bind_method(binary_blob, 'WriteAt<double>', 'void', ['const double &v', 'size_t position'], bound_name='WriteAtDouble')
+	gen.bind_method(binary_blob, 'WriteAt<int8_t>', 'void', ['const int8_t &v', 'size_t position'], bound_name='WriteInt8At')
+	gen.bind_method(binary_blob, 'WriteAt<int16_t>', 'void', ['const int16_t &v', 'size_t position'], bound_name='WriteInt16At')
+	gen.bind_method(binary_blob, 'WriteAt<int32_t>', 'void', ['const int32_t &v', 'size_t position'], bound_name='WriteInt32At')
+	gen.bind_method(binary_blob, 'WriteAt<int64_t>', 'void', ['const int64_t &v', 'size_t position'], bound_name='WriteInt64At')
+	gen.bind_method(binary_blob, 'WriteAt<uint8_t>', 'void', ['const uint8_t &v', 'size_t position'], bound_name='WriteUInt8At')
+	gen.bind_method(binary_blob, 'WriteAt<uint16_t>', 'void', ['const uint16_t &v', 'size_t position'], bound_name='WriteUInt16At')
+	gen.bind_method(binary_blob, 'WriteAt<uint32_t>', 'void', ['const uint32_t &v', 'size_t position'], bound_name='WriteUInt32At')
+	gen.bind_method(binary_blob, 'WriteAt<uint64_t>', 'void', ['const uint64_t &v', 'size_t position'], bound_name='WriteUInt64At')
+	gen.bind_method(binary_blob, 'WriteAt<float>', 'void', ['const float &v', 'size_t position'], bound_name='WriteFloatAt')
+	gen.bind_method(binary_blob, 'WriteAt<double>', 'void', ['const double &v', 'size_t position'], bound_name='WriteDoubleAt')
 
 	# TODO Read<T> requires tuple return value
 
 	gen.bind_method(binary_blob, 'Free', 'void', [])
 
 	gen.end_class(binary_blob)
+
+	# implicit cast to various base types
+	float_ptr = gen.bind_ptr('float *', bound_name='PointerToFloat')
+	gen.add_cast(binary_blob, float_ptr, lambda in_var, out_var: '*((float **)%s) = (float *)((gs::BinaryBlob *)%s)->GetData();\n' % (out_var, in_var))
+
+	#
+	gen.bind_function('BinaryBlobBlur3d', 'void', ['gs::BinaryBlob &data', 'uint32_t width', 'uint32_t height', 'uint32_t depth'])
 
 
 def bind_time(gen):
@@ -156,6 +163,19 @@ def bind_window_system(gen):
 	gen.end_class(window_conv)
 
 
+def bind_core(gen):
+	# core::Geometry
+	gen.add_include('engine/geometry.h')
+
+	geometry = gen.begin_class('gs::core::Geometry', bound_name='Geometry_hide_me', noncopyable=True)
+	gen.end_class(geometry)
+
+	shared_geometry = gen.begin_class('std::shared_ptr<gs::core::Geometry>', bound_name='Geometry', features={'proxy': lib.std.SharedPtrProxyFeature(geometry)})
+	gen.end_class(shared_geometry)
+
+	#
+
+
 def bind_scene(gen):
 	gen.add_include('engine/scene.h')
 
@@ -163,8 +183,31 @@ def bind_scene(gen):
 	scene_system = gen.begin_class('gs::core::SceneSystem', bound_name='SceneSystem_hide_me', noncopyable=True)
 	gen.end_class(scene_system)
 
-	#
+	# gs::core::Component
+	gen.add_include('engine/component.h')
 
+	component = gen.begin_class('gs::core::Component', bound_name='Component_hide_me', noncopyable=True)
+	gen.end_class(component)
+
+	shared_component = gen.begin_class('std::shared_ptr<gs::core::Component>', bound_name='Component', features={'proxy': lib.std.SharedPtrProxyFeature(component)})
+	gen.end_class(shared_component)
+
+	# gs::core::RenderableSystem
+	gen.add_include('engine/renderable_system.h')
+
+	renderable_system = gen.begin_class('gs::core::RenderableSystem', bound_name='RenderableSystem_hide_me', noncopyable=True)
+	gen.end_class(renderable_system)
+
+	shared_renderable_system = gen.begin_class('std::shared_ptr<gs::core::RenderableSystem>', bound_name='RenderableSystem', features={'proxy': lib.std.SharedPtrProxyFeature(renderable_system)})
+
+	gen.bind_constructor_overloads(shared_renderable_system, [
+		(['std::shared_ptr<gs::render::RenderSystem> render_system'], ['proxy']),
+		(['std::shared_ptr<gs::render::RenderSystem> render_system', 'bool async'], ['proxy'])
+	])
+
+	gen.bind_method(shared_renderable_system, 'DrawGeometry', 'void', ['std::shared_ptr<gs::render::Geometry> geometry', 'const gs::Matrix4 &world'], ['proxy'])
+
+	gen.end_class(shared_renderable_system)
 
 	# gs::core::Scene
 	scene = gen.begin_class('gs::core::Scene', bound_name='Scene_hide_me', noncopyable=True)
@@ -195,16 +238,9 @@ def bind_scene(gen):
 		('void', ['gs::time_ns dt'], ['proxy'])
 	])
 
+	gen.bind_method(shared_scene, 'GetSystem<gs::core::RenderableSystem>', 'std::shared_ptr<gs::core::RenderableSystem>', [], ['proxy'], bound_name='GetRenderableSystem')
+
 	gen.end_class(shared_scene)
-
-	# gs::core::Component
-	gen.add_include('engine/component.h')
-
-	component = gen.begin_class('gs::core::Component', bound_name='Component_hide_me', noncopyable=True)
-	gen.end_class(component)
-
-	shared_component = gen.begin_class('std::shared_ptr<gs::core::Component>', bound_name='Component', features={'proxy': lib.std.SharedPtrProxyFeature(component)})
-	gen.end_class(shared_component)
 
 	#
 	gen.add_include('engine/transform.h')
@@ -241,19 +277,6 @@ def bind_scene(gen):
 
 	gen.bind_enum('gs::core::Light::Model', ['Model_Point', 'Model_Linear', 'Model_Spot', 'Model_Last'], prefix='Light')
 	gen.bind_enum('gs::core::Light::Shadow', ['Shadow_None', 'Shadow_ProjectionMap', 'Shadow_Map'], prefix='Light')
-
-
-def bind_core(gen):
-	# core::Geometry
-	gen.add_include('engine/geometry.h')
-
-	geometry = gen.begin_class('gs::core::Geometry', bound_name='Geometry_hide_me', noncopyable=True)
-	gen.end_class(geometry)
-
-	shared_geometry = gen.begin_class('std::shared_ptr<gs::core::Geometry>', bound_name='Geometry', features={'proxy': lib.std.SharedPtrProxyFeature(geometry)})
-	gen.end_class(shared_geometry)
-
-	#
 
 
 def bind_gpu(gen):
@@ -1093,5 +1116,3 @@ with open('d:/gs-fabgen-test/bind_gs.h', mode='w', encoding='utf-8') as f:
 	f.write(hdr)
 with open('d:/gs-fabgen-test/bind_gs.cpp', mode='w', encoding='utf-8') as f:
 	f.write(src)
-
-print("DONE")
