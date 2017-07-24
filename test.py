@@ -1249,7 +1249,7 @@ void InitializePluginsDefaultSearchPath() {
 
 	gen.insert_code('void out_values_function_call(int &a, int *b) { a = 8; *b = 14; }\n\n')
 
-	gen.bind_function('out_values_function_call', 'void', ['int &a', 'int *b'])
+	gen.bind_function('out_values_function_call', 'void', ['int &a', 'int *b'], {'argout': ['a', 'b']})
 
 	if 0:
 		bind_binary_blob(gen)
