@@ -190,10 +190,6 @@ def bind_core(gen):
 def bind_scene(gen):
 	gen.add_include('engine/scene.h')
 
-	# gs::core::SceneSystem
-	scene_system = gen.begin_class('gs::core::SceneSystem', bound_name='SceneSystem_hide_me', noncopyable=True)
-	gen.end_class(scene_system)
-
 	# gs::core::Component
 	gen.add_include('engine/component.h')
 
@@ -202,6 +198,55 @@ def bind_scene(gen):
 
 	shared_component = gen.begin_class('std::shared_ptr<gs::core::Component>', bound_name='Component', features={'proxy': lib.std.SharedPtrProxyFeature(component)})
 	gen.end_class(shared_component)
+
+	# gs::core::Transform
+	gen.add_include('engine/transform.h')
+
+	transform = gen.begin_class('gs::core::Transform', bound_name='Transform_hide_me', noncopyable=True)
+	gen.end_class(transform)
+
+	shared_transform = gen.begin_class('std::shared_ptr<gs::core::Transform>', bound_name='Transform', features={'proxy': lib.std.SharedPtrProxyFeature(transform)})
+	gen.bind_method(shared_transform, 'GetPreviousWorld', 'gs::Matrix4', [], ['proxy'])
+	gen.bind_method(shared_transform, 'GetWorld', 'gs::Matrix4', [], ['proxy'])
+
+	gen.bind_method(shared_transform, 'GetPosition', 'gs::Vector3', [], ['proxy'])
+	gen.bind_method(shared_transform, 'SetPosition', 'void', ['const gs::Vector3 &position'], ['proxy'])
+	gen.bind_method(shared_transform, 'GetRotation', 'gs::Vector3', [], ['proxy'])
+	gen.bind_method(shared_transform, 'SetRotation', 'void', ['const gs::Vector3 &rotation'], ['proxy'])
+	gen.bind_method(shared_transform, 'GetScale', 'gs::Vector3', [], ['proxy'])
+	gen.bind_method(shared_transform, 'SetScale', 'void', ['const gs::Vector3 &scale'], ['proxy'])
+
+	gen.bind_method(shared_transform, 'SetRotationMatrix', 'void', ['const gs::Matrix3 &rotation'], ['proxy'])
+	gen.end_class(shared_transform)
+
+	# gs::core::Light
+	gen.add_include('engine/light.h')
+
+	gen.bind_enum('gs::core::Light::Model', ['Model_Point', 'Model_Linear', 'Model_Spot', 'Model_Last'], prefix='Light')
+	gen.bind_enum('gs::core::Light::Shadow', ['Shadow_None', 'Shadow_ProjectionMap', 'Shadow_Map'], prefix='Light')
+
+	# gs::core::RigidBody
+	gen.add_include('engine/rigid_body.h')
+
+	rigid_body = gen.begin_class('gs::core::RigidBody', bound_name='RigidBody_hide_me', noncopyable=True)
+	gen.end_class(rigid_body)
+
+	shared_rigid_body = gen.begin_class('std::shared_ptr<gs::core::RigidBody>', bound_name='RigidBody', features={'proxy': lib.std.SharedPtrProxyFeature(rigid_body)})
+	gen.end_class(shared_rigid_body)
+
+	# gs::core::Node
+	gen.add_include('engine/node.h')
+
+	node = gen.begin_class('gs::core::Node', bound_name='Node_hide_me', noncopyable=True)
+	gen.end_class(node)
+
+	shared_node = gen.begin_class('std::shared_ptr<gs::core::Node>', bound_name='Node', features={'proxy': lib.std.SharedPtrProxyFeature(node)})
+	gen.bind_method(shared_node, 'GetComponent<gs::core::Transform>', 'std::shared_ptr<gs::core::Transform>', [], ['proxy'], bound_name='GetTransform')
+	gen.end_class(shared_node)
+
+	# gs::core::SceneSystem
+	scene_system = gen.begin_class('gs::core::SceneSystem', bound_name='SceneSystem_hide_me', noncopyable=True)
+	gen.end_class(scene_system)
 
 	# gs::core::RenderableSystem
 	gen.add_include('engine/renderable_system.h')
@@ -219,6 +264,80 @@ def bind_scene(gen):
 	gen.bind_method(shared_renderable_system, 'DrawGeometry', 'void', ['std::shared_ptr<gs::render::Geometry> geometry', 'const gs::Matrix4 &world'], ['proxy'])
 
 	gen.end_class(shared_renderable_system)
+
+	# gs::core::IPhysicSystem
+	gen.add_include('engine/physic_system.h')
+
+	physic_system = gen.begin_class('gs::core::IPhysicSystem', bound_name='PhysicSystem_hide_me', noncopyable=True)
+	gen.end_class(physic_system)
+
+	shared_physic_system = gen.begin_class('std::shared_ptr<gs::core::IPhysicSystem>', bound_name='PhysicSystem', features={'proxy': lib.std.SharedPtrProxyFeature(physic_system)})
+
+	gen.bind_method(shared_physic_system, 'GetImplementationName', 'const std::string &', [], ['proxy'])
+
+	def decl_get_set_method(clss, type, method_suffix, var_name, features=[]):
+		gen.bind_method(clss, 'Get' + method_suffix, 'const %s &' % type, [], features)
+		gen.bind_method(clss, 'Set' + method_suffix, 'void', ['const %s &%s' % (type, var_name)], features)
+
+	decl_get_set_method(shared_physic_system, 'float', 'Timestep', 'timestep', ['proxy'])
+	decl_get_set_method(shared_physic_system, 'bool', 'ForceRigidBodyToSleepOnCreation', 'force_sleep_body', ['proxy'])
+	decl_get_set_method(shared_physic_system, 'gs::uint', 'ForceRigidBodyAxisLockOnCreation', 'force_axis_lock', ['proxy'])
+
+	decl_get_set_method(shared_physic_system, 'gs::Vector3', 'Gravity', 'G', ['proxy'])
+
+	def decl_comp_get_set_method(clss, comp_type, comp_var_name, type, method_suffix, var_name, features=[]):
+		gen.bind_method(clss, 'Get' + method_suffix, 'const %s &' % type, ['const %s *%s' % (comp_type, comp_var_name)], features)
+		gen.bind_method(clss, 'Set' + method_suffix, 'void', ['%s *%s' % (comp_type, comp_var_name), 'const %s &%s' % (type, var_name)], features)
+
+	decl_comp_get_set_method(shared_physic_system, 'gs::core::RigidBody', 'rigid_body', 'bool', 'RigidBodyIsSleeping', 'sleeping', ['proxy'])
+
+	decl_comp_get_set_method(shared_physic_system, 'gs::core::RigidBody', 'rigid_body', 'gs::Vector3', 'RigidBodyAngularVelocity', 'W', ['proxy'])
+	decl_comp_get_set_method(shared_physic_system, 'gs::core::RigidBody', 'rigid_body', 'gs::Vector3', 'RigidBodyLinearVelocity', 'V', ['proxy'])
+
+	decl_comp_get_set_method(shared_physic_system, 'gs::core::RigidBody', 'rigid_body', 'float', 'RigidBodyLinearDamping', 'k', ['proxy'])
+	decl_comp_get_set_method(shared_physic_system, 'gs::core::RigidBody', 'rigid_body', 'float', 'RigidBodyAngularDamping', 'k', ['proxy'])
+
+	decl_comp_get_set_method(shared_physic_system, 'gs::core::RigidBody', 'rigid_body', 'float', 'RigidBodyStaticFriction', 'static_friction', ['proxy'])
+	decl_comp_get_set_method(shared_physic_system, 'gs::core::RigidBody', 'rigid_body', 'float', 'RigidBodyDynamicFriction', 'dynamic_friction', ['proxy'])
+
+	decl_comp_get_set_method(shared_physic_system, 'gs::core::RigidBody', 'rigid_body', 'float', 'RigidBodyRestitution', 'restitution', ['proxy'])
+
+	#decl_comp_get_set_method(shared_physic_system, 'gs::core::RigidBody', 'rigid_body', 'gs::RigidBodyType', 'RigidBodyType', 'type', ['proxy'])
+
+	decl_comp_get_set_method(shared_physic_system, 'gs::core::RigidBody', 'rigid_body', 'uint8_t', 'RigidBodyAxisLock', 'axis_lock', ['proxy'])
+	decl_comp_get_set_method(shared_physic_system, 'gs::core::RigidBody', 'rigid_body', 'uint8_t', 'RigidBodyCollisionLayer', 'layer', ['proxy'])
+
+	gen.bind_method(shared_physic_system, 'GetRigidBodyVelocity', 'gs::Vector3', ['const gs::core::RigidBody *body', 'const gs::Vector3 &p'], ['proxy'])
+	gen.bind_method(shared_physic_system, 'SetRigidBodyVelocity', 'void', ['gs::core::RigidBody *body', 'const gs::Vector3 &V', 'const gs::Vector3 &p'], ['proxy'])
+
+	gen.bind_method(shared_physic_system, 'RigidBodyApplyLinearImpulse', 'void', ['gs::core::RigidBody *body', 'const gs::Vector3 &I'], ['proxy'])
+	gen.bind_method(shared_physic_system, 'RigidBodyApplyLinearForce', 'void', ['gs::core::RigidBody *body', 'const gs::Vector3 &F'], ['proxy'])
+	gen.bind_method(shared_physic_system, 'RigidBodyApplyTorque', 'void', ['gs::core::RigidBody *body', 'const gs::Vector3 &T'], ['proxy'])
+
+	gen.bind_method(shared_physic_system, 'RigidBodyApplyImpulse', 'void', ['gs::core::RigidBody *body', 'const gs::Vector3 &I', 'const gs::Vector3 &p'], ['proxy'])
+	gen.bind_method(shared_physic_system, 'RigidBodyApplyForce', 'void', ['gs::core::RigidBody *body', 'const gs::Vector3 &F', 'const gs::Vector3 &p'], ['proxy'])
+
+	gen.bind_method(shared_physic_system, 'RigidBodyResetWorld', 'void', ['gs::core::RigidBody *body', 'const gs::Matrix4 &M'], ['proxy'])
+
+	"""
+	void OnCollisionModified(const sCollision &collision);
+	void OnJointModified(const sJoint &joint);
+
+	/// Return collision pairs for the last update.
+	const std::vector<CollisionPair> &GetCollisionPairs() const { return collision_pairs[current_collision_pair_array_index]; }
+	/// Return collision pairs involving a specific node for the last update.
+	std::vector<CollisionPair> GetCollisionPairs(const sNode &node) const;
+	"""
+
+	gen.bind_method_overloads(shared_physic_system, 'HasCollided', [
+		('bool', ['const std::shared_ptr<gs::core::Node> &node'], ['proxy']),
+		('bool', ['const std::shared_ptr<gs::core::Node> &node_a', 'const std::shared_ptr<gs::core::Node> &node_b'], ['proxy'])
+	])
+
+	gen.bind_method(shared_physic_system, 'SetCollisionLayerPairState', 'void', ['uint16_t layer_a', 'uint16_t layer_b', 'bool enable_collision'], ['proxy'])
+	gen.bind_method(shared_physic_system, 'GetCollisionLayerPairState', 'bool', ['uint16_t layer_a', 'uint16_t layer_b'], ['proxy'])
+
+	gen.end_class(shared_physic_system)
 
 	# gs::core::Scene
 	scene = gen.begin_class('gs::core::Scene', bound_name='Scene_hide_me', noncopyable=True)
@@ -250,44 +369,9 @@ def bind_scene(gen):
 	])
 
 	gen.bind_method(shared_scene, 'GetSystem<gs::core::RenderableSystem>', 'std::shared_ptr<gs::core::RenderableSystem>', [], ['proxy'], bound_name='GetRenderableSystem')
+	gen.bind_method(shared_scene, 'GetSystem<gs::core::IPhysicSystem>', 'std::shared_ptr<gs::core::IPhysicSystem>', [], ['proxy'], bound_name='GetPhysicSystem')
 
 	gen.end_class(shared_scene)
-
-	#
-	gen.add_include('engine/transform.h')
-
-	transform = gen.begin_class('gs::core::Transform', bound_name='Transform_hide_me', noncopyable=True)
-	gen.end_class(transform)
-
-	shared_transform = gen.begin_class('std::shared_ptr<gs::core::Transform>', bound_name='Transform', features={'proxy': lib.std.SharedPtrProxyFeature(transform)})
-	gen.bind_method(shared_transform, 'GetPreviousWorld', 'gs::Matrix4', [], ['proxy'])
-	gen.bind_method(shared_transform, 'GetWorld', 'gs::Matrix4', [], ['proxy'])
-
-	gen.bind_method(shared_transform, 'GetPosition', 'gs::Vector3', [], ['proxy'])
-	gen.bind_method(shared_transform, 'SetPosition', 'void', ['const gs::Vector3 &position'], ['proxy'])
-	gen.bind_method(shared_transform, 'GetRotation', 'gs::Vector3', [], ['proxy'])
-	gen.bind_method(shared_transform, 'SetRotation', 'void', ['const gs::Vector3 &rotation'], ['proxy'])
-	gen.bind_method(shared_transform, 'GetScale', 'gs::Vector3', [], ['proxy'])
-	gen.bind_method(shared_transform, 'SetScale', 'void', ['const gs::Vector3 &scale'], ['proxy'])
-
-	gen.bind_method(shared_transform, 'SetRotationMatrix', 'void', ['const gs::Matrix3 &rotation'], ['proxy'])
-	gen.end_class(shared_transform)
-
-	#
-	gen.add_include('engine/node.h')
-
-	node = gen.begin_class('gs::core::Node', bound_name='Node_hide_me', noncopyable=True)
-	gen.end_class(node)
-
-	shared_node = gen.begin_class('std::shared_ptr<gs::core::Node>', bound_name='Node', features={'proxy': lib.std.SharedPtrProxyFeature(node)})
-	gen.bind_method(shared_node, 'GetComponent<gs::core::Transform>', 'std::shared_ptr<gs::core::Transform>', [], ['proxy'], bound_name='GetTransform')
-	gen.end_class(shared_node)
-
-	#
-	gen.add_include('engine/light.h')
-
-	gen.bind_enum('gs::core::Light::Model', ['Model_Point', 'Model_Linear', 'Model_Spot', 'Model_Last'], prefix='Light')
-	gen.bind_enum('gs::core::Light::Shadow', ['Shadow_None', 'Shadow_ProjectionMap', 'Shadow_Map'], prefix='Light')
 
 
 def bind_gpu(gen):
@@ -730,23 +814,49 @@ static bool MountFileDriver(gs::io::sDriver driver, const char *prefix) {
 
 def bind_color(gen):
 	gen.add_include('foundation/color.h')
+	gen.add_include('foundation/color_api.h')
 
 	color = gen.begin_class('gs::Color')
 
 	gen.bind_static_members(color, ['const gs::Color Zero', 'const gs::Color One', 'const gs::Color White', 'const gs::Color Grey', 'const gs::Color Black', 'const gs::Color Red', 'const gs::Color Green', 'const gs::Color Blue', 'const gs::Color Yellow', 'const gs::Color Orange', 'const gs::Color Purple', 'const gs::Color Transparent'])
 	gen.bind_members(color, ['float r', 'float g', 'float b', 'float a'])
 
+	gen.bind_constructor_overloads(color, [
+		([], []),
+		(['float r', 'float g', 'float b'], []),
+		(['float r', 'float g', 'float b', 'float a'], [])
+	])
+
+	gen.bind_arithmetic_ops_overloads(color, ['+', '-', '/', '*'], [('gs::Color', ['const gs::Color &color'], []), ('gs::Color', ['float k'], [])])
+	gen.bind_inplace_arithmetic_ops_overloads(color, ['+=', '-=', '*=', '/='], [('gs::Color &color', []), ('float k', [])])
+	gen.bind_comparison_ops(color, ['==', '!='], ['const gs::Color &color'])
+
 	gen.end_class(color)
+
+	gen.bind_function('gs::ColorToGrayscale', 'float', ['const gs::Color &color'])
+
+	gen.bind_function('gs::ColorToRGBA32', 'uint32_t', ['const gs::Color &color'])
+	gen.bind_function('gs::ColorFromRGBA32', 'gs::Color', ['uint32_t rgba32'])
+
+	gen.bind_function('gs::ARGB32ToRGBA32', 'uint32_t', ['uint32_t argb'])
+
+	#inline float Dist2(const Color &i, const Color &j) { return (j.r - i.r) * (j.r - i.r) + (j.g - i.g) * (j.g - i.g) + (j.b - i.b) * (j.b - i.b) + (j.a - i.a) * (j.a - i.a); }
+	#inline float Dist(const Color &i, const Color &j) { return math::Sqrt(Dist2(i, j)); }
+
+	#inline bool AlmostEqual(const Color &a, const Color &b, float epsilon)
+
+	gen.bind_function('gs::ChromaScale', 'gs::Color', ['const gs::Color &color', 'float k'])
+	gen.bind_function('gs::AlphaScale', 'gs::Color', ['const gs::Color &color', 'float k'])
+
+	#Color Clamp(const Color &c, float min, float max);
+	#Color Clamp(const Color &c, const Color &min, const Color &max);
+	#Color ClampMagnitude(const Color &c, float min, float max);
+
+	gen.bind_function('gs::ColorFromVector3', 'gs::Color', ['const gs::Vector3 &v'])
+	gen.bind_function('gs::ColorFromVector4', 'gs::Color', ['const gs::Vector4 &v'])
 
 
 def bind_math(gen):
-	gen.add_include('foundation/vector3.h')
-	gen.add_include('foundation/vector3_api.h')
-	gen.add_include('foundation/vector4.h')
-	gen.add_include('foundation/matrix3.h')
-	gen.add_include('foundation/matrix4.h')
-	gen.add_include('foundation/matrix44.h')
-
 	gen.decl_class('gs::Vector3')
 	gen.decl_class('gs::Vector4')
 	gen.decl_class('gs::Matrix3')
@@ -767,7 +877,9 @@ def bind_math(gen):
 
 	gen.bind_enum('gs::math::Axis', ['AxisX', 'AxisY', 'AxisZ', 'AxisNone'], storage_type='uint8_t')
 
-	# Vector4
+	# gs::Vector4
+	gen.add_include('foundation/vector4.h')
+
 	vector4 = gen.begin_class('gs::Vector4')
 	gen.bind_members(vector4, ['float x', 'float y', 'float z', 'float w'])
 
@@ -775,7 +887,6 @@ def bind_math(gen):
 		([], []),
 		(['float x', 'float y', 'float z', 'float w'], [])
 	])
-	gen.end_class(vector4)
 
 	gen.bind_arithmetic_ops_overloads(vector4, ['+', '-', '/'], [('gs::Vector4', ['gs::Vector4 &v'], []), ('gs::Vector4', ['float k'], [])])
 	gen.bind_arithmetic_ops_overloads(vector4, ['*'], [('gs::Vector4', ['gs::Vector4 &v'], []), ('gs::Vector4', ['float k'], []), ('gs::Vector4', ['const gs::Matrix4 &m'], [])])
@@ -786,12 +897,18 @@ def bind_math(gen):
 
 	gen.bind_method(vector4, 'Normalized', 'gs::Vector4', [])
 
-	#
+	gen.end_class(vector4)
+
+	# gs::Matrix3
+	gen.add_include('foundation/matrix3.h')
+
 	matrix3 = gen.begin_class('gs::Matrix3')
 	gen.bind_static_members(matrix3, ['const gs::Matrix3 Zero', 'const gs::Matrix3 Identity'])
 	gen.end_class(matrix3)
 
-	#
+	# gs::Matrix4
+	gen.add_include('foundation/matrix4.h')
+
 	matrix4 = gen.begin_class('gs::Matrix4')
 
 	gen.bind_static_members(matrix4, ['const gs::Matrix4 Zero', 'const gs::Matrix4 Identity'])
@@ -860,12 +977,17 @@ def bind_math(gen):
 
 	gen.end_class(matrix4)
 
-	#
+	# gs::Matrix44
+	gen.add_include('foundation/matrix44.h')
+
 	matrix44 = gen.begin_class('gs::Matrix44')
 	gen.bind_static_members(matrix44, ['const gs::Matrix44 Zero', 'const gs::Matrix44 Identity'])
 	gen.end_class(matrix44)
 
-	# Vector3
+	# gs::Vector3
+	gen.add_include('foundation/vector3.h')
+	gen.add_include('foundation/vector3_api.h')
+
 	vector3 = gen.begin_class('gs::Vector3')
 
 	gen.bind_static_members(vector3, ['const gs::Vector3 Zero', 'const gs::Vector3 One', 'const gs::Vector3 Left', 'const gs::Vector3 Right', 'const gs::Vector3 Up', 'const gs::Vector3 Down', 'const gs::Vector3 Front', 'const gs::Vector3 Back'])

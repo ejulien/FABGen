@@ -837,7 +837,7 @@ class FABGen:
 
 	#
 	def bind_inplace_arithmetic_op(self, conv, op, args, features=[]):
-		self.bind_inplace_arithmetic_op_overloads(conv, op, [args, features])
+		self.bind_inplace_arithmetic_op_overloads(conv, op, [(args, features)])
 
 	def bind_inplace_arithmetic_op_overloads(self, conv, op, args):
 		assert op in ['-=', '+=', '*=', '/='], 'Unsupported inplace arithmetic operator ' + op
@@ -859,21 +859,21 @@ class FABGen:
 
 	#
 	def bind_comparison_op(self, conv, op, args, features=[]):
-		self.bind_comparison_op_overloads(conv, op, [args, features])
+		self.bind_comparison_op_overloads(conv, op, [(args, features)])
 
 	def bind_comparison_op_overloads(self, conv, op, args):
 		assert op in ['<', '<=', '==', '!=', '>', '>='], 'Unsupported comparison operator ' + op
 
-		expr_eval = lambda args: '*_self %s %s;' % (op, ', '.join(args[0]))
+		expr_eval = lambda args: '*_self %s %s;' % (op, ', '.join(args))
 		proxy_name = 'py_%s_operator_of_%s' % (get_clean_symbol_name(op), conv.bound_name)
 		protos = [('bool', arg[0], arg[1]) for arg in args]
 		self.__bind_proxy(proxy_name, conv, protos, '%s operator of %s' % (op, conv.bound_name), expr_eval, 'comparison_op', 1)
 
 		conv.comparison_ops.append({'op': op, 'proxy_name': proxy_name})
 
-	def bind_comparison_ops(self, conv, ops, rval, args, features=[]):
+	def bind_comparison_ops(self, conv, ops, args, features=[]):
 		for op in ops:
-			self.bind_comparison_op(conv, op, rval, args, features)
+			self.bind_comparison_op(conv, op, args, features)
 
 	def bind_comparison_ops_overloads(self, conv, ops, protos):
 		for op in ops:
