@@ -153,8 +153,19 @@ def bind_input(gen):
 	gen.end_class(shared_input_device)
 
 
+def bind_engine(gen):
+	gen.add_include('engine/engine.h')
+
+	gen.bind_function('gs::core::GetExecutablePath', 'std::string', [])
+
+	gen.bind_function('gs::core::EndFrame', 'void', [])
+
+	gen.bind_function('gs::core::GetLastFrameDuration', 'gs::time_ns', [])
+	gen.bind_function('gs::core::ResetLastFrameDuration', 'void', [])
+
+
 def bind_plugins(gen):
-	gen.bind_function_overloads('gs::core::LoadPlugins', [('bool', [], []), ('bool', ['const char *path'], [])])
+	gen.bind_function_overloads('gs::core::LoadPlugins', [('gs::uint', [], []), ('gs::uint', ['const char *path'], [])])
 	gen.bind_function('gs::core::UnloadPlugins', 'void', [])
 
 
@@ -1091,8 +1102,25 @@ def bind_gs(gen):
 	gen.add_include('engine/engine.h')
 	gen.add_include('engine/engine_plugins.h')
 
+	gen.insert_code('''
+// Add the Python interpreter module search paths to the engine default plugins search path
+void InitializePluginsDefaultSearchPath() {
+	if (PyObject *sys_path = PySys_GetObject("path")) {
+		if (PyList_Check(sys_path)) {
+			Py_ssize_t n = PyList_Size(sys_path);
+			for (Py_ssize_t i = 0; i < n; ++i)
+				if (PyObject *path = PyList_GetItem(sys_path, i))
+					if (PyObject *tmp = PyUnicode_AsUTF8String(path))
+						gs::core::plugins_default_search_paths.push_back(PyBytes_AsString(tmp));
+		}
+	}
+}
+\n''')
+
 	gen.add_custom_init_code('''
 	gs::core::Init();
+
+	InitializePluginsDefaultSearchPath();
 ''')
 
 	gen.typedef('gs::uint', 'unsigned int')
@@ -1101,6 +1129,7 @@ def bind_gs(gen):
 	bind_time(gen)
 	bind_math(gen)
 	bind_color(gen)
+	bind_engine(gen)
 	bind_plugins(gen)
 	bind_filesystem(gen)
 	bind_window_system(gen)
