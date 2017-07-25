@@ -26,7 +26,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--pybase", "C:/Pythons/test-install", "--debug", "std_vector"],
+			"args": ["--pybase", "C:/Pythons/test-install", "--debug", "arg_out"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [

@@ -489,7 +489,7 @@ class FABGen:
 		assert "missing return values template"
 
 	#
-	def __ref_to_ownership_policy(self, ctype):
+	def __ctype_to_ownership_policy(self, ctype):
 		return 'Copy' if ctype.get_ref() == '' else 'NonOwning'
 
 	# --
@@ -501,7 +501,7 @@ class FABGen:
 			assert len(proto) == 3, "prototype incomplete. Expected 3 entries (type, [arguments], [features]), found %d" % len(proto)
 
 			rval = parse(proto[0], _CType)
-			_proto = {'rval': {'ctype': rval.const_storage(), 'conv': self.select_ctype_conv(rval)}, 'args': [], 'features': proto[2]}
+			_proto = {'rval': {'ctype': rval.const_storage(), 'conv': self.select_ctype_conv(rval)}, 'args': [], 'argsin': [], 'features': proto[2]}
 
 			args = proto[1]
 			if not type(args) is type([]):
@@ -512,6 +512,12 @@ class FABGen:
 				carg = parse(arg, _CArg)
 				conv = self.select_ctype_conv(carg.ctype)
 				_proto['args'].append({'carg': carg, 'conv': conv, 'check_var': None})
+
+			# prepare argsin, a list of arguments that should be provided by the caller
+			_proto['argsin'] = _proto['args']  # default to the full arg list
+
+			if 'argout' in _proto['features']:  # exclude output arguments from the argsin list
+				_proto['argsin'] = [arg for arg in _proto['args'] if arg['carg'].name not in _proto['features']['argout']]
 
 			_protos.append(_proto)
 
@@ -535,17 +541,22 @@ class FABGen:
 			out += '	' + conv.to_c_call(self.get_self(ctx), '&%s' % out_var)
 		return out
 
-	def _prepare_c_arg(self, idx, conv, var, ctx='default', features=[]):
-		out = self.decl_var(conv.storage_ctype, var)
-		out += conv.to_c_call(self.get_arg(idx, ctx), '&%s' % var)
-		return out
+	def _declare_c_arg(self, conv, var):
+		return self.decl_var(conv.storage_ctype, var)
+
+	def _convert_c_arg(self, idx, conv, var, ctx='default'):
+		return conv.to_c_call(self.get_arg(idx, ctx), '&%s' % var)
+
+	def _prepare_c_arg(self, idx, conv, var, ctx='default'):
+		return self._declare_c_arg(conv, var) + self._convert_c_arg(idx, conv, var, ctx)
 
 	def prepare_c_rval(self, conv, ctype, var, ownership=None):
 		if ownership is None:
-			ownership = self.__ref_to_ownership_policy(ctype)
+			ownership = self.__ctype_to_ownership_policy(ctype)
+
 		# transform from {T&, T*, T**, ...} to T* where T is conv.ctype
 		expr = transform_var_ref_to(var, ctype.get_ref(), conv.ctype.add_ref('*').get_ref())
-		return self.rval_from_c_ptr(conv, var, expr, ownership)
+		return self.rval_from_c_ptr(conv, var+'_out', expr, ownership)
 
 	def __proto_call(self, self_conv, proto, expr_eval, ctx, fixed_arg_count=None):
 		features = proto['features']
@@ -567,20 +578,35 @@ class FABGen:
 
 		# prepare C call arguments
 		args = proto['args']
+		argout = features['argout'] if 'argout' in features else None
+
 		c_call_args = []
 
+		argin_idx = 0
 		for idx, arg in enumerate(args):
 			conv = arg['conv']
 			if not conv:
-				continue
+				continue  # FIXME in which case can this happen?
 
+			# declare argument
 			arg_name = 'arg%d' % idx
-			self._source += self._prepare_c_arg(idx, conv, arg_name, ctx, features)
+			self._source += self._declare_c_arg(conv, arg_name)
+
+			# convert input argument
+			is_argin = True
+			if argout is not None:
+				is_argin = arg['carg'].name not in argout
+
+			if is_argin:
+				self._source += self._convert_c_arg(argin_idx, conv, arg_name, ctx)
+				argin_idx += 1
 
 			c_call_arg_transform = ctype_ref_to(conv.storage_ctype.get_ref(), arg['carg'].ctype.get_ref())
 			c_call_args.append(c_call_arg_transform + arg_name)
 
 		# declare return value
+		rvals = []
+
 		if ctx == 'constructor':
 			rval_ptr = rval.add_ref('*')  # constructor returns a pointer
 
@@ -597,6 +623,7 @@ class FABGen:
 				self._source += 'new %s(%s);\n' % (rval, ', '.join(c_call_args))
 
 			self._source += self.prepare_c_rval(rval_conv, rval_ptr, 'rval', 'Owning')  # constructor output is always owned by VM
+			rvals.append('rval_out')
 		else:
 			# return value is optional for a function call
 			if rval_conv:
@@ -606,8 +633,16 @@ class FABGen:
 
 			if rval_conv:
 				self._source += self.prepare_c_rval(rval_conv, rval, 'rval')
+				rvals.append('rval_out')
 
-		self._source += self.commit_rvals(rval, ctx)
+		# prepare return values
+		if argout is not None:
+			for idx, arg in enumerate(args):
+				if arg['carg'].name in argout:
+					self._source += self.prepare_c_rval(arg['conv'], arg['conv'].storage_ctype, 'arg%d' % idx)
+					rvals.append('arg%d_out' % idx)
+
+		self._source += self.commit_rvals(rvals, ctx)
 
 	def __bind_proxy(self, name, self_conv, protos, desc, expr_eval, ctx, fixed_arg_count=None):
 		if self.verbose:
@@ -619,7 +654,7 @@ class FABGen:
 		def get_protos_per_arg_count(protos):
 			by_arg_count = {}
 			for proto in protos:
-				arg_count = len(proto['args'])
+				arg_count = len(proto['argsin'])
 				if arg_count not in by_arg_count:
 					by_arg_count[arg_count] = []
 				by_arg_count[arg_count].append(proto)
@@ -638,7 +673,7 @@ class FABGen:
 		def get_protos_per_arg_conv(protos, arg_idx):
 			per_arg_conv = {}
 			for proto in protos:
-				arg_conv = proto['args'][arg_idx]['conv']
+				arg_conv = proto['argsin'][arg_idx]['conv']
 				if arg_conv not in per_arg_conv:
 					per_arg_conv[arg_conv] = []
 				per_arg_conv[arg_conv].append(proto)
@@ -674,7 +709,7 @@ class FABGen:
 
 				expected_types = []
 				for proto in protos:
-					proto_arg = proto['args'][arg_idx]
+					proto_arg = proto['argsin'][arg_idx]
 
 					proto_arg_name = str(proto_arg['carg'].name)
 					proto_arg_bound_name = proto_arg['conv'].bound_name
