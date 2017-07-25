@@ -199,6 +199,15 @@ def bind_scene(gen):
 	shared_component = gen.begin_class('std::shared_ptr<gs::core::Component>', bound_name='Component', features={'proxy': lib.std.SharedPtrProxyFeature(component)})
 	gen.end_class(shared_component)
 
+	# gs::core::Environment
+	gen.add_include('engine/environment.h')
+
+	environment = gen.begin_class('gs::core::Environment', bound_name='Environment_hide_me', noncopyable=True)
+	gen.end_class(environment)
+
+	shared_environment = gen.begin_class('std::shared_ptr<gs::core::Environment>', bound_name='Environment', features={'proxy': lib.std.SharedPtrProxyFeature(environment)})
+	gen.end_class(shared_environment)
+
 	# gs::core::Transform
 	gen.add_include('engine/transform.h')
 
@@ -718,12 +727,40 @@ def bind_plus(gen):
 		('std::shared_ptr<gs::core::Node>', ['gs::core::Scene &scene', 'gs::Matrix4 matrix', 'float radius', 'int subdiv_x', 'int subdiv_y', 'const char *material_path'], [])
 	])
 
+	gen.bind_method_overloads(plus_conv, 'AddEnvironment', [
+		('std::shared_ptr<gs::core::Environment>', ['gs::core::Scene &scene'], []),
+		('std::shared_ptr<gs::core::Environment>', ['gs::core::Scene &scene', 'gs::Color background_color', 'gs::Color ambient_color'], []),
+		('std::shared_ptr<gs::core::Environment>', ['gs::core::Scene &scene', 'gs::Color background_color', 'gs::Color ambient_color', 'gs::Color fog_color', 'float fog_near', 'float fog_far'], [])
+	])
+
+	gen.bind_method_overloads(plus_conv, 'AddPhysicCube', [
+		('std::shared_ptr<gs::core::Node>', ['std::shared_ptr<gs::core::RigidBody> &rigid_body', 'gs::core::Scene &scene'], {'argout': ['rigid_body']}),
+		('std::shared_ptr<gs::core::Node>', ['std::shared_ptr<gs::core::RigidBody> &rigid_body', 'gs::core::Scene &scene', 'gs::Matrix4 m'], {'argout': ['rigid_body']}),
+		('std::shared_ptr<gs::core::Node>', ['std::shared_ptr<gs::core::RigidBody> &rigid_body', 'gs::core::Scene &scene', 'gs::Matrix4 m', 'float width', 'float height', 'float depth'], {'argout': ['rigid_body']}),
+		('std::shared_ptr<gs::core::Node>', ['std::shared_ptr<gs::core::RigidBody> &rigid_body', 'gs::core::Scene &scene', 'gs::Matrix4 m', 'float width', 'float height', 'float depth', 'float mass'], {'argout': ['rigid_body']}),
+		('std::shared_ptr<gs::core::Node>', ['std::shared_ptr<gs::core::RigidBody> &rigid_body', 'gs::core::Scene &scene', 'gs::Matrix4 m', 'float width', 'float height', 'float depth', 'float mass', 'const char *material_path'], {'argout': ['rigid_body']})
+	])
+	gen.bind_method_overloads(plus_conv, 'AddPhysicPlane', [
+		('std::shared_ptr<gs::core::Node>', ['std::shared_ptr<gs::core::RigidBody> &rigid_body', 'gs::core::Scene &scene'], {'argout': ['rigid_body']}),
+		('std::shared_ptr<gs::core::Node>', ['std::shared_ptr<gs::core::RigidBody> &rigid_body', 'gs::core::Scene &scene', 'gs::Matrix4 m'], {'argout': ['rigid_body']}),
+		('std::shared_ptr<gs::core::Node>', ['std::shared_ptr<gs::core::RigidBody> &rigid_body', 'gs::core::Scene &scene', 'gs::Matrix4 m', 'float width', 'float length'], {'argout': ['rigid_body']}),
+		('std::shared_ptr<gs::core::Node>', ['std::shared_ptr<gs::core::RigidBody> &rigid_body', 'gs::core::Scene &scene', 'gs::Matrix4 m', 'float width', 'float length', 'float mass'], {'argout': ['rigid_body']}),
+		('std::shared_ptr<gs::core::Node>', ['std::shared_ptr<gs::core::RigidBody> &rigid_body', 'gs::core::Scene &scene', 'gs::Matrix4 m', 'float width', 'float length', 'float mass', 'const char *material_path'], {'argout': ['rigid_body']})
+	])
+	gen.bind_method_overloads(plus_conv, 'AddPhysicSphere', [
+		('std::shared_ptr<gs::core::Node>', ['std::shared_ptr<gs::core::RigidBody> &rigid_body', 'gs::core::Scene &scene'], {'argout': ['rigid_body']}),
+		('std::shared_ptr<gs::core::Node>', ['std::shared_ptr<gs::core::RigidBody> &rigid_body', 'gs::core::Scene &scene', 'gs::Matrix4 m'], {'argout': ['rigid_body']}),
+		('std::shared_ptr<gs::core::Node>', ['std::shared_ptr<gs::core::RigidBody> &rigid_body', 'gs::core::Scene &scene', 'gs::Matrix4 m', 'float radius', 'int subdiv_x', 'int subdiv_y'], {'argout': ['rigid_body']}),
+		('std::shared_ptr<gs::core::Node>', ['std::shared_ptr<gs::core::RigidBody> &rigid_body', 'gs::core::Scene &scene', 'gs::Matrix4 m', 'float radius', 'int subdiv_x', 'int subdiv_y', 'float mass'], {'argout': ['rigid_body']}),
+		('std::shared_ptr<gs::core::Node>', ['std::shared_ptr<gs::core::RigidBody> &rigid_body', 'gs::core::Scene &scene', 'gs::Matrix4 m', 'float radius', 'int subdiv_x', 'int subdiv_y', 'float mass', 'const char *material_path'], {'argout': ['rigid_body']})
+	])
+
 	#
 	gen.bind_method(plus_conv, 'GetMouse', 'std::shared_ptr<gs::InputDevice>', [])
 	gen.bind_method(plus_conv, 'GetKeyboard', 'std::shared_ptr<gs::InputDevice>', [])
 
-	#void GetMousePos(float &x, float &y) const;
-	#void GetMouseDt(float &x, float &y) const;
+	gen.bind_method(plus_conv, 'GetMousePos', 'void', ['float &x', 'float &y'], {'argout': ['x', 'y']})
+	gen.bind_method(plus_conv, 'GetMouseDt', 'void', ['float &x', 'float &y'], {'argout': ['x', 'y']})
 
 	gen.bind_method_overloads(plus_conv, 'MouseButtonDown', [
 		('bool', [], []),

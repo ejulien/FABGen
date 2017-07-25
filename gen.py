@@ -541,14 +541,14 @@ class FABGen:
 			out += '	' + conv.to_c_call(self.get_self(ctx), '&%s' % out_var)
 		return out
 
-	def _declare_c_arg(self, conv, var):
-		return self.decl_var(conv.storage_ctype, var)
+	def _declare_c_arg(self, ctype, var):
+		return self.decl_var(ctype, var)
 
 	def _convert_c_arg(self, idx, conv, var, ctx='default'):
 		return conv.to_c_call(self.get_arg(idx, ctx), '&%s' % var)
 
 	def _prepare_c_arg(self, idx, conv, var, ctx='default'):
-		return self._declare_c_arg(conv, var) + self._convert_c_arg(idx, conv, var, ctx)
+		return self._declare_c_arg(conv.storage_ctype, var) + self._convert_c_arg(idx, conv, var, ctx)
 
 	def prepare_c_rval(self, conv, ctype, var, ownership=None):
 		if ownership is None:
@@ -585,24 +585,19 @@ class FABGen:
 		argin_idx = 0
 		for idx, arg in enumerate(args):
 			conv = arg['conv']
-			if not conv:
-				continue  # FIXME in which case can this happen?
 
-			# declare argument
-			arg_name = 'arg%d' % idx
-			self._source += self._declare_c_arg(conv, arg_name)
+			var = 'arg%d' % idx
 
-			# convert input argument
-			is_argin = True
-			if argout is not None:
-				is_argin = arg['carg'].name not in argout
-
-			if is_argin:
-				self._source += self._convert_c_arg(argin_idx, conv, arg_name, ctx)
+			if argout is not None and arg['carg'].name in argout:
+				arg_ctype = conv.ctype
+				self._source += self._declare_c_arg(arg_ctype, var)
+			else:
+				arg_ctype = conv.storage_ctype
+				self._source += self._declare_c_arg(conv.storage_ctype, var)
+				self._source += self._convert_c_arg(argin_idx, conv, var, ctx)
 				argin_idx += 1
 
-			c_call_arg_transform = ctype_ref_to(conv.storage_ctype.get_ref(), arg['carg'].ctype.get_ref())
-			c_call_args.append(c_call_arg_transform + arg_name)
+			c_call_args.append(transform_var_ref_to(var, arg_ctype.get_ref(), arg['carg'].ctype.get_ref()))
 
 		# declare return value
 		rvals = []
@@ -639,7 +634,7 @@ class FABGen:
 		if argout is not None:
 			for idx, arg in enumerate(args):
 				if arg['carg'].name in argout:
-					self._source += self.prepare_c_rval(arg['conv'], arg['conv'].storage_ctype, 'arg%d' % idx)
+					self._source += self.prepare_c_rval(arg['conv'], arg['conv'].ctype, 'arg%d' % idx)
 					rvals.append('arg%d_out' % idx)
 
 		self._source += self.commit_rvals(rvals, ctx)
