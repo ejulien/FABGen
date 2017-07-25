@@ -380,24 +380,26 @@ static inline bool CheckArgsTuple(PyObject *args) {
 		return 'return 0;'
 
 	def rval_from_c_ptr(self, conv, out_var, expr, ownership):
-		return conv.from_c_call(out_var + '_pyobj', expr, ownership)
+		return conv.from_c_call(out_var, expr, ownership)
 
-	def commit_rvals(self, rval, ctx='default'):
+	def commit_rvals(self, rvals, ctx='default'):
 		out = ''
+
 		if ctx == 'setter':
 			out += 'return 0;\n'
 		elif ctx == 'inplace_arithmetic_op':
 			self_var = self.get_self(ctx)
 			out += 'Py_INCREF(%s);\nreturn %s;\n' % (self_var, self_var)
 		else:
-			rval_count = 1 if repr(rval) != 'void' else 0
+			rval_count = len(rvals)
 
 			if rval_count == 0:
 				out += 'Py_INCREF(Py_None);\nreturn Py_None;\n'
 			elif rval_count == 1:
-				out += 'return rval_pyobj;\n'
+				out += 'return %s;\n' % rvals[0]
 			else:
-				out += '// TODO make tuple, append rvals, return tuple\n'
+				out += 'return PyTuple_Pack(%d, %s);\n' % (rval_count, ', '.join(rvals))
+
 		return out
 
 	#
