@@ -156,7 +156,7 @@ def bind_input(gen):
 	gen.bind_named_enum('gs::InputDevice::MatrixCode', ['MatrixHead'], bound_name='InputMatrixCode', prefix='Input')
 
 	#
-	input_device = gen.begin_class('gs::InputDevice', bound_name='InputDevice_hide_me', noncopyable=True)
+	input_device = gen.begin_class('gs::InputDevice', bound_name='InputDevice_hide_me', noncopyable=True, nobind=False)
 	gen.end_class(input_device)
 
 	shared_input_device = gen.begin_class('std::shared_ptr<gs::InputDevice>', bound_name='InputDevice', features={'proxy': lib.std.SharedPtrProxyFeature(input_device)})
@@ -188,7 +188,7 @@ def bind_core(gen):
 	# core::Geometry
 	gen.add_include('engine/geometry.h')
 
-	geometry = gen.begin_class('gs::core::Geometry', bound_name='Geometry_hide_me', noncopyable=True)
+	geometry = gen.begin_class('gs::core::Geometry', bound_name='Geometry_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(geometry)
 
 	shared_geometry = gen.begin_class('std::shared_ptr<gs::core::Geometry>', bound_name='Geometry', features={'proxy': lib.std.SharedPtrProxyFeature(geometry)})
@@ -203,7 +203,7 @@ def bind_scene(gen):
 	# gs::core::Component
 	gen.add_include('engine/component.h')
 
-	component = gen.begin_class('gs::core::Component', bound_name='Component_hide_me', noncopyable=True)
+	component = gen.begin_class('gs::core::Component', bound_name='Component_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(component)
 
 	shared_component = gen.begin_class('std::shared_ptr<gs::core::Component>', bound_name='Component', features={'proxy': lib.std.SharedPtrProxyFeature(component)})
@@ -212,7 +212,7 @@ def bind_scene(gen):
 	# gs::core::Environment
 	gen.add_include('engine/environment.h')
 
-	environment = gen.begin_class('gs::core::Environment', bound_name='Environment_hide_me', noncopyable=True)
+	environment = gen.begin_class('gs::core::Environment', bound_name='Environment_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(environment)
 
 	shared_environment = gen.begin_class('std::shared_ptr<gs::core::Environment>', bound_name='Environment', features={'proxy': lib.std.SharedPtrProxyFeature(environment)})
@@ -221,7 +221,7 @@ def bind_scene(gen):
 	# gs::core::Transform
 	gen.add_include('engine/transform.h')
 
-	transform = gen.begin_class('gs::core::Transform', bound_name='Transform_hide_me', noncopyable=True)
+	transform = gen.begin_class('gs::core::Transform', bound_name='Transform_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(transform)
 
 	shared_transform = gen.begin_class('std::shared_ptr<gs::core::Transform>', bound_name='Transform', features={'proxy': lib.std.SharedPtrProxyFeature(transform)})
@@ -247,7 +247,7 @@ def bind_scene(gen):
 	# gs::core::RigidBody
 	gen.add_include('engine/rigid_body.h')
 
-	rigid_body = gen.begin_class('gs::core::RigidBody', bound_name='RigidBody_hide_me', noncopyable=True)
+	rigid_body = gen.begin_class('gs::core::RigidBody', bound_name='RigidBody_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(rigid_body)
 
 	shared_rigid_body = gen.begin_class('std::shared_ptr<gs::core::RigidBody>', bound_name='RigidBody', features={'proxy': lib.std.SharedPtrProxyFeature(rigid_body)})
@@ -256,7 +256,7 @@ def bind_scene(gen):
 	# gs::core::Node
 	gen.add_include('engine/node.h')
 
-	node = gen.begin_class('gs::core::Node', bound_name='Node_hide_me', noncopyable=True)
+	node = gen.begin_class('gs::core::Node', bound_name='Node_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(node)
 
 	shared_node = gen.begin_class('std::shared_ptr<gs::core::Node>', bound_name='Node', features={'proxy': lib.std.SharedPtrProxyFeature(node)})
@@ -264,13 +264,13 @@ def bind_scene(gen):
 	gen.end_class(shared_node)
 
 	# gs::core::SceneSystem
-	scene_system = gen.begin_class('gs::core::SceneSystem', bound_name='SceneSystem_hide_me', noncopyable=True)
+	scene_system = gen.begin_class('gs::core::SceneSystem', bound_name='SceneSystem_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(scene_system)
 
 	# gs::core::RenderableSystem
 	gen.add_include('engine/renderable_system.h')
 
-	renderable_system = gen.begin_class('gs::core::RenderableSystem', bound_name='RenderableSystem_hide_me', noncopyable=True)
+	renderable_system = gen.begin_class('gs::core::RenderableSystem', bound_name='RenderableSystem_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(renderable_system)
 
 	shared_renderable_system = gen.begin_class('std::shared_ptr<gs::core::RenderableSystem>', bound_name='RenderableSystem', features={'proxy': lib.std.SharedPtrProxyFeature(renderable_system)})
@@ -287,7 +287,7 @@ def bind_scene(gen):
 	# gs::core::IPhysicSystem
 	gen.add_include('engine/physic_system.h')
 
-	physic_system = gen.begin_class('gs::core::IPhysicSystem', bound_name='PhysicSystem_hide_me', noncopyable=True)
+	physic_system = gen.begin_class('gs::core::IPhysicSystem', bound_name='PhysicSystem_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(physic_system)
 
 	shared_physic_system = gen.begin_class('std::shared_ptr<gs::core::IPhysicSystem>', bound_name='PhysicSystem', features={'proxy': lib.std.SharedPtrProxyFeature(physic_system)})
@@ -359,7 +359,7 @@ def bind_scene(gen):
 	gen.end_class(shared_physic_system)
 
 	# gs::core::Scene
-	scene = gen.begin_class('gs::core::Scene', bound_name='Scene_hide_me', noncopyable=True)
+	scene = gen.begin_class('gs::core::Scene', bound_name='Scene_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(scene)
 
 	shared_scene = gen.begin_class('std::shared_ptr<gs::core::Scene>', bound_name='Scene', features={'proxy': lib.std.SharedPtrProxyFeature(scene)})
@@ -400,7 +400,7 @@ def bind_gpu(gen):
 	gen.bind_named_enum('gs::gpu::Buffer::Usage', ['Static', 'Dynamic'], bound_name='GpuBufferUsage', prefix='GpuBuffer')
 	gen.bind_named_enum('gs::gpu::Buffer::Type', ['Index', 'Vertex'], bound_name='GpuBufferType', prefix='GpuBuffer')
 
-	buffer = gen.begin_class('gs::gpu::Buffer', bound_name='Buffer_hide_me', noncopyable=True)
+	buffer = gen.begin_class('gs::gpu::Buffer', bound_name='Buffer_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(buffer)
 
 	shared_buffer = gen.begin_class('std::shared_ptr<gs::gpu::Buffer>', bound_name='GpuBuffer', features={'proxy': lib.std.SharedPtrProxyFeature(buffer)})
@@ -413,7 +413,7 @@ def bind_gpu(gen):
 	gen.bind_named_enum('gs::gpu::Texture::Format', ['RGBA8', 'BGRA8', 'RGBA16', 'RGBAF', 'Depth', 'DepthF', 'R8', 'R16', 'InvalidFormat'], 'uint8_t', 'TextureFormat', 'Texture')
 	gen.bind_named_enum('gs::gpu::Texture::AA', ['NoAA', 'MSAA2x', 'MSAA4x', 'MSAA8x', 'MSAA16x', 'AALast'], 'uint8_t', 'TextureAA', 'Texture')
 
-	texture = gen.begin_class('gs::gpu::Texture', bound_name='Texture_hide_me', noncopyable=True)
+	texture = gen.begin_class('gs::gpu::Texture', bound_name='Texture_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(texture)
 
 	shared_texture = gen.begin_class('std::shared_ptr<gs::gpu::Texture>', bound_name='Texture', features={'proxy': lib.std.SharedPtrProxyFeature(texture)})
@@ -426,7 +426,7 @@ def bind_gpu(gen):
 	gen.end_class(shared_texture)
 
 	# gs::gpu::RenderTarget
-	render_target = gen.begin_class('gs::gpu::RenderTarget', bound_name='RenderTarget_hide_me', noncopyable=True)
+	render_target = gen.begin_class('gs::gpu::RenderTarget', bound_name='RenderTarget_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(render_target)
 
 	shared_render_target = gen.begin_class('std::shared_ptr<gs::gpu::RenderTarget>', bound_name='RenderTarget', features={'proxy': lib.std.SharedPtrProxyFeature(render_target)})
@@ -437,7 +437,7 @@ def bind_gpu(gen):
 
 	gen.bind_named_enum('gs::gpu::Renderer::ClearFunction', ['ClearColor', 'ClearDepth', 'ClearAll'], bound_name='RendererClearFlags')
 
-	renderer = gen.begin_class('gs::gpu::Renderer', bound_name='Renderer_hide_me', noncopyable=True)
+	renderer = gen.begin_class('gs::gpu::Renderer', bound_name='Renderer_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(renderer)
 
 	shared_renderer = gen.begin_class('std::shared_ptr<gs::gpu::Renderer>', bound_name='Renderer', features={'proxy': lib.std.SharedPtrProxyFeature(renderer)})
@@ -466,7 +466,7 @@ def bind_gpu(gen):
 	# gs::gpu::RendererAsync
 	gen.add_include('engine/renderer_async.h')
 
-	renderer_async = gen.begin_class('gs::gpu::RendererAsync', bound_name='RendererAsync_hide_me', noncopyable=True)
+	renderer_async = gen.begin_class('gs::gpu::RendererAsync', bound_name='RendererAsync_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(renderer_async)
 
 	shared_renderer_async = gen.begin_class('std::shared_ptr<gs::gpu::RendererAsync>', bound_name='RendererAsync', features={'proxy': lib.std.SharedPtrProxyFeature(renderer_async)})
@@ -553,7 +553,7 @@ def bind_render(gen):
 	# render::Material
 	gen.add_include('engine/render_material.h')
 
-	material = gen.begin_class('gs::render::Material', bound_name='RenderMaterial_hide_me', noncopyable=True)
+	material = gen.begin_class('gs::render::Material', bound_name='RenderMaterial_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(material)
 
 	shared_material = gen.begin_class('std::shared_ptr<gs::render::Material>', bound_name='RenderMaterial', features={'proxy': lib.std.SharedPtrProxyFeature(material)})
@@ -562,7 +562,7 @@ def bind_render(gen):
 	# render::Geometry
 	gen.add_include('engine/render_geometry.h')
 
-	geometry = gen.begin_class('gs::render::Geometry', bound_name='RenderGeometry_hide_me', noncopyable=True)
+	geometry = gen.begin_class('gs::render::Geometry', bound_name='RenderGeometry_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(geometry)
 
 	shared_geometry = gen.begin_class('std::shared_ptr<gs::render::Geometry>', bound_name='RenderGeometry', features={'proxy': lib.std.SharedPtrProxyFeature(geometry)})
@@ -575,7 +575,7 @@ def bind_render(gen):
 	# render::RenderSystem
 	gen.add_include('engine/render_system.h')
 
-	render_system = gen.begin_class('gs::render::RenderSystem', bound_name='RenderSystem_hide_me', noncopyable=True)
+	render_system = gen.begin_class('gs::render::RenderSystem', bound_name='RenderSystem_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(render_system)
 
 	shared_render_system = gen.begin_class('std::shared_ptr<gs::render::RenderSystem>', bound_name='RenderSystem', features={'proxy': lib.std.SharedPtrProxyFeature(render_system)})
@@ -584,7 +584,7 @@ def bind_render(gen):
 	# render::RenderSystem
 	gen.add_include('engine/render_system_async.h')
 
-	render_system_async = gen.begin_class('gs::render::RenderSystemAsync', bound_name='RenderSystemAsync_hide_me', noncopyable=True)
+	render_system_async = gen.begin_class('gs::render::RenderSystemAsync', bound_name='RenderSystemAsync_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(render_system_async)
 
 	shared_render_system_async = gen.begin_class('std::shared_ptr<gs::render::RenderSystemAsync>', bound_name='RenderSystemAsync', features={'proxy': lib.std.SharedPtrProxyFeature(render_system_async)})
@@ -594,7 +594,7 @@ def bind_render(gen):
 def bind_iso_surface(gen):
 	gen.add_include('engine/iso_surface.h')
 
-	iso_surface = gen.begin_class('gs::core::IsoSurface', bound_name='IsoSurface_hide_me')
+	iso_surface = gen.begin_class('gs::core::IsoSurface', bound_name='IsoSurface_hide_me', nobind=True)
 	gen.end_class(iso_surface)
 
 	shared_iso_surface = gen.begin_class('std::shared_ptr<gs::core::IsoSurface>', bound_name='IsoSurface', features={'proxy': lib.std.SharedPtrProxyFeature(iso_surface)})
@@ -1001,14 +1001,14 @@ static bool MountFileDriver(gs::io::sDriver driver, const char *prefix) {
 	''', 'Filesystem custom API')
 
 	#
-	io_driver = gen.begin_class('gs::io::Driver', bound_name='IODriver_hide_me', noncopyable=True)
+	io_driver = gen.begin_class('gs::io::Driver', bound_name='IODriver_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(io_driver)
 
 	shared_io_driver = gen.begin_class('std::shared_ptr<gs::io::Driver>', bound_name='IODriver', features={'proxy': lib.std.SharedPtrProxyFeature(io_driver)})
 	gen.end_class(shared_io_driver)
 
 	#
-	io_cfile = gen.begin_class('gs::io::CFile', bound_name='CFile_hide_me')  # TODO do not expose this type in the module
+	io_cfile = gen.begin_class('gs::io::CFile', bound_name='CFile_hide_me', nobind=True)  # TODO do not expose this type in the module
 	gen.end_class(io_cfile)
 
 	shared_io_cfile = gen.begin_class('std::shared_ptr<gs::io::CFile>', bound_name='StdFileDriver', features={'proxy': lib.std.SharedPtrProxyFeature(io_cfile)})
@@ -1095,7 +1095,7 @@ def bind_picture(gen):
 	gen.bind_named_enum('gs::Picture::Filter', ['Nearest', 'Bilinear', 'Hanning', 'Hamming', 'Hermite', 'Quadric', 'Bicubic', 'Kaiser', 'Catrom', 'Mitchell', 'Spline16', 'Spline36', 'Gaussian', 'Bessel', 'Sinc36', 'Sinc64', 'Sinc256', 'Lanczos36', 'Lanczos64', 'Lanczos256', 'Blackman36', 'Blackman64', 'Blackman256'], bound_name='PictureFilter', prefix='Filter')
 
 	# gs::Picture
-	picture = gen.begin_class('gs::Picture', bound_name='Picture_hide_me')
+	picture = gen.begin_class('gs::Picture', bound_name='Picture_hide_me', nobind=True)
 	gen.end_class(picture)
 
 	shared_picture = gen.begin_class('std::shared_ptr<gs::Picture>', bound_name='Picture', features={'proxy': lib.std.SharedPtrProxyFeature(picture)})
@@ -1512,7 +1512,7 @@ def bind_mixer(gen):
 	# gs::AudioData
 	gen.bind_named_enum('gs::AudioData::State', ['Ready', 'Ended', 'Disconnected'], bound_name='AudioDataState', prefix='AudioData')
 
-	audio_data = gen.begin_class('gs::AudioData', bound_name='AudioData_hide_me', noncopyable=True)
+	audio_data = gen.begin_class('gs::AudioData', bound_name='AudioData_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(audio_data)
 
 	shared_audio_data = gen.begin_class('std::shared_ptr<gs::AudioData>', bound_name='AudioData', features={'proxy': lib.std.SharedPtrProxyFeature(audio_data)})
@@ -1565,7 +1565,7 @@ static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixe
 	gen.end_class(mixer_channel_location)
 
 	#
-	sound = gen.begin_class('gs::audio::Sound', bound_name='Sound_hide_me', noncopyable=True)
+	sound = gen.begin_class('gs::audio::Sound', bound_name='Sound_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(sound)
 
 	shared_sound = gen.begin_class('std::shared_ptr<gs::audio::Sound>', bound_name='Sound', features={'proxy': lib.std.SharedPtrProxyFeature(sound)})
@@ -1662,7 +1662,7 @@ static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixe
 		gen.bind_method(conv, 'LoadSound', 'std::shared_ptr<gs::audio::Sound>', ['const char *path'], features)
 		gen.bind_method(conv, 'FreeSound', 'void', ['gs::audio::Sound &sound'], features)
 
-	audio_mixer = gen.begin_class('gs::audio::Mixer', bound_name='Mixer_hide_me', noncopyable=True)
+	audio_mixer = gen.begin_class('gs::audio::Mixer', bound_name='Mixer_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(audio_mixer)
 
 	shared_audio_mixer = gen.begin_class('std::shared_ptr<gs::audio::Mixer>', bound_name='Mixer', features={'proxy': lib.std.SharedPtrProxyFeature(audio_mixer)})

@@ -253,6 +253,8 @@ class TypeConverter:
 		self._features = {}
 		self._casts = []  # valid casts
 
+		self.nobind = False
+
 	def get_operator(self, op):
 		for arithmetic_op in self.arithmetic_ops:
 			if arithmetic_op['op'] == op:
@@ -354,7 +356,7 @@ class FABGen:
 		assert 'raise_exception not implemented in generator'
 
 	#
-	def begin_type(self, conv, features):
+	def begin_type(self, conv, features, nobind=False):
 		"""Declare a new type converter."""
 		if self.verbose:
 			print('Binding type %s (%s)' % (conv.bound_name, conv.ctype))
@@ -363,8 +365,10 @@ class FABGen:
 
 		self._source += '// %s type tag\n' % conv.fully_qualified_name
 		self._source += 'static const char *%s = "%s";\n\n' % (conv.type_tag, conv.bound_name)
+
 		self._source += conv.get_type_api(self._name)
 
+		conv.nobind = nobind
 		conv._features = features
 
 		self._bound_types.append(conv)
@@ -423,7 +427,7 @@ class FABGen:
 		self._enums[bound_name] = enum
 
 	#
-	def begin_class(self, type, converter_class=None, noncopyable=False, moveable=False, bound_name=None, features={}):
+	def begin_class(self, type, converter_class=None, noncopyable=False, moveable=False, bound_name=None, features={}, nobind=False):
 		"""Begin a class declaration."""
 		if type in self.__type_convs:
 			return self.__type_convs[type]  # type already declared
@@ -431,7 +435,7 @@ class FABGen:
 		default_storage_type = type + '*'
 
 		conv = self.default_class_converter(type, default_storage_type, bound_name) if converter_class is None else converter_class(type, default_storage_type, bound_name)
-		conv = self.begin_type(conv, features)
+		conv = self.begin_type(conv, features, nobind)
 
 		conv._non_copyable = noncopyable
 		conv._moveable = moveable
@@ -637,6 +641,11 @@ class FABGen:
 			# return value is optional for a function call
 			if rval_conv:
 				self._source += self.decl_var(rval, 'rval', ' = ')
+
+			if 'route' in features:
+				if self_conv:
+					c_call_args = ['_self'] + c_call_args
+				expr_eval = features['route']  # hijack the output expression
 
 			self._source += expr_eval(c_call_args) + '\n'
 

@@ -451,7 +451,8 @@ static inline bool CheckArgsTuple(PyObject *args) {
 		if len(self._bound_types) > 0:
 			self._source += '	// custom types finalization\n'
 			for conv in self._bound_types:
-				self._source += conv.finalize_type()
+				if not conv.nobind:
+					self._source += conv.finalize_type()
 
 		self._source += '''\
 	return m;
