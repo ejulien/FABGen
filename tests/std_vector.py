@@ -14,7 +14,7 @@ void consume_pointer_to_int(const int *p) {
 }
 ''', True, False)
 
-	int_ptr = gen.bind_ptr('int *', bound_name='PointerToIntData')
+	int_ptr = gen.bind_ptr('int *', bound_name='IntPointer')
 
 	gen.add_include('vector', is_system=True)
 

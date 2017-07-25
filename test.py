@@ -57,8 +57,8 @@ def bind_binary_blob(gen):
 	gen.end_class(binary_blob)
 
 	# implicit cast to various base types
-	float_ptr = gen.bind_ptr('float *', bound_name='PointerToFloat')
-	void_ptr = gen.bind_ptr('void *', bound_name='PointerToVoid')
+	float_ptr = gen.bind_ptr('float *', bound_name='FloatPointer')
+	void_ptr = gen.bind_ptr('void *', bound_name='VoidPointer')
 
 	gen.add_cast(binary_blob, float_ptr, lambda in_var, out_var: '%s = ((gs::BinaryBlob *)%s)->GetData();\n' % (out_var, in_var))
 	gen.add_cast(binary_blob, void_ptr, lambda in_var, out_var: '%s = ((gs::BinaryBlob *)%s)->GetData();\n' % (out_var, in_var))
@@ -180,8 +180,42 @@ def bind_plugins(gen):
 
 
 def bind_window_system(gen):
-	window_conv = gen.begin_class('gs::RenderWindow')
-	gen.end_class(window_conv)
+	gen.add_include('platform/window_system.h')
+
+	# gs::Surface
+	surface = gen.begin_class('gs::Surface')
+	gen.end_class(surface)
+
+	# gs::Window
+	gen.bind_named_enum('gs::Window::Visibility', ['Windowed', 'Undecorated', 'Fullscreen', 'Hidden', 'FullscreenMonitor1', 'FullscreenMonitor2', 'FullscreenMonitor3'])
+
+	window = gen.begin_class('gs::Window')
+	gen.end_class(window)
+
+	gen.bind_function_overloads('gs::NewWindow', [
+		('gs::Window', ['int width', 'int height'], []),
+		('gs::Window', ['int width', 'int height', 'int bpp'], []),
+		('gs::Window', ['int width', 'int height', 'int bpp', 'gs::Window::Visibility visibility'], [])
+	])
+	gen.bind_function('gs::NewWindowFrom', 'gs::Window', ['void *handle'])
+
+	gen.bind_function('gs::GetWindowHandle', 'void *', ['const gs::Window &window'])
+	gen.bind_function('gs::UpdateWindow', 'bool', ['const gs::Window &window'])
+	gen.bind_function('gs::DestroyWindow', 'bool', ['const gs::Window &window'])
+
+	gen.bind_function('gs::GetWindowClientSize', 'bool', ['const gs::Window &window', 'int &width', 'int &height'], features={'argout': ['width', 'height']})
+	gen.bind_function('gs::SetWindowClientSize', 'bool', ['const gs::Window &window', 'int width', 'int height'])
+
+	gen.bind_function('gs::GetWindowTitle', 'bool', ['const gs::Window &window', 'std::string &title'], features={'argout': ['title']})
+	gen.bind_function('gs::SetWindowTitle', 'bool', ['const gs::Window &window', 'const std::string &title'])
+
+	gen.bind_function('gs::WindowHasFocus', 'bool', ['const gs::Window &window'])
+	gen.bind_function('gs::GetWindowInFocus', 'gs::Window', [])
+
+	#std::vector<Monitor> GetMonitors();
+
+	gen.bind_function('gs::GetWindowPos', 'gs::tVector2<int>', ['const gs::Window &window'])
+	gen.bind_function('gs::SetWindowPos', 'bool', ['const gs::Window &window', 'const gs::tVector2<int> position'])
 
 
 def bind_core(gen):
@@ -432,8 +466,35 @@ def bind_gpu(gen):
 	shared_render_target = gen.begin_class('std::shared_ptr<gs::gpu::RenderTarget>', bound_name='RenderTarget', features={'proxy': lib.std.SharedPtrProxyFeature(render_target)})
 	gen.end_class(shared_render_target)
 
+	# gs::gpu::HardwareInfo
+	hw_info = gen.begin_class('gs::gpu::HardwareInfo')
+	gen.bind_members(hw_info, ['std::string name', 'std::string vendor'])
+	gen.end_class(hw_info)
+
+	# gs::TCache<T>
+	gen.add_include("engine/resource_cache.h")
+
+	def bind_tcache_T(T, bound_name):
+		tcache = gen.begin_class('gs::TCache<%s>'%T, bound_name=bound_name, noncopyable=True)
+
+		gen.bind_method(tcache, 'Purge', 'size_t', [])
+
+		gen.bind_method(tcache, 'Clear', 'void', [])
+		gen.bind_method(tcache, 'Has', 'std::shared_ptr<%s>'%T, ['const char *name'])
+
+		gen.bind_method(tcache, 'Add', 'void', ['std::shared_ptr<%s> &resource'%T])
+		#const std::vector<std::shared_ptr<T>> &GetContent() const { return cache; }
+
+		gen.end_class(tcache)
+
+	bind_tcache_T('gs::gpu::Texture', 'TextureCache')
+
 	# gs::gpu::Renderer
 	gen.add_include('engine/renderer.h')
+
+	gen.bind_named_enum('gs::gpu::Renderer::FillMode', ['FillSolid', 'FillWireframe', 'FillLast'], bound_name='RendererFillMode', prefix='Renderer')
+	gen.bind_named_enum('gs::gpu::Renderer::CullFunc', ['CullFront', 'CullBack', 'CullLast'], bound_name='RendererCullMode', prefix='Renderer')
+	gen.bind_named_enum('gs::gpu::Renderer::DepthFunc', ['DepthNever', 'DepthLess', 'DepthEqual', 'DepthLessEqual', 'DepthGreater', 'DepthNotEqual', 'DepthGreaterEqual', 'DepthAlways', 'DepthFuncLast'], bound_name='RendererDepthFunc', prefix='Renderer')
 
 	gen.bind_named_enum('gs::gpu::Renderer::ClearFunction', ['ClearColor', 'ClearDepth', 'ClearAll'], bound_name='RendererClearFlags')
 
@@ -441,6 +502,146 @@ def bind_gpu(gen):
 	gen.end_class(renderer)
 
 	shared_renderer = gen.begin_class('std::shared_ptr<gs::gpu::Renderer>', bound_name='Renderer', features={'proxy': lib.std.SharedPtrProxyFeature(renderer)})
+
+	gen.bind_method(shared_renderer, 'GetName', 'const char *', [], ['proxy'])
+	gen.bind_method(shared_renderer, 'GetDescription', 'const char *', [], ['proxy'])
+	gen.bind_method(shared_renderer, 'GetVersion', 'const char *', [], ['proxy'])
+	gen.bind_method(shared_renderer, 'GetNativeHandle', 'void *', [], ['proxy'])
+
+	gen.bind_method(shared_renderer, 'GetHardwareInfo', 'const gs::gpu::HardwareInfo &', [], ['proxy'])
+
+	gen.bind_method(shared_renderer, 'PurgeCache', 'gs::uint', [], ['proxy'])
+	gen.bind_method(shared_renderer, 'RefreshCacheEntry', 'void', ['const char *name'], ['proxy'])
+
+	gen.bind_method(shared_renderer, 'IsCooked', 'bool', ['const char *name'], ['proxy'])
+
+	gen.bind_method(shared_renderer, 'GetTextureCache', 'const gs::TCache<gs::gpu::Texture> &', [], ['proxy'])
+	#gen.bind_method(shared_renderer, 'GetShaderCache', 'const gs::TCache<gs::gpu::Shader> &', [], ['proxy'])
+
+	"""
+	Signal<void(Renderer &)> open_signal, close_signal;
+	Signal<void(Renderer &, const Surface &)> output_surface_created_signal;
+	Signal<void(Renderer &, const Surface &)> output_surface_changed_signal;
+	Signal<void(Renderer &, const Surface &)> output_surface_destroyed_signal;
+
+	Signal<void(Renderer &)> pre_draw_frame_signal, post_draw_frame_signal;
+	Signal<void(Renderer &)> show_frame_signal;
+	"""
+
+	gen.bind_method(shared_renderer, 'GetWorkerAffinity', 'gs::task_affinity', [], ['proxy'])
+	gen.bind_method(shared_renderer, 'SetWorkerAffinity', 'void', ['gs::task_affinity affinity'], ['proxy'])
+
+	gen.bind_method(shared_renderer, 'NewRenderTarget', 'std::shared_ptr<gs::gpu::RenderTarget>', [], ['proxy'])
+
+	gen.bind_method_overloads(shared_renderer, 'SetRenderTargetColorTexture', [
+		('void', ['gs::gpu::RenderTarget &render_target', 'std::shared_ptr<gs::gpu::Texture> texture'], ['proxy'])
+		#('void', ['gs::gpu::RenderTarget &render_target', 'std::shared_ptr<gs::gpu::Texture> texture *', 'uint count'], ['proxy'])
+	])
+	gen.bind_method(shared_renderer, 'SetRenderTargetDepthTexture', 'void', ['gs::gpu::RenderTarget &render_target', 'std::shared_ptr<gs::gpu::Texture> texture'], ['proxy'])
+
+	gen.bind_method_overloads(shared_renderer, 'BlitRenderTarget', [
+		('void', ['const std::shared_ptr<gs::gpu::RenderTarget> &src_render_target', 'const std::shared_ptr<gs::gpu::RenderTarget> &dst_render_target', 'const gs::Rect<int> &src_rect', 'const gs::Rect<int> &dst_rect'], ['proxy']),
+		('void', ['const std::shared_ptr<gs::gpu::RenderTarget> &src_render_target', 'const std::shared_ptr<gs::gpu::RenderTarget> &dst_render_target', 'const gs::Rect<int> &src_rect', 'const gs::Rect<int> &dst_rect', 'bool blit_color', 'bool blit_depth'], ['proxy'])
+	])
+	#gen.bind_method(shared_renderer, 'ReadRenderTargetColorPixels', 'void', ['const std::shared_ptr<gs::gpu::RenderTarget> &src_render_target', 'const std::shared_ptr<gs::Picture> &out', 'const gs::Rect<int> &rect'], ['proxy'])
+	gen.bind_method(shared_renderer, 'ClearRenderTarget', 'void', [], ['proxy'])
+	gen.bind_method(shared_renderer, 'GetRenderTarget', 'const std::shared_ptr<gs::gpu::RenderTarget> &', [], ['proxy'])
+	gen.bind_method(shared_renderer, 'SetRenderTarget', 'void', ['std::shared_ptr<gs::gpu::RenderTarget> render_target'], ['proxy'])
+	gen.bind_method(shared_renderer, 'CheckRenderTarget', 'bool', [], ['proxy'])
+
+	gen.bind_method(shared_renderer, 'CreateRenderTarget', 'bool', ['gs::gpu::RenderTarget &render_target'], ['proxy'])
+	gen.bind_method(shared_renderer, 'FreeRenderTarget', 'void', ['gs::gpu::RenderTarget &render_target'], ['proxy'])
+
+	gen.bind_method(shared_renderer, 'NewBuffer', 'std::shared_ptr<gs::gpu::Buffer>', [], ['proxy'])
+	gen.bind_method(shared_renderer, 'GetBufferSize', 'size_t', ['gs::gpu::Buffer &buffer'], ['proxy'])
+	#std::future<void *> MapBuffer(sBuffer buf) {
+	#void UnmapBuffer(sBuffer buf) { run_call<void>(std::bind(&Renderer::UnmapBuffer, shared_ref(renderer), shared_ref(buf)), RA_task_affinity); }
+	#std::future<bool> UpdateBuffer(sBuffer buf, const void *p, size_t start = 0, size_t size = 0) {
+	#std::future<bool> CreateBuffer(sBuffer buf, const void *data, size_t size, Buffer::Type type, Buffer::Usage usage = Buffer::Static) {
+	#std::future<bool> CreateBuffer(sBuffer buf, const BinaryBlob &data, Buffer::Type type, Buffer::Usage usage = Buffer::Static) {
+	gen.bind_method(shared_renderer, 'FreeBuffer', 'void', ['gs::gpu::Buffer &buffer'], ['proxy'])
+
+	gen.bind_method_overloads(shared_renderer, 'NewTexture', [
+		('std::shared_ptr<gs::gpu::Texture>', [], ['proxy']),
+		('std::shared_ptr<gs::gpu::Texture>', ['const char *name'], ['proxy']),
+		('std::shared_ptr<gs::gpu::Texture>', ['const char *name', 'int width', 'int height'], ['proxy']),
+		('std::shared_ptr<gs::gpu::Texture>', ['const char *name', 'int width', 'int height', 'gs::gpu::Texture::Format format', 'gs::gpu::Texture::AA aa'], ['proxy']),
+		('std::shared_ptr<gs::gpu::Texture>', ['const char *name', 'int width', 'int height', 'gs::gpu::Texture::Format format', 'gs::gpu::Texture::AA aa', 'gs::gpu::TextureUsage::Type usage'], ['proxy']),
+		('std::shared_ptr<gs::gpu::Texture>', ['const char *name', 'int width', 'int height', 'gs::gpu::Texture::Format format', 'gs::gpu::Texture::AA aa', 'gs::gpu::TextureUsage::Type usage', 'bool mipmapped'], ['proxy']),
+		('std::shared_ptr<gs::gpu::Texture>', ['const char *name', 'const gs::Picture &picture'], ['proxy']),
+		('std::shared_ptr<gs::gpu::Texture>', ['const char *name', 'const gs::Picture &picture', 'gs::gpu::TextureUsage::Type usage'], ['proxy']),
+		('std::shared_ptr<gs::gpu::Texture>', ['const char *name', 'const gs::Picture &picture', 'gs::gpu::TextureUsage::Type usage', 'bool mipmapped'], ['proxy'])
+	])
+	gen.bind_method_overloads(shared_renderer, 'NewShadowMap', [
+		('std::shared_ptr<gs::gpu::Texture>', ['int width', 'int height'], ['proxy']),
+		('std::shared_ptr<gs::gpu::Texture>', ['int width', 'int height', 'const char *name'], ['proxy'])
+	])
+	gen.bind_method_overloads(shared_renderer, 'NewExternalTexture', [
+		('std::shared_ptr<gs::gpu::Texture>', [], ['proxy']),
+		('std::shared_ptr<gs::gpu::Texture>', ['const char *name'], ['proxy'])
+	])
+	gen.bind_method_overloads(shared_renderer, 'CreateTexture', [
+		('bool', ['gs::gpu::Texture &texture', 'const void *data', 'size_t data_size', 'int width', 'int height'], ['proxy']),
+		('bool', ['gs::gpu::Texture &texture', 'const void *data', 'size_t data_size', 'int width', 'int height', 'gs::gpu::Texture::Format format', 'gs::gpu::Texture::AA aa'], ['proxy']),
+		('bool', ['gs::gpu::Texture &texture', 'const void *data', 'size_t data_size', 'int width', 'int height', 'gs::gpu::Texture::Format format', 'gs::gpu::Texture::AA aa', 'gs::gpu::TextureUsage::Type usage'], ['proxy']),
+		('bool', ['gs::gpu::Texture &texture', 'const void *data', 'size_t data_size', 'int width', 'int height', 'gs::gpu::Texture::Format format', 'gs::gpu::Texture::AA aa', 'gs::gpu::TextureUsage::Type usage', 'bool mipmapped'], ['proxy']),
+		('bool', ['gs::gpu::Texture &texture', 'const gs::Picture &picture'], ['proxy']),
+		('bool', ['gs::gpu::Texture &texture', 'const gs::Picture &picture', 'gs::gpu::TextureUsage::Type usage'], ['proxy']),
+		('bool', ['gs::gpu::Texture &texture', 'const gs::Picture &picture', 'gs::gpu::TextureUsage::Type usage', 'bool mipmapped'], ['proxy'])
+	])
+	gen.bind_method(shared_renderer, 'FreeTexture', 'void', ['gs::gpu::Texture &texture'], ['proxy'])
+
+	gen.bind_method(shared_renderer, 'LoadNativeTexture', 'bool', ['gs::gpu::Texture &texture', 'const char *path'], ['proxy'])
+	gen.bind_method(shared_renderer, 'GetNativeTextureExt', 'const char *', [], ['proxy'])
+
+	gen.bind_method_overloads(shared_renderer, 'BlitTexture', [
+		('void', ['gs::gpu::Texture &texture', 'const void *data', 'size_t data_size', 'gs::uint width', 'gs::uint height'], ['proxy']),
+		('void', ['gs::gpu::Texture &texture', 'const void *data', 'size_t data_size', 'gs::uint width', 'gs::uint height', 'gs::uint x', 'gs::uint y'], ['proxy'])
+	])
+	gen.bind_method(shared_renderer, 'ResizeTexture', 'void', ['gs::gpu::Texture &texture', 'gs::uint width', 'gs::uint height'], ['proxy'])
+
+	#
+	# ...
+	#
+
+	gen.bind_method(shared_renderer, 'NewOutputSurface', 'gs::Surface', ['const gs::Window &window'], ['proxy'])
+	gen.bind_method(shared_renderer, 'SetOutputSurface', 'void', ['const gs::Surface &surface'], ['proxy'])
+	gen.bind_method(shared_renderer, 'DestroyOutputSurface', 'void', ['const gs::Surface &surface'], ['proxy'])
+	gen.bind_method(shared_renderer, 'NewOffscreenOutputSurface', 'gs::Surface', ['int width', 'int height'], ['proxy'])
+
+	gen.bind_method(shared_renderer, 'GetOutputSurface', 'const gs::Surface &', [], ['proxy'])
+	gen.bind_method(shared_renderer, 'GetOutputSurfaceSize', 'gs::tVector2<int>', [], ['proxy'])
+
+	gen.bind_method_overloads(shared_renderer, 'Open', [
+		('bool', [], ['proxy']),
+		('bool', ['bool debug'], ['proxy'])
+	])
+	gen.bind_method(shared_renderer, 'Close', 'void', [], ['proxy'])
+
+	gen.bind_method(shared_renderer, 'IsOpen', 'bool', [], ['proxy'])
+
+	gen.bind_method(shared_renderer, 'GetInverseViewMatrix', 'gs::Matrix4', [], ['proxy'])
+	gen.bind_method(shared_renderer, 'GetInverseWorldMatrix', 'gs::Matrix4', [], ['proxy'])
+
+	gen.bind_method(shared_renderer, 'SetViewMatrix', 'void', ['const gs::Matrix4 &view_matrix'], ['proxy'])
+	gen.bind_method(shared_renderer, 'GetViewMatrix', 'gs::Matrix4', [], ['proxy'])
+	gen.bind_method(shared_renderer, 'SetProjectionMatrix', 'void', ['const gs::Matrix44 &projection_matrix'], ['proxy'])
+	gen.bind_method(shared_renderer, 'GetProjectionMatrix', 'gs::Matrix44', [], ['proxy'])
+	gen.bind_method(shared_renderer, 'SetWorldMatrix', 'void', ['const gs::Matrix4 &world_matrix'], ['proxy'])
+	gen.bind_method(shared_renderer, 'GetWorldMatrix', 'gs::Matrix4', [], ['proxy'])
+
+	gen.bind_method(shared_renderer, 'SetIdentityMatrices', 'void', [], ['proxy'])
+
+	gen.bind_method_overloads(shared_renderer, 'Set2DMatrices', [
+		('void', ['const gs::tVector2<float> &resolution'], ['proxy']),
+		('void', ['const gs::tVector2<float> &resolution', 'bool y_origin_bottom'], ['proxy']),
+		('void', ['bool y_origin_bottom'], ['proxy'])
+	])
+
+	gen.bind_method(shared_renderer, 'ScreenVertex', 'gs::Vector3', ['int x', 'int y'], ['proxy'])
+
+	gen.bind_method(shared_renderer, 'ClearClippingPlane', 'void', [], ['proxy'])
+	gen.bind_method(shared_renderer, 'SetClippingPlane', 'void', ['const gs::Vector3 &plane_origin', 'const gs::Vector3 &plane_normal'], ['proxy'])
 
 	gen.bind_method(shared_renderer, 'ClearClippingRect', 'void', [], ['proxy'])
 	gen.bind_method(shared_renderer, 'SetClippingRect', 'void', ['const gs::Rect<float> &rect'], ['proxy'])
@@ -456,12 +657,30 @@ def bind_gpu(gen):
 		('void', ['gs::Color color', 'float z', 'gs::gpu::Renderer::ClearFunction flags'], ['proxy'])
 	])
 
-	gen.bind_method(shared_renderer, 'GetOutputSurfaceSize', 'gs::tVector2<int>', [], ['proxy'])
+	#virtual void DrawElements(PrimitiveType prim_type, int idx_count, core::IndexType idx_type = core::IndexUShort, uint idx_offset = 0) = 0;
+	#virtual void DrawElementsInstanced(uint instance_count, Buffer &instance_data, PrimitiveType prim_type, int idx_count, core::IndexType idx_type = core::IndexUShort) = 0;
 
 	gen.bind_method(shared_renderer, 'DrawFrame', 'void', [], ['proxy'])
 	gen.bind_method(shared_renderer, 'ShowFrame', 'void', [], ['proxy'])
 
+	gen.bind_method(shared_renderer, 'SetVSync', 'void', ['bool enabled'], ['proxy'])
+
+	gen.bind_method(shared_renderer, 'CaptureFramebuffer', 'bool', ['gs::Picture &out'], ['proxy'])
+	gen.bind_method(shared_renderer, 'InvalidateStateCache', 'void', [], ['proxy'])
+
+	gen.bind_method(shared_renderer, 'GetFrameShownCount', 'gs::uint', [], ['proxy'])
+
 	gen.end_class(shared_renderer)
+
+	#
+	gen.insert_binding_code('''static std::shared_ptr<gs::gpu::Renderer> CreateRenderer(const char *name) { return gs::core::g_renderer_factory.get().Instantiate(name); }
+static std::shared_ptr<gs::gpu::Renderer> CreateRenderer() { return gs::core::g_renderer_factory.get().Instantiate(); }
+	''', 'Renderer custom API')
+
+	gen.bind_function_overloads('CreateRenderer', [
+		('std::shared_ptr<gs::gpu::Renderer>', [], []),
+		('std::shared_ptr<gs::gpu::Renderer>', ['const char *name'], [])
+	])
 
 	# gs::gpu::RendererAsync
 	gen.add_include('engine/renderer_async.h')
@@ -484,8 +703,8 @@ def bind_gpu(gen):
 	gen.bind_method(shared_renderer_async, 'SetRenderTargetColorTexture', 'void', ['const std::shared_ptr<gs::gpu::RenderTarget> &render_target', 'const std::shared_ptr<gs::gpu::Texture> &texture'], ['proxy'])
 	gen.bind_method(shared_renderer_async, 'SetRenderTargetDepthTexture', 'void', ['const std::shared_ptr<gs::gpu::RenderTarget> &render_target', 'const std::shared_ptr<gs::gpu::Texture> &texture'], ['proxy'])
 	gen.bind_method_overloads(shared_renderer_async, 'BlitRenderTarget', [
-		('void', ['const std::shared_ptr<gs::gpu::RenderTarget> &src_render_target', 'const std::shared_ptr<gs::gpu::RenderTarget> &src_render_target', 'const gs::Rect<int> &src_rect', 'const gs::Rect<int> &dst_rect'], ['proxy']),
-		('void', ['const std::shared_ptr<gs::gpu::RenderTarget> &src_render_target', 'const std::shared_ptr<gs::gpu::RenderTarget> &src_render_target', 'const gs::Rect<int> &src_rect', 'const gs::Rect<int> &dst_rect', 'bool blit_color', 'bool blit_depth'], ['proxy'])
+		('void', ['const std::shared_ptr<gs::gpu::RenderTarget> &src_render_target', 'const std::shared_ptr<gs::gpu::RenderTarget> &dst_render_target', 'const gs::Rect<int> &src_rect', 'const gs::Rect<int> &dst_rect'], ['proxy']),
+		('void', ['const std::shared_ptr<gs::gpu::RenderTarget> &src_render_target', 'const std::shared_ptr<gs::gpu::RenderTarget> &dst_render_target', 'const gs::Rect<int> &src_rect', 'const gs::Rect<int> &dst_rect', 'bool blit_color', 'bool blit_depth'], ['proxy'])
 	])
 	gen.bind_method(shared_renderer_async, 'ReadRenderTargetColorPixels', 'void', ['const std::shared_ptr<gs::gpu::RenderTarget> &src_render_target', 'const std::shared_ptr<gs::Picture> &out', 'const gs::Rect<int> &rect'], ['proxy'])
 	gen.bind_method(shared_renderer_async, 'ClearRenderTarget', 'void', [], ['proxy'])
@@ -625,6 +844,11 @@ def bind_iso_surface(gen):
 def bind_plus(gen):
 	gen.add_include('plus/plus.h')
 
+	# gs::RenderWindow
+	window_conv = gen.begin_class('gs::RenderWindow')
+	gen.end_class(window_conv)
+
+	# gs::Plus
 	plus_conv = gen.begin_class('gs::Plus', noncopyable=True)
 
 	gen.bind_constructor(plus_conv, [])
@@ -1534,12 +1758,7 @@ def bind_mixer(gen):
 
 	gen.end_class(shared_audio_data)
 
-	# binding specific API
-	gen.insert_binding_code('''static std::shared_ptr<gs::audio::Mixer> CreateMixer(const char *name) { return gs::core::g_mixer_factory.get().Instantiate(name); }
-static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixer_factory.get().Instantiate(); }
-	''', 'Mixer custom API')
-
-	#
+	# gs::audio
 	gen.bind_named_enum('gs::audio::MixerLoopMode', ['MixerNoLoop', 'MixerRepeat', 'MixerLoopInvalidChannel'], 'uint8_t')
 	gen.bind_named_enum('gs::audio::MixerPlayState', ['MixerStopped', 'MixerPlaying', 'MixerPaused', 'MixerStateInvalidChannel'], 'uint8_t')
 
@@ -1669,6 +1888,10 @@ static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixe
 	bind_mixer_api(shared_audio_mixer, ['proxy'])
 	gen.end_class(shared_audio_mixer)
 
+	gen.insert_binding_code('''static std::shared_ptr<gs::audio::Mixer> CreateMixer(const char *name) { return gs::core::g_mixer_factory.get().Instantiate(name); }
+static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixer_factory.get().Instantiate(); }
+	''', 'Mixer custom API')
+
 	gen.bind_function_overloads('CreateMixer', [('std::shared_ptr<gs::audio::Mixer>', [], []), ('std::shared_ptr<gs::audio::Mixer>', ['const char *name'], [])])
 
 
@@ -1710,13 +1933,13 @@ void InitializePluginsDefaultSearchPath() {
 	bind_time(gen)
 	bind_task_system(gen)
 	bind_math(gen)
+	bind_window_system(gen)
 	bind_color(gen)
 	bind_font_engine(gen)
 	bind_picture(gen)
 	bind_engine(gen)
 	bind_plugins(gen)
 	bind_filesystem(gen)
-	bind_window_system(gen)
 	bind_core(gen)
 	bind_gpu(gen)
 	bind_render(gen)
