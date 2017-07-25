@@ -803,13 +803,9 @@ class FABGen:
 	def bind_member(self, conv, member, features=[]):
 		arg = parse(member, _CArg)
 
-		# getter must go through a pointer or reference so that the enclosing object copy is modified
-		getter_ctype = arg.ctype
-		if getter_ctype.get_ref() == '':
-			getter_ctype = getter_ctype.add_ref('*')
-
-		expr_eval = lambda args: '&_self->%s;' % arg.name
-		getter_protos = [(get_fully_qualified_ctype_name(getter_ctype), [], features)]
+		# getter
+		expr_eval = lambda args: '_self->%s;' % arg.name
+		getter_protos = [(get_fully_qualified_ctype_name(arg.ctype), [], features)]
 		getter_proxy_name = 'py_get_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name)
 		self.__bind_proxy(getter_proxy_name, conv, getter_protos, 'get member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'getter', 0)
 
@@ -828,18 +824,14 @@ class FABGen:
 	def bind_static_member(self, conv, member, features=[]):
 		arg = parse(member, _CArg)
 
-		# getter must go through a pointer or reference so that the enclosing object copy is modified
-		getter_ctype = arg.ctype
-		if getter_ctype.get_ref() == '':
-			getter_ctype = getter_ctype.add_ref('&')
-
+		# getter
 		if 'proxy' in features:
 			self.__assert_conv_feature(conv, 'proxy')
 			expr_eval = lambda args: '%s::%s;' % (conv._features['proxy'].wrapped_conv.fully_qualified_name, arg.name)
 		else:
 			expr_eval = lambda args: '%s::%s;' % (conv.fully_qualified_name, arg.name)
 
-		getter_protos = [(get_fully_qualified_ctype_name(getter_ctype), [], features)]
+		getter_protos = [(get_fully_qualified_ctype_name(arg.ctype), [], features)]
 		getter_proxy_name = 'py_get_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name)
 		self.__bind_proxy(getter_proxy_name, None, getter_protos, 'get static member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'getter', 0)
 
