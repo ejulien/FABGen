@@ -384,11 +384,13 @@ class FABGen:
 		self.end_type(conv)
 
 	#
-	def typedef(self, type, alias_of, storage_type=None):
+	def typedef(self, type, alias_of, storage_type=None, bound_name=None):
 		conv = copy.deepcopy(self.__type_convs[alias_of])
 
 		default_storage_type = type if storage_type is None else storage_type
 
+		if bound_name is not None:
+			conv.bound_name=bound_name
 		conv.fully_qualified_name = type
 		conv.ctype = parse(type, _CType)
 		conv.storage_ctype = parse(default_storage_type, _CType)
@@ -396,15 +398,27 @@ class FABGen:
 		self.__type_convs[type] = conv
 
 	#
-	def bind_enum(self, name, symbols, storage_type='int', bound_name=None, prefix=''):
+	def bind_enum(self, symbols, bound_name, storage_type='int', prefix=''):
+		self.typedef(name, storage_type)
+
+		enum = {}
+		for symbol in symbols:
+			enum[prefix + symbol] = symbol
+
+		self._enums[bound_name] = enum
+
+	def bind_named_enum(self, name, symbols, storage_type='int', bound_name=None, prefix='', namespace=None):
 		self.typedef(name, storage_type)
 
 		if bound_name is None:
 			bound_name = get_symbol_default_bound_name(name)
 
+		if namespace is None:
+			namespace = name
+
 		enum = {}
 		for symbol in symbols:
-			enum[prefix + symbol] = '%s::%s' % (name, symbol)
+			enum[prefix + symbol] = '%s::%s' % (namespace, symbol)
 
 		self._enums[bound_name] = enum
 

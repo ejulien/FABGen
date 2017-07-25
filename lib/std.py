@@ -41,7 +41,7 @@ class VectorSequenceFeature:
 def bind_future_T(gen, T, bound_name=None):
 	gen.add_include('future', is_system=True)
 
-	gen.bind_enum('std::future_status', ['deferred', 'ready', 'timeout'], prefix='future_')
+	gen.bind_named_enum('std::future_status', ['deferred', 'ready', 'timeout'], prefix='future_')
 
 	future = gen.begin_class('std::future<%s>' % T, bound_name=bound_name, noncopyable=True, moveable=True)
 

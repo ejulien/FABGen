@@ -19,10 +19,15 @@ def bind_std(gen, PythonTypeConverterCommon):
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = (%s)PyLong_AsLong(o); }\n' % (self.bound_name, self.ctype, self.ctype) +\
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromLong(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
 
+	gen.bind_type(PythonIntConverter('char'))
+	gen.bind_type(PythonIntConverter('short'))
 	gen.bind_type(PythonIntConverter('int'))
+	gen.bind_type(PythonIntConverter('long'))
 	gen.bind_type(PythonIntConverter('int8_t'))
 	gen.bind_type(PythonIntConverter('int16_t'))
 	gen.bind_type(PythonIntConverter('int32_t'))
+	gen.bind_type(PythonIntConverter('char16_t'))
+	gen.bind_type(PythonIntConverter('char32_t'))
 
 	class PythonUnsignedIntConverter(PythonTypeConverterCommon):
 		def __init__(self, type):
@@ -33,7 +38,10 @@ def bind_std(gen, PythonTypeConverterCommon):
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = (%s)PyLong_AsUnsignedLong(o); }\n' % (self.bound_name, self.ctype, self.ctype) +\
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromUnsignedLong(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
 
+	gen.bind_type(PythonUnsignedIntConverter('unsigned char'))
+	gen.bind_type(PythonUnsignedIntConverter('unsigned short'))
 	gen.bind_type(PythonUnsignedIntConverter('unsigned int'))
+	gen.bind_type(PythonUnsignedIntConverter('unsigned long'))
 	gen.bind_type(PythonUnsignedIntConverter('uint8_t'))
 	gen.bind_type(PythonUnsignedIntConverter('uint16_t'))
 	gen.bind_type(PythonUnsignedIntConverter('uint32_t'))
