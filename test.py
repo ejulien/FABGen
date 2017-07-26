@@ -234,6 +234,21 @@ def bind_core(gen):
 def bind_scene(gen):
 	gen.add_include('engine/scene.h')
 
+	# forward declarations
+	scene = gen.begin_class('gs::core::Scene', bound_name='Scene_hide_me', noncopyable=True, nobind=True)
+	gen.end_class(scene)
+
+	shared_scene = gen.begin_class('std::shared_ptr<gs::core::Scene>', bound_name='Scene', features={'proxy': lib.std.SharedPtrProxyFeature(scene)})
+
+	#
+	def decl_get_set_method(clss, type, method_suffix, var_name, features=[]):
+		gen.bind_method(clss, 'Get' + method_suffix, 'const %s &' % type, [], features)
+		gen.bind_method(clss, 'Set' + method_suffix, 'void', ['const %s &%s' % (type, var_name)], features)
+
+	def decl_comp_get_set_method(clss, comp_type, comp_var_name, type, method_suffix, var_name, features=[]):
+		gen.bind_method(clss, 'Get' + method_suffix, 'const %s &' % type, ['const %s *%s' % (comp_type, comp_var_name)], features)
+		gen.bind_method(clss, 'Set' + method_suffix, 'void', ['%s *%s' % (comp_type, comp_var_name), 'const %s &%s' % (type, var_name)], features)
+
 	# gs::core::Component
 	gen.add_include('engine/component.h')
 
@@ -242,6 +257,9 @@ def bind_scene(gen):
 
 	shared_component = gen.begin_class('std::shared_ptr<gs::core::Component>', bound_name='Component', features={'proxy': lib.std.SharedPtrProxyFeature(component)})
 	gen.end_class(shared_component)
+
+	std_vector_shared_component = gen.begin_class('std::vector<std::shared_ptr<gs::core::Component>>', bound_name='ComponentList', features={'sequence': lib.std.VectorSequenceFeature(shared_component)})
+	gen.end_class(std_vector_shared_component)
 
 	# gs::core::Environment
 	gen.add_include('engine/environment.h')
@@ -275,16 +293,54 @@ def bind_scene(gen):
 	# gs::core::Light
 	gen.add_include('engine/light.h')
 
-	gen.bind_named_enum('gs::core::Light::Model', ['Model_Point', 'Model_Linear', 'Model_Spot', 'Model_Last'], prefix='Light')
-	gen.bind_named_enum('gs::core::Light::Shadow', ['Shadow_None', 'Shadow_ProjectionMap', 'Shadow_Map'], prefix='Light')
+	gen.bind_named_enum('gs::core::Light::Model', ['ModelPoint', 'ModelLinear', 'ModelSpot', 'ModelLast'], prefix='Light')
+	gen.bind_named_enum('gs::core::Light::Shadow', ['ShadowNone', 'ShadowProjectionMap', 'ShadowMap'], prefix='Light')
+
+	light = gen.begin_class('gs::core::Light', bound_name='Light_hide_me', noncopyable=True, nobind=True)
+	gen.end_class(light)
+
+	shared_light = gen.begin_class('std::shared_ptr<gs::core::Light>', bound_name='Light', features={'proxy': lib.std.SharedPtrProxyFeature(light)})
+	gen.end_class(shared_light)
 
 	# gs::core::RigidBody
 	gen.add_include('engine/rigid_body.h')
+
+	gen.bind_named_enum('gs::core::RigidBodyType', ['RigidBodyDynamic', 'RigidBodyKinematic', 'RigidBodyStatic'])
 
 	rigid_body = gen.begin_class('gs::core::RigidBody', bound_name='RigidBody_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(rigid_body)
 
 	shared_rigid_body = gen.begin_class('std::shared_ptr<gs::core::RigidBody>', bound_name='RigidBody', features={'proxy': lib.std.SharedPtrProxyFeature(rigid_body)})
+
+	decl_get_set_method(shared_rigid_body, 'bool', 'IsSleeping', 'is_sleeping', ['proxy'])
+
+	gen.bind_method(shared_rigid_body, 'GetVelocity', 'const gs::Vector3', ['const gs::Vector3 &position'], ['proxy'])
+	gen.bind_method(shared_rigid_body, 'SetVelocity', 'void', ['const gs::Vector3 &V', 'const gs::Vector3 &position'], ['proxy'])
+
+	decl_get_set_method(shared_rigid_body, 'gs::Vector3', 'LinearVelocity', 'V', ['proxy'])
+	decl_get_set_method(shared_rigid_body, 'gs::Vector3', 'AngularVelocity', 'W', ['proxy'])
+
+	decl_get_set_method(shared_rigid_body, 'float', 'LinearDamping', 'damping', ['proxy'])
+	decl_get_set_method(shared_rigid_body, 'float', 'AngularDamping', 'damping', ['proxy'])
+
+	decl_get_set_method(shared_rigid_body, 'float', 'StaticFriction', 'sF', ['proxy'])
+	decl_get_set_method(shared_rigid_body, 'float', 'DynamicFriction', 'dF', ['proxy'])
+
+	decl_get_set_method(shared_rigid_body, 'float', 'Restitution', 'restitution', ['proxy'])
+
+	decl_get_set_method(shared_rigid_body, 'gs::core::RigidBodyType', 'Type', 'type', ['proxy'])
+
+	decl_get_set_method(shared_rigid_body, 'int', 'AxisLock', 'axis_lock', ['proxy'])
+	decl_get_set_method(shared_rigid_body, 'int', 'CollisionLayer', 'layer', ['proxy'])
+
+	gen.bind_method(shared_rigid_body, 'ApplyLinearImpulse', 'void', ['const gs::Vector3 &I'], ['proxy'])
+	gen.bind_method(shared_rigid_body, 'ApplyLinearForce', 'void', ['const gs::Vector3 &F'], ['proxy'])
+	gen.bind_method(shared_rigid_body, 'ApplyImpulse', 'void', ['const gs::Vector3 &I', 'const gs::Vector3 &position'], ['proxy'])
+	gen.bind_method(shared_rigid_body, 'ApplyForce', 'void', ['const gs::Vector3 &F', 'const gs::Vector3 &position'], ['proxy'])
+	gen.bind_method(shared_rigid_body, 'ApplyTorque', 'void', ['const gs::Vector3 &T'], ['proxy'])
+
+	gen.bind_method(shared_rigid_body, 'ResetWorld', 'void', ['const gs::Matrix4 &m'], ['proxy'])
+
 	gen.end_class(shared_rigid_body)
 
 	# gs::core::Node
@@ -294,12 +350,51 @@ def bind_scene(gen):
 	gen.end_class(node)
 
 	shared_node = gen.begin_class('std::shared_ptr<gs::core::Node>', bound_name='Node', features={'proxy': lib.std.SharedPtrProxyFeature(node)})
+
+	gen.bind_constructor_overloads(shared_node, [
+		([], ['proxy']),
+		(['const char *name'], ['proxy'])
+	])
+
+	gen.bind_method(shared_node, 'GetScene', 'std::shared_ptr<gs::core::Scene>', [], ['proxy'])
+	gen.bind_method(shared_node, 'GetUid', 'gs::uint', [], ['proxy'])
+
+	gen.bind_method(shared_node, 'GetName', 'const std::string &', [], ['proxy'])
+	gen.bind_method(shared_node, 'SetName', 'void', ['const std::string &name'], ['proxy'])
+
+	gen.bind_method(shared_node, 'AddComponent', 'void', ['std::shared_ptr<gs::core::Component> component'], ['proxy'])
+	gen.bind_method(shared_node, 'RemoveComponent', 'void', ['const std::shared_ptr<gs::core::Component> &component'], ['proxy'])
+
+	gen.bind_method_overloads(shared_node, 'GetComponents', [
+		('const std::vector<std::shared_ptr<gs::core::Component>> &', [], ['proxy']),
+		('std::vector<std::shared_ptr<gs::core::Component>>', ['const char *aspect'], ['proxy'])
+	])
+
 	gen.bind_method(shared_node, 'GetComponent<gs::core::Transform>', 'std::shared_ptr<gs::core::Transform>', [], ['proxy'], bound_name='GetTransform')
+	gen.bind_method(shared_node, 'GetComponent<gs::core::Light>', 'std::shared_ptr<gs::core::Light>', [], ['proxy'], bound_name='GetLight')
+
+	gen.bind_method(shared_node, 'HasAspect', 'bool', ['const char *aspect'], ['proxy'])
+	gen.bind_method(shared_node, 'IsReady', 'bool', [], ['proxy'])
+
+	gen.bind_method(shared_node, 'IsInstantiated', 'bool', [], ['proxy'])
+
+	decl_get_set_method(shared_node, 'bool', 'Enabled', 'enable', features=['proxy'])
+	decl_get_set_method(shared_node, 'bool', 'IsStatic', 'is_static', features=['proxy'])
+	decl_get_set_method(shared_node, 'bool', 'DoNotSerialize', 'do_not_serialize', features=['proxy'])
+	decl_get_set_method(shared_node, 'bool', 'DoNotInstantiate', 'do_not_instantiate', features=['proxy'])
+	decl_get_set_method(shared_node, 'bool', 'UseForNavigation', 'use_for_navigation', features=['proxy'])
+
 	gen.end_class(shared_node)
+
+	std_vector_shared_node = gen.begin_class('std::vector<std::shared_ptr<gs::core::Node>>', bound_name='NodeList', features={'sequence': lib.std.VectorSequenceFeature(shared_node)})
+	gen.end_class(std_vector_shared_node)
 
 	# gs::core::SceneSystem
 	scene_system = gen.begin_class('gs::core::SceneSystem', bound_name='SceneSystem_hide_me', noncopyable=True, nobind=True)
 	gen.end_class(scene_system)
+
+	shared_scene_system = gen.begin_class('std::shared_ptr<gs::core::SceneSystem>', bound_name='SceneSystem', features={'proxy': lib.std.SharedPtrProxyFeature(scene_system)})
+	gen.end_class(shared_scene_system)
 
 	# gs::core::RenderableSystem
 	gen.add_include('engine/renderable_system.h')
@@ -328,19 +423,11 @@ def bind_scene(gen):
 
 	gen.bind_method(shared_physic_system, 'GetImplementationName', 'const std::string &', [], ['proxy'])
 
-	def decl_get_set_method(clss, type, method_suffix, var_name, features=[]):
-		gen.bind_method(clss, 'Get' + method_suffix, 'const %s &' % type, [], features)
-		gen.bind_method(clss, 'Set' + method_suffix, 'void', ['const %s &%s' % (type, var_name)], features)
-
 	decl_get_set_method(shared_physic_system, 'float', 'Timestep', 'timestep', ['proxy'])
 	decl_get_set_method(shared_physic_system, 'bool', 'ForceRigidBodyToSleepOnCreation', 'force_sleep_body', ['proxy'])
 	decl_get_set_method(shared_physic_system, 'gs::uint', 'ForceRigidBodyAxisLockOnCreation', 'force_axis_lock', ['proxy'])
 
 	decl_get_set_method(shared_physic_system, 'gs::Vector3', 'Gravity', 'G', ['proxy'])
-
-	def decl_comp_get_set_method(clss, comp_type, comp_var_name, type, method_suffix, var_name, features=[]):
-		gen.bind_method(clss, 'Get' + method_suffix, 'const %s &' % type, ['const %s *%s' % (comp_type, comp_var_name)], features)
-		gen.bind_method(clss, 'Set' + method_suffix, 'void', ['%s *%s' % (comp_type, comp_var_name), 'const %s &%s' % (type, var_name)], features)
 
 	decl_comp_get_set_method(shared_physic_system, 'gs::core::RigidBody', 'rigid_body', 'bool', 'RigidBodyIsSleeping', 'sleeping', ['proxy'])
 
@@ -392,15 +479,92 @@ def bind_scene(gen):
 
 	gen.end_class(shared_physic_system)
 
-	# gs::core::Scene
-	scene = gen.begin_class('gs::core::Scene', bound_name='Scene_hide_me', noncopyable=True, nobind=True)
-	gen.end_class(scene)
+	# gs::core::Group
+	gen.add_include('engine/group.h')
 
-	shared_scene = gen.begin_class('std::shared_ptr<gs::core::Scene>', bound_name='Scene', features={'proxy': lib.std.SharedPtrProxyFeature(scene)})
+	group = gen.begin_class('gs::core::Group', bound_name='Group_hide_me', noncopyable=True, nobind=True)
+	gen.end_class(group)
+
+	shared_group = gen.begin_class('std::shared_ptr<gs::core::Group>', bound_name='Group', features={'proxy': lib.std.SharedPtrProxyFeature(group)})
+
+	std_vector_shared_group = gen.begin_class('std::vector<std::shared_ptr<gs::core::Group>>', bound_name='GroupList', features={'sequence': lib.std.VectorSequenceFeature(shared_group)})
+	gen.end_class(std_vector_shared_group)
+
+	gen.bind_method(shared_group, 'GetNodes', 'const std::vector<std::shared_ptr<gs::core::Node>> &', [], ['proxy'])
+	gen.bind_method(shared_group, 'GetGroups', 'const std::vector<std::shared_ptr<gs::core::Group>> &', [], ['proxy'])
+
+	gen.bind_method(shared_group, 'AddNode', 'std::shared_ptr<gs::core::Node>', ['std::shared_ptr<gs::core::Node> node'], ['proxy'])
+	gen.bind_method(shared_group, 'RemoveNode', 'void', ['const std::shared_ptr<gs::core::Node> &node'], ['proxy'])
+	gen.bind_method_overloads(shared_group, 'IsMember', [
+		('bool', ['const std::shared_ptr<gs::core::Node> &node'], ['proxy']),
+		('bool', ['const std::shared_ptr<gs::core::Group> &group'], ['proxy'])
+	])
+
+	gen.bind_method(shared_group, 'IsReady', 'bool', [], ['proxy'])
+
+	gen.bind_method_overloads(shared_group, 'GetNode', [
+		('std::shared_ptr<gs::core::Node>', ['uint32_t uid'], ['proxy']),
+		('std::shared_ptr<gs::core::Node>', ['const char *name'], ['proxy']),
+		('std::shared_ptr<gs::core::Node>', ['const char *name', 'const std::shared_ptr<gs::core::Node> &parent'], ['proxy'])
+	])
+
+	gen.bind_method(shared_group, 'AddGroup', 'std::shared_ptr<gs::core::Group>', ['std::shared_ptr<gs::core::Group> group'], ['proxy'])
+	gen.bind_method(shared_group, 'RemoveGroup', 'void', ['const std::shared_ptr<gs::core::Group> &group'], ['proxy'])
+
+	gen.bind_method(shared_group, 'GetGroup', 'std::shared_ptr<gs::core::Group>', ['const char *name'], ['proxy'])
+
+	gen.bind_method(shared_group, 'AppendGroup', 'void', ['const gs::core::Group &group'], ['proxy'])
+
+	gen.bind_method(shared_group, 'GetName', 'const std::string &', [], ['proxy'])
+	gen.bind_method(shared_group, 'SetName', 'void', ['const char *name'], ['proxy'])
+
+	gen.end_class(shared_group)
+
+	# gs::core::Scene
+	gen.bind_method(shared_scene, 'GetCurrentCamera', 'const std::shared_ptr<gs::core::Node> &', [], ['proxy'])
+	gen.bind_method(shared_scene, 'SetCurrentCamera', 'void', ['std::shared_ptr<gs::core::Node> node'], ['proxy'])
+
+	gen.bind_method(shared_scene, 'AddGroup', 'void', ['std::shared_ptr<gs::core::Group> group'], ['proxy'])
+	gen.bind_method(shared_scene, 'RemoveGroup', 'void', ['const std::shared_ptr<gs::core::Group> &group'], ['proxy'])
+	gen.bind_method(shared_scene, 'FindGroup', 'std::shared_ptr<gs::core::Group>', ['const char *name'], ['proxy'])
+
+	gen.bind_method(shared_scene, 'GetNodeGroupList', 'std::vector<std::shared_ptr<gs::core::Group>>', ['const std::shared_ptr<gs::core::Node> &node'], ['proxy'])
+	gen.bind_method(shared_scene, 'UnregisterNodeFromGroups', 'void', ['const std::shared_ptr<gs::core::Node> &node'], ['proxy'])
+	gen.bind_method(shared_scene, 'GetGroups', 'const std::vector<std::shared_ptr<gs::core::Group>> &', [], ['proxy'])
+
+	gen.bind_method(shared_scene, 'GroupMembersSetActive', 'void', ['const gs::core::Group &group', 'bool active'], ['proxy'])
+	gen.bind_method(shared_scene, 'DeleteGroupAndMembers', 'void', ['const std::shared_ptr<gs::core::Group> &group'], ['proxy'])
 
 	gen.bind_method(shared_scene, 'Clear', 'void', [], ['proxy'])
 	gen.bind_method(shared_scene, 'Dispose', 'void', [], ['proxy'])
 	gen.bind_method(shared_scene, 'IsReady', 'bool', [], ['proxy'])
+
+	gen.bind_method(shared_scene, 'AddSystem', 'std::shared_ptr<gs::core::SceneSystem>', ['std::shared_ptr<gs::core::SceneSystem> system'], ['proxy'])
+	#gen.bind_method(shared_scene, 'GetSystem', 'std::shared_ptr<gs::core::SceneSystem>', ['const char *name'], ['proxy'])
+
+	gen.bind_method(shared_scene, 'GetSystem<gs::core::RenderableSystem>', 'std::shared_ptr<gs::core::RenderableSystem>', [], ['proxy'], bound_name='GetRenderableSystem')
+	gen.bind_method(shared_scene, 'GetSystem<gs::core::IPhysicSystem>', 'std::shared_ptr<gs::core::IPhysicSystem>', [], ['proxy'], bound_name='GetPhysicSystem')
+
+	#const std::vector<sSceneSystem> &GetSystems() const { return systems; }
+
+	gen.bind_method(shared_scene, 'AddNode', 'void', ['std::shared_ptr<gs::core::Node> node'], ['proxy'])
+	gen.bind_method(shared_scene, 'RemoveNode', 'void', ['const std::shared_ptr<gs::core::Node> &node'], ['proxy'])
+
+	gen.bind_method(shared_scene, 'AddComponentToSystems', 'void', ['std::shared_ptr<gs::core::Component> node'], ['proxy'])
+	gen.bind_method(shared_scene, 'RemoveComponentFromSystems', 'void', ['const std::shared_ptr<gs::core::Component> &component'], ['proxy'])
+
+	gen.bind_method_overloads(shared_scene, 'GetNode', [
+		('std::shared_ptr<gs::core::Node>', ['gs::uint uid'], ['proxy']),
+		('std::shared_ptr<gs::core::Node>', ['const char *name'], ['proxy']),
+		('std::shared_ptr<gs::core::Node>', ['const char *name', 'const std::shared_ptr<gs::core::Node> &parent'], ['proxy'])
+	])
+
+	gen.bind_method_overloads(shared_scene, 'GetNodes', [
+		('const std::vector<std::shared_ptr<gs::core::Node>> &', [], ['proxy']),
+		('std::vector<std::shared_ptr<gs::core::Node>>', ['const char *filter'], ['proxy'])
+	])
+	gen.bind_method(shared_scene, 'GetNodeChildren', 'std::vector<std::shared_ptr<gs::core::Node>>', ['const gs::core::Node &node'], ['proxy'])
+	gen.bind_method(shared_scene, 'GetNodesWithAspect', 'std::vector<std::shared_ptr<gs::core::Node>>', ['const char *aspect'], ['proxy'])
 
 	gen.bind_method_overloads(shared_scene, 'Update', [
 		('void', [], ['proxy']),
@@ -421,8 +585,24 @@ def bind_scene(gen):
 		('void', ['gs::time_ns dt'], ['proxy'])
 	])
 
-	gen.bind_method(shared_scene, 'GetSystem<gs::core::RenderableSystem>', 'std::shared_ptr<gs::core::RenderableSystem>', [], ['proxy'], bound_name='GetRenderableSystem')
-	gen.bind_method(shared_scene, 'GetSystem<gs::core::IPhysicSystem>', 'std::shared_ptr<gs::core::IPhysicSystem>', [], ['proxy'], bound_name='GetPhysicSystem')
+	#const Signal<void(SceneSerializationState &)> &GetSerializationSignal() const { return serialization_signal; }
+	#Signal<void(SceneSerializationState &)> &GetSerializationSignal() { return serialization_signal; }
+
+	#const Signal<void(SceneDeserializationState &)> &GetDeserializationSignal() const { return deserialization_signal; }
+	#Signal<void(SceneDeserializationState &)> &GetDeserializationSignal() { return deserialization_signal; }
+
+	gen.bind_method(shared_scene, 'AddComponent', 'void', ['std::shared_ptr<gs::core::Component> component'], ['proxy'])
+	gen.bind_method(shared_scene, 'RemoveComponent', 'void', ['const std::shared_ptr<gs::core::Component> &component'], ['proxy'])
+
+	gen.bind_method_overloads(shared_scene, 'GetComponents', [
+		('const std::vector<std::shared_ptr<gs::core::Component>> &', [], ['proxy']),
+		('std::vector<std::shared_ptr<gs::core::Component>>', ['const char *aspect'], ['proxy'])
+	])
+
+	#template <class T> std::shared_ptr<T> GetComponent() const {
+
+	gen.bind_method(shared_scene, 'HasAspect', 'bool', ['const char *aspect'], ['proxy'])
+	gen.bind_method(shared_scene, 'GetMinMax', 'gs::MinMax', [], ['proxy'])
 
 	gen.end_class(shared_scene)
 
@@ -1429,13 +1609,15 @@ def bind_picture(gen):
 
 
 def bind_math(gen):
-	gen.decl_class('gs::Vector3')
-	gen.decl_class('gs::Vector4')
-	gen.decl_class('gs::Matrix3')
-	gen.decl_class('gs::Matrix4')
-	gen.decl_class('gs::Matrix44')
+	gen.begin_class('gs::Vector3')
+	gen.begin_class('gs::Vector4')
+	gen.begin_class('gs::Matrix3')
+	gen.begin_class('gs::Matrix4')
+	gen.begin_class('gs::Matrix44')
 
-	#
+	# math
+	gen.add_include('foundation/math.h')
+
 	gen.bind_named_enum('gs::math::RotationOrder', [
 		'RotationOrderZYX',
 		'RotationOrderYZX',
@@ -1448,6 +1630,52 @@ def bind_math(gen):
 		], storage_type='uint8_t')
 
 	gen.bind_named_enum('gs::math::Axis', ['AxisX', 'AxisY', 'AxisZ', 'AxisNone'], storage_type='uint8_t')
+
+	gen.bind_function('gs::math::LinearInterpolate<float>', 'float', ['float y0', 'float y1', 'float t'])
+	gen.bind_function('gs::math::CosineInterpolate<float>', 'float', ['float y0', 'float y1', 'float t'])
+	gen.bind_function('gs::math::CubicInterpolate<float>', 'float', ['float y0', 'float y1', 'float y2', 'float y3', 'float t'])
+	gen.bind_function('gs::math::HermiteInterpolate<float>', 'float', ['float y0', 'float y1', 'float y2', 'float y3', 'float t', 'float tension', 'float bias'])
+
+	gen.bind_function('gs::math::ReverseRotationOrder', 'gs::math::RotationOrder', ['gs::math::RotationOrder rotation_order'])
+
+	# gs::MinMax
+	gen.add_include('foundation/minmax.h')
+
+	minmax = gen.begin_class('gs::MinMax')
+
+	gen.bind_members(minmax, ['gs::Vector3 mn', 'gs::Vector3 mx'])
+	gen.bind_constructor_overloads(minmax, [
+		([], []),
+		(['const gs::Vector3 &min', 'const gs::Vector3 &max'], [])
+	])
+	gen.bind_method(minmax, 'GetArea', 'float', [])
+	gen.bind_method(minmax, 'GetCenter', 'gs::Vector3', [])
+
+	gen.bind_arithmetic_op(minmax, '*', 'gs::MinMax', ['const gs::Matrix4 &m'])
+	gen.bind_comparison_ops(minmax, ['==', '!='], ['const gs::MinMax &minmax'])
+
+	gen.end_class(minmax)
+
+	#void GetMinMaxVertices(const MinMax &minmax, Vector3 out[8]);
+	gen.bind_function('gs::ComputeMinMaxBoundingSphere', 'void', ['const gs::MinMax &minmax', 'gs::Vector3 &origin', 'float &radius'], {'argout': ['origin', 'radius']})
+
+	gen.bind_function_overloads('gs::Overlap', [
+		('bool', ['const gs::MinMax &minmax_a', 'const gs::MinMax &minmax_b'], []),
+		('bool', ['const gs::MinMax &minmax_a', 'const gs::MinMax &minmax_b', 'gs::math::Axis axis'], [])
+	])
+	gen.bind_function('gs::Contains', 'bool', ['const gs::MinMax &minmax', 'const gs::Vector3 &position'])
+
+	gen.bind_function_overloads('gs::Union', [
+		('gs::MinMax', ['const gs::MinMax &minmax_a', 'const gs::MinMax &minmax_b'], []),
+		('gs::MinMax', ['const gs::MinMax &minmax', 'const gs::Vector3 &position'], [])
+	])
+
+	gen.bind_function('gs::IntersectRay', 'bool', ['const gs::MinMax &minmax', 'const gs::Vector3 &origin', 'const gs::Vector3 &direction', 'float &t_min', 'float &t_max'], {'argout': ['t_min', 't_max']})
+
+	gen.bind_function('gs::ClassifyLine', 'bool', ['const gs::MinMax &minmax', 'const gs::Vector3 &position', 'const gs::Vector3 &direction', 'gs::Vector3 &intersection', 'gs::Vector3 *normal'], {'argout': ['intersection', 'normal']})
+	gen.bind_function('gs::ClassifySegment', 'bool', ['const gs::MinMax &minmax', 'const gs::Vector3 &p0', 'const gs::Vector3 &p1', 'gs::Vector3 &intersection', 'gs::Vector3 *normal'], {'argout': ['intersection', 'normal']})
+
+	gen.bind_function('MinMaxFromPositionSize', 'gs::MinMax', ['const gs::Vector3 &position', 'const gs::Vector3 &size'])
 
 	# gs::Vector2<T>
 	gen.add_include('foundation/vector2.h')
@@ -1535,13 +1763,99 @@ def bind_math(gen):
 
 	matrix3 = gen.begin_class('gs::Matrix3')
 	gen.bind_static_members(matrix3, ['const gs::Matrix3 Zero', 'const gs::Matrix3 Identity'])
+
+	gen.bind_constructor_overloads(matrix3, [
+		([], []),
+		(['const gs::Matrix4 &m'], []),
+		(['const gs::Vector3 &x', 'const gs::Vector3 &y', 'const gs::Vector3 &z'], [])
+	])
+
+	gen.bind_comparison_ops(matrix3, ['==', '!='], ['const gs::Matrix3 &m'])
+
+	gen.bind_arithmetic_ops(matrix3, ['+', '-'], 'gs::Matrix3', ['gs::Matrix3 &m'])
+	gen.bind_arithmetic_op_overloads(matrix3, '*', [
+		('gs::Matrix3', ['const float v'], []),
+		('gs::Vector3', ['const gs::Vector3 &v'], []),
+		('gs::Matrix3', ['const gs::Matrix3 &m'], [])
+	])
+	gen.bind_inplace_arithmetic_ops(matrix3, ['+=', '-='], ['const gs::Matrix3 &m'])
+	gen.bind_inplace_arithmetic_op_overloads(matrix3, '*=', [
+		(['const float k'], []),
+		(['const gs::Matrix3 &m'], [])
+	])
+
+	gen.bind_method(matrix3, 'Det', 'float', [])
+	gen.bind_method(matrix3, 'Inverse', 'bool', ['gs::Matrix3 &I'], {'argout': ['I']})
+
+	gen.bind_method(matrix3, 'Transposed', 'gs::Matrix3', [])
+
+	gen.bind_method(matrix3, 'GetRow', 'gs::Vector3', ['gs::uint n'])
+	gen.bind_method(matrix3, 'GetColumn', 'gs::Vector3', ['gs::uint n'])
+	gen.bind_method(matrix3, 'SetRow', 'void', ['gs::uint n', 'const gs::Vector3 &row'])
+	gen.bind_method(matrix3, 'SetColumn', 'void', ['gs::uint n', 'const gs::Vector3 &column'])
+
+	gen.bind_method(matrix3, 'GetX', 'gs::Vector3', [])
+	gen.bind_method(matrix3, 'GetY', 'gs::Vector3', [])
+	gen.bind_method(matrix3, 'GetZ', 'gs::Vector3', [])
+	gen.bind_method(matrix3, 'GetTranslation', 'gs::Vector3', [])
+	gen.bind_method(matrix3, 'GetScale', 'gs::Vector3', [])
+
+	gen.bind_method(matrix3, 'SetX', 'void', ['const gs::Vector3 &X'])
+	gen.bind_method(matrix3, 'SetY', 'void', ['const gs::Vector3 &Y'])
+	gen.bind_method(matrix3, 'SetZ', 'void', ['const gs::Vector3 &Z'])
+	gen.bind_method(matrix3, 'SetTranslation', 'void', ['const gs::Vector3 &T'])
+	gen.bind_method(matrix3, 'SetScale', 'void', ['const gs::Vector3 &S'])
+
+	gen.bind_method(matrix3, 'Normalized', 'gs::Matrix3', [])
+	gen.bind_method(matrix3, 'Orthonormalized', 'gs::Matrix3', [])
+	gen.bind_method_overloads(matrix3, 'ToEuler', [
+		('gs::Vector3', [], []),
+		('gs::Vector3', ['gs::math::RotationOrder rotation_order'], [])
+	])
+
+	gen.bind_static_method(matrix3, 'VectorMatrix', 'gs::Matrix3', ['const gs::Vector3 &V'])
+	gen.bind_static_method_overloads(matrix3, 'TranslationMatrix', [
+		('gs::Matrix3', ['const gs::tVector2<float> &T'], []),
+		('gs::Matrix3', ['const gs::Vector3 &T'], [])
+	])
+	gen.bind_static_method_overloads(matrix3, 'ScaleMatrix', [
+		('gs::Matrix3', ['const gs::tVector2<float> &S'], []),
+		('gs::Matrix3', ['const gs::Vector3 &S'], [])
+	])
+	gen.bind_static_method(matrix3, 'CrossProductMatrix', 'gs::Matrix3', ['const gs::Vector3 &V'])
+
+	gen.bind_static_method(matrix3, 'RotationMatrixXAxis', 'gs::Matrix3', ['float angle'])
+	gen.bind_static_method(matrix3, 'RotationMatrixYAxis', 'gs::Matrix3', ['float angle'])
+	gen.bind_static_method(matrix3, 'RotationMatrixZAxis', 'gs::Matrix3', ['float angle'])
+
+	gen.bind_static_method(matrix3, 'RotationMatrix2D', 'gs::Matrix3', ['float angle', 'const gs::tVector2<float> &pivot'])
+
+	gen.bind_static_method_overloads(matrix3, 'FromEuler', [
+		('gs::Matrix3', ['float x', 'float y', 'float z'], []),
+		('gs::Matrix3', ['float x', 'float y', 'float z', 'gs::math::RotationOrder rotation_order'], []),
+		('gs::Matrix3', ['const gs::Vector3 &euler'], []),
+		('gs::Matrix3', ['const gs::Vector3 &euler', 'gs::math::RotationOrder rotation_order'], [])
+	])
+
+	gen.bind_static_method_overloads(matrix3, 'LookAt', [
+		('gs::Matrix3', ['const gs::Vector3 &front'], []),
+		('gs::Matrix3', ['const gs::Vector3 &front', 'const gs::Vector3 *up'], [])
+	])
+
 	gen.end_class(matrix3)
+
+	gen.bind_function('gs::RotationMatrixXZY', 'gs::Matrix3', ['float x', 'float y', 'float z'])
+	gen.bind_function('gs::RotationMatrixZYX', 'gs::Matrix3', ['float x', 'float y', 'float z'])
+	gen.bind_function('gs::RotationMatrixXYZ', 'gs::Matrix3', ['float x', 'float y', 'float z'])
+	gen.bind_function('gs::RotationMatrixZXY', 'gs::Matrix3', ['float x', 'float y', 'float z'])
+	gen.bind_function('gs::RotationMatrixYZX', 'gs::Matrix3', ['float x', 'float y', 'float z'])
+	gen.bind_function('gs::RotationMatrixYXZ', 'gs::Matrix3', ['float x', 'float y', 'float z'])
+	gen.bind_function('gs::RotationMatrixXY', 'gs::Matrix3', ['float x', 'float y'])
 
 	# gs::Matrix4
 	gen.add_include('foundation/matrix4.h')
 
 	matrix4 = gen.begin_class('gs::Matrix4')
-
 	gen.bind_static_members(matrix4, ['const gs::Matrix4 Zero', 'const gs::Matrix4 Identity'])
 
 	gen.bind_constructor_overloads(matrix4, [
@@ -1574,7 +1888,10 @@ def bind_math(gen):
 
 	gen.bind_method(matrix4, 'Orthonormalized', 'gs::Matrix4', [])
 
-	#static Matrix4 LerpAsOrthonormalBase(const Matrix4 &a, const Matrix4 &b, float k, bool fast = false);
+	gen.bind_static_method_overloads(matrix4, 'LerpAsOrthonormalBase', [
+		('gs::Matrix4', ['const gs::Matrix4 &from', 'const gs::Matrix4 &to', 'float k'], []),
+		('gs::Matrix4', ['const gs::Matrix4 &from', 'const gs::Matrix4 &to', 'float k', 'bool fast'], [])
+	])
 
 	#void Decompose(Vector3 *position, Vector3 *scale = nullptr, Matrix3 *rotation = nullptr) const;
 	#void Decompose(Vector3 *position, Vector3 *scale, Vector3 *rotation, math::RotationOrder order = math::RotationOrder_Default) const;
@@ -1635,6 +1952,7 @@ def bind_math(gen):
 	gen.bind_arithmetic_ops_overloads(vector3, ['*'], [('gs::Vector3', ['gs::Vector3 &v'], []), ('gs::Vector3', ['float k'], []), ('gs::Vector3', ['gs::Matrix3 m'], []), ('gs::Vector3', ['gs::Matrix4 m'], [])])
 
 	gen.bind_inplace_arithmetic_ops_overloads(vector3, ['+=', '-=', '*=', '/='], [('gs::Vector3 &v', []), ('float k', [])])
+	gen.bind_comparison_ops(vector3, ['==', '!='], ['const gs::Vector3 &v'])
 
 	gen.bind_function('gs::Dot', 'float', ['const gs::Vector3 &u', 'const gs::Vector3 &v'])
 	gen.bind_function('gs::Cross', 'gs::Vector3', ['const gs::Vector3 &u', 'const gs::Vector3 &v'])

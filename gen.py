@@ -123,8 +123,8 @@ class _CType:
 	def __repr__(self):
 		return get_fully_qualified_ctype_name(self)
 
-	def get_ref(self, extra_transform=''):
-		return (self.ref if hasattr(self, 'ref') else '') + extra_transform
+	def get_ref(self):
+		return (self.ref if hasattr(self, 'ref') else '')
 
 	def add_ref(self, ref):
 		t = copy.deepcopy(self)
@@ -273,8 +273,12 @@ class TypeConverter:
 		assert 'from_c_call not implemented in converter'
 
 	def prepare_var_for_conv(self, var, var_ref):
-		"""Prepare a variable for use with the converter from_c/to_c methods."""
-		return transform_var_ref_to(var, var_ref, self.ctype.get_ref('*'))
+		"""Transform a variable for use with the converter from_c/to_c methods."""
+		return transform_var_ref_to(var, var_ref, self.storage_ctype.get_ref())
+
+	def prepare_var_from_conv(self, var, var_ref):
+		"""Transform a converted variable back to its ctype reference."""
+		return transform_var_ref_to(var, self.storage_ctype.get_ref(), var_ref)
 
 
 def format_list_for_comment(lst):
@@ -444,11 +448,6 @@ class FABGen:
 	def end_class(self, conv):
 		"""End a class declaration."""
 		self.end_type(conv)
-
-	#
-	def decl_class(self, type, converter_class=None):
-		"""Forward declare a class."""
-		return self.begin_class(type, converter_class)
 
 	#
 	def bind_ptr(self, type, converter_class=None, bound_name=None):
@@ -636,7 +635,7 @@ class FABGen:
 				self._source += 'new %s(%s);\n' % (rval, ', '.join(c_call_args))
 
 			self._source += self.prepare_c_rval(rval_conv, rval_ptr, 'rval', 'Owning')  # constructor output is always owned by VM
-			rvals.append('rval_out')
+			rvals.append('rval')
 		else:
 			# return value is optional for a function call
 			if rval_conv:
@@ -651,14 +650,14 @@ class FABGen:
 
 			if rval_conv:
 				self._source += self.prepare_c_rval(rval_conv, rval, 'rval')
-				rvals.append('rval_out')
+				rvals.append('rval')
 
 		# prepare return values
 		if argout is not None:
 			for idx, arg in enumerate(args):
 				if arg['carg'].name in argout:
 					self._source += self.prepare_c_rval(arg['conv'], arg['conv'].ctype, 'arg%d' % idx)
-					rvals.append('arg%d_out' % idx)
+					rvals.append('arg%d' % idx)
 
 		self._source += self.commit_rvals(rvals, ctx)
 

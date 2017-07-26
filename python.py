@@ -71,7 +71,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	return NULL;
 }\n'''
 			out += gen.prepare_c_rval(seq.wrapped_conv, seq.wrapped_conv.ctype, 'rval')
-			out += gen.commit_rvals('rval')
+			out += gen.commit_rvals(['rval'])
 			out += '}\n\n'
 
 			# set_item
@@ -392,6 +392,7 @@ static inline bool CheckArgsTuple(PyObject *args) {
 			out += 'Py_INCREF(%s);\nreturn %s;\n' % (self_var, self_var)
 		else:
 			rval_count = len(rvals)
+			rvals = [rval + '_out' for rval in rvals]
 
 			if rval_count == 0:
 				out += 'Py_INCREF(Py_None);\nreturn Py_None;\n'
