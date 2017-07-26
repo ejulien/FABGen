@@ -493,7 +493,7 @@ def bind_scene(gen):
 	gen.bind_method(shared_group, 'GetNodes', 'const std::vector<std::shared_ptr<gs::core::Node>> &', [], ['proxy'])
 	gen.bind_method(shared_group, 'GetGroups', 'const std::vector<std::shared_ptr<gs::core::Group>> &', [], ['proxy'])
 
-	gen.bind_method(shared_group, 'AddNode', 'std::shared_ptr<gs::core::Node>', ['std::shared_ptr<gs::core::Node> node'], ['proxy'])
+	gen.bind_method(shared_group, 'AddNode', 'void', ['std::shared_ptr<gs::core::Node> node'], ['proxy'])
 	gen.bind_method(shared_group, 'RemoveNode', 'void', ['const std::shared_ptr<gs::core::Node> &node'], ['proxy'])
 	gen.bind_method_overloads(shared_group, 'IsMember', [
 		('bool', ['const std::shared_ptr<gs::core::Node> &node'], ['proxy']),
@@ -508,7 +508,7 @@ def bind_scene(gen):
 		('std::shared_ptr<gs::core::Node>', ['const char *name', 'const std::shared_ptr<gs::core::Node> &parent'], ['proxy'])
 	])
 
-	gen.bind_method(shared_group, 'AddGroup', 'std::shared_ptr<gs::core::Group>', ['std::shared_ptr<gs::core::Group> group'], ['proxy'])
+	gen.bind_method(shared_group, 'AddGroup', 'void', ['std::shared_ptr<gs::core::Group> group'], ['proxy'])
 	gen.bind_method(shared_group, 'RemoveGroup', 'void', ['const std::shared_ptr<gs::core::Group> &group'], ['proxy'])
 
 	gen.bind_method(shared_group, 'GetGroup', 'std::shared_ptr<gs::core::Group>', ['const char *name'], ['proxy'])
@@ -539,7 +539,7 @@ def bind_scene(gen):
 	gen.bind_method(shared_scene, 'Dispose', 'void', [], ['proxy'])
 	gen.bind_method(shared_scene, 'IsReady', 'bool', [], ['proxy'])
 
-	gen.bind_method(shared_scene, 'AddSystem', 'std::shared_ptr<gs::core::SceneSystem>', ['std::shared_ptr<gs::core::SceneSystem> system'], ['proxy'])
+	gen.bind_method(shared_scene, 'AddSystem', 'void', ['std::shared_ptr<gs::core::SceneSystem> system'], ['proxy'])
 	#gen.bind_method(shared_scene, 'GetSystem', 'std::shared_ptr<gs::core::SceneSystem>', ['const char *name'], ['proxy'])
 
 	gen.bind_method(shared_scene, 'GetSystem<gs::core::RenderableSystem>', 'std::shared_ptr<gs::core::RenderableSystem>', [], ['proxy'], bound_name='GetRenderableSystem')
