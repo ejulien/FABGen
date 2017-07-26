@@ -2,6 +2,7 @@ import lua
 import python
 
 import lib.std
+import lib.stl
 
 
 def bind_binary_blob(gen):
@@ -106,6 +107,8 @@ def bind_time(gen):
 	gen.bind_function('gs::time_now', 'gs::time_ns', [])
 
 	gen.bind_function('gs::time_to_string', 'std::string', ['gs::time_ns t'])
+
+	lib.stl.bind_future_T(gen, 'gs::time_ns', 'FutureTime')
 
 
 def bind_input(gen):
@@ -1004,8 +1007,6 @@ def bind_iso_surface(gen):
 	gen.end_class(shared_iso_surface)
 
 	#
-	lib.std.bind_future_T(gen, 'void', 'FutureVoid')
-
 	gen.bind_ptr('float *')
 
 	gen.bind_function_overloads('PolygoniseIsoSurface', [
@@ -1394,6 +1395,14 @@ def bind_plus(gen):
 def bind_filesystem(gen):
 	gen.add_include('foundation/filesystem.h')
 	gen.add_include('foundation/io_cfile.h')
+	gen.add_include('foundation/io_handle.h')
+
+	gen.bind_named_enum('gs::SeekRef', ['SeekStart', 'SeekCurrent', 'SeekEnd'])
+	gen.bind_named_enum('gs::io::Mode', ['ModeRead', 'ModeWrite'], bound_name='IOMode', prefix='IO')
+
+	# forward declarations
+	io_driver = gen.begin_class('gs::io::Driver', bound_name='IODriver_hide_me', noncopyable=True, nobind=True)
+	shared_io_driver = gen.begin_class('std::shared_ptr<gs::io::Driver>', bound_name='IODriver', features={'proxy': lib.std.SharedPtrProxyFeature(io_driver)})
 
 	# binding specific API
 	gen.insert_binding_code('''static bool MountFileDriver(gs::io::sDriver driver) {
@@ -1404,15 +1413,31 @@ static bool MountFileDriver(gs::io::sDriver driver, const char *prefix) {
 }
 	''', 'Filesystem custom API')
 
-	#
-	io_driver = gen.begin_class('gs::io::Driver', bound_name='IODriver_hide_me', noncopyable=True, nobind=True)
-	gen.end_class(io_driver)
+	# gs::io::Handle
+	handle = gen.begin_class('gs::io::Handle', noncopyable=True)
 
-	shared_io_driver = gen.begin_class('std::shared_ptr<gs::io::Driver>', bound_name='IODriver', features={'proxy': lib.std.SharedPtrProxyFeature(io_driver)})
+	gen.bind_method(handle, 'GetSize', 'size_t', [])
+
+	gen.bind_method(handle, 'Rewind', 'size_t', [])
+	gen.bind_method(handle, 'IsEOF', 'bool', [])
+
+	gen.bind_method(handle, 'Tell', 'size_t', [])
+	gen.bind_method(handle, 'Seek', 'size_t', ['int offset', 'gs::SeekRef ref'])
+
+	# Read
+	gen.insert_binding_code('static size_t IOHandle_WriteBinaryBlob(gs::io::Handle *handle, gs::BinaryBlob &data) { return handle->Write(data.GetData(), data.GetDataSize()); }')
+	gen.bind_method(handle, 'Write', 'size_t', ['gs::BinaryBlob &data'], {'route': lambda args: 'IOHandle_WriteBinaryBlob(%s);' % (', '.join(args))})
+
+	gen.bind_method(handle, 'GetDriver', 'std::shared_ptr<gs::io::Driver>', [])
+
+	gen.end_class(handle)
+
+	# gs::io::Driver
+	gen.end_class(io_driver)
 	gen.end_class(shared_io_driver)
 
-	#
-	io_cfile = gen.begin_class('gs::io::CFile', bound_name='CFile_hide_me', nobind=True)  # TODO do not expose this type in the module
+	# gs::io::CFile
+	io_cfile = gen.begin_class('gs::io::CFile', bound_name='CFile_hide_me', nobind=True)
 	gen.end_class(io_cfile)
 
 	shared_io_cfile = gen.begin_class('std::shared_ptr<gs::io::CFile>', bound_name='StdFileDriver', features={'proxy': lib.std.SharedPtrProxyFeature(io_cfile)})
@@ -1429,6 +1454,49 @@ static bool MountFileDriver(gs::io::sDriver driver, const char *prefix) {
 		('bool', ['std::shared_ptr<gs::io::Driver> driver'], []),
 		('bool', ['std::shared_ptr<gs::io::Driver> driver', 'const char *prefix'], [])
 	])
+
+	# gs::io::Filesystem
+	fs = gen.begin_class('gs::io::Filesystem')
+
+	gen.bind_method_overloads(fs, 'Mount', [
+		('bool', ['std::shared_ptr<gs::io::Driver> driver'], []),
+		('bool', ['std::shared_ptr<gs::io::Driver> driver', 'const char *prefix'], [])
+	])
+	gen.bind_method(fs, 'IsPrefixMounted', 'bool', ['const char *prefix'])
+
+	gen.bind_method_overloads(fs, 'Unmount', [
+		('void', ['const char *prefix'], []),
+		('void', ['const std::shared_ptr<gs::io::Driver> &driver'], [])
+	])
+	gen.bind_method(fs, 'UnmountAll', 'void', [])
+
+	gen.bind_method(fs, 'MapToAbsolute', 'std::string', ['const char *path'])
+	gen.bind_method(fs, 'MapToRelative', 'std::string', ['const char *path'])
+	gen.bind_method(fs, 'StripPrefix', 'std::string', ['const char *path'])
+
+	gen.bind_method(fs, 'Open', 'gs::io::Handle *', ['const char *path', 'gs::io::Mode mode'], ['newobj'])
+	gen.bind_method(fs, 'Close', 'void', ['gs::io::Handle &handle'])
+
+	gen.bind_method(fs, 'MkDir', 'bool', ['const char *path'])
+
+	gen.bind_method(fs, 'Exists', 'bool', ['const char *path'])
+	gen.bind_method(fs, 'Delete', 'bool', ['const char *path'])
+
+	gen.bind_method(fs, 'FileSize', 'size_t', ['const char *path'])
+	#gen.bind_method(fs, 'FileLoad', 'size_t', ['const char *path'])
+	#gen.bind_method(fs, 'FileSave', 'size_t', ['const char *path'])
+	gen.bind_method(fs, 'FileCopy', 'bool', ['const char *src', 'const char *dst'])
+	gen.bind_method(fs, 'FileMove', 'bool', ['const char *src', 'const char *dst'])
+
+	gen.bind_method(fs, 'FileToString', 'std::string', ['const char *path'])
+	gen.bind_method(fs, 'StringToFile', 'bool', ['const char *path', 'const std::string &text'])
+
+	gen.end_class(fs)
+
+	#
+	gen.insert_binding_code('static gs::io::Filesystem &GetFilesystem() { return gs::g_fs.get(); }')
+	gen.bind_function('GetFilesystem', 'gs::io::Filesystem &', [])
+
 
 def bind_color(gen):
 	gen.add_include('foundation/color.h')
@@ -2030,9 +2098,14 @@ def bind_math(gen):
 	gen.bind_function('ToFloatRect', 'gs::Rect<float>', ['const gs::Rect<int> &rect'])
 	gen.bind_function('ToIntRect', 'gs::Rect<int>', ['const gs::Rect<float> &rect'])
 
+	# math futures
+	lib.stl.bind_future_T(gen, 'gs::Vector3', 'FutureVector3')
+	lib.stl.bind_future_T(gen, 'gs::Vector4', 'FutureVector4')
+	lib.stl.bind_future_T(gen, 'gs::Matrix3', 'FutureMatrix3')
+	lib.stl.bind_future_T(gen, 'gs::Matrix4', 'FutureMatrix4')
+
 
 def bind_mixer(gen):
-	gen.add_include('engine/engine_factories.h')
 	gen.add_include('engine/mixer.h')
 
 	# gs::AudioFormat
@@ -2068,13 +2141,37 @@ def bind_mixer(gen):
 
 	gen.bind_method(shared_audio_data, 'Seek', 'bool', ['gs::time_ns t'], ['proxy'])
 
-	#gen.bind_method(shared_audio_data, 'GetFrame', 'size_t', ['void *data', 'gs::time_ns &frame_t'], ['proxy']) TODO
+	gen.insert_binding_code('''\
+static size_t AudioData_GetFrameToBinaryBlob(gs::AudioData *audio_data, gs::BinaryBlob &frame, gs::time_ns &frame_timestamp) {
+	frame.Reset();
+	frame.Grow(audio_data->GetFrameSize());
+	size_t size = audio_data->GetFrame(frame.GetData(), frame_timestamp);
+	frame.Commit(size);
+	return size;
+}
+''', 'AudioData class extension')
+
+	gen.bind_method(shared_audio_data, 'GetFrame', 'size_t', ['gs::BinaryBlob &frame', 'gs::time_ns &frame_timestamp'], {'proxy': None, 'argout': ['frame_timestamp'], 'route': lambda args: 'AudioData_GetFrameToBinaryBlob(%s);' % (', '.join(args))})
 	gen.bind_method(shared_audio_data, 'GetFrameSize', 'size_t', [], ['proxy'])
 
 	gen.bind_method(shared_audio_data, 'SetTransform', 'void', ['const gs::Matrix4 &m'], ['proxy'])
 	gen.bind_method(shared_audio_data, 'GetDataSize', 'size_t', [], ['proxy'])
 
 	gen.end_class(shared_audio_data)
+
+	# gs::AudioIO
+	gen.add_include('engine/audio_io.h')
+
+	audio_io = gen.begin_class('gs::AudioIO', noncopyable=True)
+	gen.bind_method_overloads(audio_io, 'Open', [
+		('std::shared_ptr<gs::AudioData>', ['const char *path'], []),
+		('std::shared_ptr<gs::AudioData>', ['const char *path', 'const char *codec_name'], [])
+	])
+	gen.bind_method(audio_io, 'GetSupportedExt', 'std::string', [])
+	gen.end_class(audio_io)
+
+	gen.insert_binding_code('static gs::AudioIO &GetAudioIO() { return gs::g_audio_io.get(); }')
+	gen.bind_function('GetAudioIO', 'gs::AudioIO &', [])
 
 	# gs::audio
 	gen.bind_named_enum('gs::audio::MixerLoopMode', ['MixerNoLoop', 'MixerRepeat', 'MixerLoopInvalidChannel'], 'uint8_t')
@@ -2212,12 +2309,85 @@ static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixe
 
 	gen.bind_function_overloads('CreateMixer', [('std::shared_ptr<gs::audio::Mixer>', [], []), ('std::shared_ptr<gs::audio::Mixer>', ['const char *name'], [])])
 
+	# gs::audio::MixerAsync
+	mixer_async = gen.begin_class('gs::audio::MixerAsync', bound_name='MixerAsync_hide_me', noncopyable=True, nobind=True)
+	gen.end_class(mixer_async)
+
+	shared_mixer_async = gen.begin_class('std::shared_ptr<gs::audio::MixerAsync>', bound_name='MixerAsync', features={'proxy': lib.std.SharedPtrProxyFeature(mixer_async)})
+
+	gen.bind_constructor(shared_mixer_async, ['std::shared_ptr<gs::audio::Mixer> mixer'], ['proxy'])
+
+	gen.bind_method(shared_mixer_async, 'Open', 'std::future<bool>', [], ['proxy'])
+	gen.bind_method(shared_mixer_async, 'Close', 'std::future<void>', [], ['proxy'])
+
+	gen.bind_method(shared_mixer_async, 'EnableSpatialization', 'std::future<bool>', ['bool enable'], ['proxy'])
+
+	gen.bind_method(shared_mixer_async, 'GetMasterVolume', 'std::future<float>', [], ['proxy'])
+	gen.bind_method(shared_mixer_async, 'SetMasterVolume', 'void', ['float volume'], ['proxy'])
+
+	lib.stl.bind_future_T(gen, 'gs::audio::MixerChannel', 'FutureMixerChannel')
+	lib.stl.bind_future_T(gen, 'gs::audio::MixerChannelState', 'FutureMixerChannelState')
+	lib.stl.bind_future_T(gen, 'gs::audio::MixerChannelLocation', 'FutureMixerChannelLocation')
+	lib.stl.bind_future_T(gen, 'gs::audio::MixerPlayState', 'FutureMixerPlayState')
+
+	gen.bind_method_overloads(shared_mixer_async, 'Start', [
+		('std::future<gs::audio::MixerChannel>', ['std::shared_ptr<gs::audio::Sound> sound'], ['proxy']),
+		('std::future<gs::audio::MixerChannel>', ['std::shared_ptr<gs::audio::Sound> sound', 'gs::audio::MixerChannelState state'], ['proxy']),
+		('std::future<gs::audio::MixerChannel>', ['std::shared_ptr<gs::audio::Sound> sound', 'gs::audio::MixerChannelLocation location'], ['proxy']),
+		('std::future<gs::audio::MixerChannel>', ['std::shared_ptr<gs::audio::Sound> sound', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state'], ['proxy'])
+	])
+	gen.bind_method_overloads(shared_mixer_async, 'Stream', [
+		('std::future<gs::audio::MixerChannel>', ['const char *path'], ['proxy']),
+		('std::future<gs::audio::MixerChannel>', ['const char *path', 'bool paused'], ['proxy']),
+		('std::future<gs::audio::MixerChannel>', ['const char *path', 'bool paused', 'gs::time_ns t_start'], ['proxy']),
+		('std::future<gs::audio::MixerChannel>', ['const char *path', 'gs::audio::MixerChannelState state'], ['proxy']),
+		('std::future<gs::audio::MixerChannel>', ['const char *path', 'gs::audio::MixerChannelState state', 'bool paused'], ['proxy']),
+		('std::future<gs::audio::MixerChannel>', ['const char *path', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], ['proxy']),
+		('std::future<gs::audio::MixerChannel>', ['const char *path', 'gs::audio::MixerChannelLocation location'], ['proxy']),
+		('std::future<gs::audio::MixerChannel>', ['const char *path', 'gs::audio::MixerChannelLocation location', 'bool paused'], ['proxy']),
+		('std::future<gs::audio::MixerChannel>', ['const char *path', 'gs::audio::MixerChannelLocation location', 'bool paused', 'gs::time_ns t_start'], ['proxy']),
+		('std::future<gs::audio::MixerChannel>', ['const char *path', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state'], ['proxy']),
+		('std::future<gs::audio::MixerChannel>', ['const char *path', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused'], ['proxy']),
+		('std::future<gs::audio::MixerChannel>', ['const char *path', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], ['proxy'])
+	])
+
+	gen.bind_method(shared_mixer_async, 'GetPlayState', 'std::future<gs::audio::MixerPlayState>', ['gs::audio::MixerChannel channel'], ['proxy'])
+
+	gen.bind_method(shared_mixer_async, 'GetChannelState', 'std::future<gs::audio::MixerChannelState>', ['gs::audio::MixerChannel channel'], ['proxy'])
+	gen.bind_method(shared_mixer_async, 'SetChannelState', 'void', ['gs::audio::MixerChannel channel', 'gs::audio::MixerChannelState state'], ['proxy'])
+
+	gen.bind_method(shared_mixer_async, 'GetChannelLocation', 'std::future<gs::audio::MixerChannelLocation>', ['gs::audio::MixerChannel channel'], ['proxy'])
+	gen.bind_method(shared_mixer_async, 'SetChannelLocation', 'void', ['gs::audio::MixerChannel channel', 'gs::audio::MixerChannelLocation location'], ['proxy'])
+
+	gen.bind_method(shared_mixer_async, 'GetChannelTimestamp', 'std::future<gs::time_ns>', ['gs::audio::MixerChannel channel'], ['proxy'])
+
+	gen.bind_method(shared_mixer_async, 'Stop', 'void', ['gs::audio::MixerChannel channel'], ['proxy'])
+	gen.bind_method(shared_mixer_async, 'Pause', 'void', ['gs::audio::MixerChannel channel'], ['proxy'])
+	gen.bind_method(shared_mixer_async, 'Resume', 'void', ['gs::audio::MixerChannel channel'], ['proxy'])
+	gen.bind_method(shared_mixer_async, 'StopAll', 'void', [], ['proxy'])
+
+	gen.bind_method(shared_mixer_async, 'SetStreamLoopPoint', 'void', ['gs::audio::MixerChannel channel', 'gs::time_ns t'], ['proxy'])
+	gen.bind_method(shared_mixer_async, 'SeekStream', 'void', ['gs::audio::MixerChannel channel', 'gs::time_ns t'], ['proxy'])
+	gen.bind_method(shared_mixer_async, 'GetStreamBufferingPercentage', 'std::future<int>', ['gs::audio::MixerChannel channel'], ['proxy'])
+
+	gen.bind_method(shared_mixer_async, 'SetChannelStreamDataTransform', 'void', ['gs::audio::MixerChannel channel', 'const gs::Matrix4 &transform'], ['proxy'])
+	gen.bind_method(shared_mixer_async, 'FlushChannelBuffers', 'void', ['gs::audio::MixerChannel channel'], ['proxy'])
+
+	gen.bind_method(shared_mixer_async, 'GetListener', 'std::future<gs::Matrix4>', [], ['proxy'])
+	gen.bind_method(shared_mixer_async, 'SetListener', 'void', ['const gs::Matrix4 &transform'], ['proxy'])
+
+	gen.bind_method(shared_mixer_async, 'LoadSound', 'std::shared_ptr<gs::audio::Sound>', ['const char *path'], ['proxy'])
+	gen.bind_method(shared_mixer_async, 'FreeSound', 'void', ['const std::shared_ptr<gs::audio::Sound> &sound'], ['proxy'])
+
+	gen.end_class(shared_mixer_async)
+
 
 def bind_gs(gen):
 	gen.start('gs')
 
 	gen.add_include('engine/engine.h')
 	gen.add_include('engine/engine_plugins.h')
+	gen.add_include('engine/engine_factories.h')
 
 	gen.insert_code('''
 // Add the Python interpreter module search paths to the engine default plugins search path
@@ -2242,10 +2412,13 @@ void InitializePluginsDefaultSearchPath() {
 
 	gen.typedef('gs::uint', 'unsigned int')
 
-	lib.std.bind_future_T(gen, 'gs::uint', 'FutureUInt')
+	lib.stl.bind_future_T(gen, 'void', 'FutureVoid')
+	lib.stl.bind_future_T(gen, 'bool', 'FutureBool')
+	lib.stl.bind_future_T(gen, 'int', 'FutureInt')
+	lib.stl.bind_future_T(gen, 'float', 'FutureFloat')
 
-	lib.std.bind_future_T(gen, 'bool', 'FutureBool')
-	lib.std.bind_future_T(gen, 'size_t', 'FutureSize')
+	lib.stl.bind_future_T(gen, 'gs::uint', 'FutureUInt')
+	lib.stl.bind_future_T(gen, 'size_t', 'FutureSize')
 
 	bind_binary_blob(gen)
 	bind_time(gen)

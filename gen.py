@@ -347,8 +347,9 @@ class FABGen:
 		if in_source:
 			self._source += code
 
-	def insert_binding_code(self, code, comment):
-		self._source += '// %s\n' % comment
+	def insert_binding_code(self, code, comment=None):
+		if comment is not None:
+			self._source += '// %s\n' % comment
 		self._source += code
 		self._source += '\n'
 
@@ -649,7 +650,11 @@ class FABGen:
 			self._source += expr_eval(c_call_args) + '\n'
 
 			if rval_conv:
-				self._source += self.prepare_c_rval(rval_conv, rval, 'rval')
+				ownership = None  # automatic ownership policy
+				if 'newobj' in features:
+					ownership = 'Owning'  # force ownership when the prototype is flagged to return a new object
+
+				self._source += self.prepare_c_rval(rval_conv, rval, 'rval', ownership)
 				rvals.append('rval')
 
 		# prepare return values
