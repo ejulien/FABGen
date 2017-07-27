@@ -331,7 +331,7 @@ static inline bool CheckArgsTuple(PyObject *args) {
 
 	#
 	def set_error(self, type, reason):
-		self._source += 'PyErr_SetString(PyExc_RuntimeError, "%s");\n' % reason
+		return 'PyErr_SetString(PyExc_RuntimeError, "%s");\n' % reason
 
 	#
 	def get_self(self, ctx):
@@ -369,11 +369,21 @@ static inline bool CheckArgsTuple(PyObject *args) {
 
 	def close_proxy(self, ctx):
 		if ctx == 'setter':
-			self._source += '''	return -1;\n}\n'''
+			self._source += '	return -1;\n}\n'
 		elif ctx == 'getter':
 			self._source += '}\n'
 		else:
-			self._source += '''	return NULL;\n}\n'''
+			self._source += '	return NULL;\n}\n'
+
+	def proxy_call_error(self, msg, ctx):
+		out = self.set_error('runtime', msg)
+
+		if ctx == 'setter':
+			out += 'return -1;\n'
+		else:
+			out += 'return NULL;\n'
+
+		return out
 
 	# function call return values
 	def return_void_from_c(self):

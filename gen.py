@@ -267,10 +267,10 @@ class TypeConverter:
 		return ''
 
 	def to_c_call(self, out_var, expr):
-		assert 'to_c_call not implemented in converter'
+		assert 'not implemented in this converter'
 
 	def from_c_call(self, out_var, expr, ownership):
-		assert 'from_c_call not implemented in converter'
+		assert 'not implemented in this converter'
 
 	def prepare_var_for_conv(self, var, var_ref):
 		"""Transform a variable for use with the converter from_c/to_c methods."""
@@ -357,10 +357,6 @@ class FABGen:
 		self._custom_init_code += code
 
 	#
-	def raise_exception(self, type, reason):
-		assert 'raise_exception not implemented in generator'
-
-	#
 	def begin_type(self, conv, features, nobind=False):
 		"""Declare a new type converter."""
 		if self.verbose:
@@ -381,7 +377,8 @@ class FABGen:
 
 		feats = list(conv._features.values())
 		for feat in feats:
-			feat.init_type_converter(self, conv)  # init converter feature
+			if hasattr(feat, 'init_type_converter'):
+				feat.init_type_converter(self, conv)  # init converter feature
 
 		return conv
 
@@ -451,12 +448,12 @@ class FABGen:
 		self.end_type(conv)
 
 	#
-	def bind_ptr(self, type, converter_class=None, bound_name=None):
+	def bind_ptr(self, type, converter_class=None, bound_name=None, features={}):
 		if type in self.__type_convs:
 			return self.__type_convs[type]  # type already declared
 
 		conv = self.default_ptr_converter(type, None, bound_name) if converter_class is None else converter_class(type, None, bound_name)
-		self.bind_type(conv)
+		self.bind_type(conv, features)
 
 		return conv
 
@@ -504,7 +501,11 @@ class FABGen:
 
 	#
 	def commit_rvals(self, rval, ctx):
-		assert "missing return values template"
+		assert 'not implemented in this generator'
+
+	#
+	def output_proxy_call_error(self, msg, ctx):
+		assert 'not implemented in this generator'
 
 	#
 	def __ctype_to_ownership_policy(self, ctype):
@@ -534,8 +535,8 @@ class FABGen:
 			# prepare argsin, a list of arguments that should be provided by the caller
 			_proto['argsin'] = _proto['args']  # default to the full arg list
 
-			if 'argout' in _proto['features']:  # exclude output arguments from the argsin list
-				_proto['argsin'] = [arg for arg in _proto['args'] if arg['carg'].name not in _proto['features']['argout']]
+			if 'arg_out' in _proto['features']:  # exclude output arguments from the argsin list
+				_proto['argsin'] = [arg for arg in _proto['args'] if arg['carg'].name not in _proto['features']['arg_out']]
 
 			_protos.append(_proto)
 
@@ -596,7 +597,7 @@ class FABGen:
 
 		# prepare C call arguments
 		args = proto['args']
-		argout = features['argout'] if 'argout' in features else None
+		argout = features['arg_out'] if 'arg_out' in features else None
 
 		c_call_args = []
 
@@ -619,6 +620,7 @@ class FABGen:
 
 		# declare return value
 		rvals = []
+		rvals_prepare_args = []
 
 		if ctx == 'constructor':
 			rval_ptr = rval.add_ref('*')  # constructor returns a pointer
@@ -635,7 +637,7 @@ class FABGen:
 				self._source += self.decl_var(rval_ptr, 'rval', ' = ')
 				self._source += 'new %s(%s);\n' % (rval, ', '.join(c_call_args))
 
-			self._source += self.prepare_c_rval(rval_conv, rval_ptr, 'rval', 'Owning')  # constructor output is always owned by VM
+			rvals_prepare_args.append((rval_conv, rval_ptr, 'rval', 'Owning'))  # constructor output is always owned by VM
 			rvals.append('rval')
 		else:
 			# return value is optional for a function call
@@ -651,18 +653,26 @@ class FABGen:
 
 			if rval_conv:
 				ownership = None  # automatic ownership policy
-				if 'newobj' in features:
+				if 'new_obj' in features:
 					ownership = 'Owning'  # force ownership when the prototype is flagged to return a new object
 
-				self._source += self.prepare_c_rval(rval_conv, rval, 'rval', ownership)
+				rvals_prepare_args.append((rval_conv, rval, 'rval', ownership))
 				rvals.append('rval')
 
-		# prepare return values
+		# process argout
 		if argout is not None:
 			for idx, arg in enumerate(args):
 				if arg['carg'].name in argout:
-					self._source += self.prepare_c_rval(arg['conv'], arg['conv'].ctype, 'arg%d' % idx)
+					rvals_prepare_args.append((arg['conv'], arg['conv'].ctype, 'arg%d' % idx))
 					rvals.append('arg%d' % idx)
+
+		# check return values
+		if 'check_rval' in features:
+			self._source += features['check_rval'](rvals, ctx)
+
+		# prepare return values ([EJ] once check is done so we don't leak)
+		for prepare_args in rvals_prepare_args:
+			self._source += self.prepare_c_rval(*prepare_args)
 
 		self._source += self.commit_rvals(rvals, ctx)
 
@@ -738,7 +748,7 @@ class FABGen:
 
 					expected_types.append('%s %s' % (proto_arg_bound_name, proto_arg_name))
 
-				self.set_error('runtime', 'incorrect type for argument %d to %s, expected %s' % (arg_idx+1, desc, format_list_for_comment(expected_types)))
+				self._source += self.set_error('runtime', 'incorrect type for argument %d to %s, expected %s' % (arg_idx+1, desc, format_list_for_comment(expected_types)))
 				self._source += indent + '}\n'
 
 			output_arg_check_and_dispatch(protos_with_arg_count, 0, arg_count)
@@ -748,7 +758,7 @@ class FABGen:
 
 		if not has_fixed_argc:
 			self._source += '{\n'
-			self.set_error('runtime', 'incorrect number of arguments to %s' % desc)
+			self._source += self.set_error('runtime', 'incorrect number of arguments to %s' % desc)
 			self._source += '	}\n'
 
 		#

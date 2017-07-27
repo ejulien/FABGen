@@ -2,12 +2,12 @@ def bind_test(gen):
 	gen.start('my_test')
 
 	gen.insert_code('void out_values_function_call(int &a, int d, int *b, float k) { a = 8 * d; *b = 14 * k; }\n\n')
-	gen.bind_function('out_values_function_call', 'void', ['int &a', 'int d', 'int *b', 'float k'], {'argout': ['a', 'b']})
+	gen.bind_function('out_values_function_call', 'void', ['int &a', 'int d', 'int *b', 'float k'], {'arg_out': ['a', 'b']})
 
 	gen.insert_code('int out_values_function_call_rval(int &a, int d, int *b, float k = 1) { a = 8 * d; *b = 14 * d; return d*k; }\n\n')
 	gen.bind_function_overloads('out_values_function_call_rval', [
-		('int', ['int &a', 'int d', 'int *b'], {'argout': ['a', 'b']}),
-		('int', ['int &a', 'int d', 'int *b', 'float k'], {'argout': ['a', 'b']})
+		('int', ['int &a', 'int d', 'int *b'], {'arg_out': ['a', 'b']}),
+		('int', ['int &a', 'int d', 'int *b', 'float k'], {'arg_out': ['a', 'b']})
 	])
 
 	gen.finalize()

@@ -109,9 +109,6 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 
 		self.bind_type(LuaConstCharPtrConverter('const char *'))
 
-	def raise_exception(self, type, reason):
-		self.__source += 'return 0; // FIXME'
-
 	#
 	def new_function(self, name, args):
 		return "static int %s(lua_State *L) {\n" % name
