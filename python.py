@@ -121,7 +121,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 			for i, attr in enumerate(self.static_members):
 				if attr['getter']:
-					out += '	// %s::%s\n' % (self.fully_qualified_name, attr['name'])
+					out += '	// %s::%s\n' % (self.ctype, attr['name'])
 					out += '	tmp = %s(o, NULL);\n' % attr['getter']
 					out += '	PyObject_SetAttrString(o, "%s", tmp);\n' % attr['name']
 					out += '	Py_DECREF(tmp);\n'
@@ -182,7 +182,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 \n''' % (self.bound_name, self.bound_name, self.bound_name)
 
 		# delete delegate
-		out += 'static void delete_%s(void *o) { delete (%s *)o; }\n\n' % (self.bound_name, self.fully_qualified_name)
+		out += 'static void delete_%s(void *o) { delete (%s *)o; }\n\n' % (self.bound_name, self.ctype)
 
 		# to/from C
 		out += '''bool check_%s(PyObject *o) {
@@ -201,12 +201,12 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 		if self._non_copyable:
 			if self._moveable:
-				copy_code = 'obj = new %s(std::move(*(%s *)obj));' % (self.fully_qualified_name, self.fully_qualified_name)
+				copy_code = 'obj = new %s(std::move(*(%s *)obj));' % (self.ctype, self.ctype)
 			else:
 				copy_code = '''PyErr_SetString(PyExc_RuntimeError, "type %s is non-copyable and non-moveable");
 		return NULL;''' % self.bound_name
 		else:
-			copy_code = 'obj = new %s(*(%s *)obj);' % (self.fully_qualified_name, self.fully_qualified_name)
+			copy_code = 'obj = new %s(*(%s *)obj);' % (self.ctype, self.ctype)
 
 		out += '''PyObject *from_c_%s(void *obj, OwnershipPolicy own) {
 	wrapped_PyObject *pyobj = PyObject_New(wrapped_PyObject, (PyTypeObject *)%s_type);

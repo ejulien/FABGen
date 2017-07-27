@@ -7,7 +7,7 @@ class LuaTypeConverterCommon(gen.TypeConverter):
 		super().__init__(type, storage_type)
 
 	def get_type_api(self, module_name):
-		return '// type API for %s\n' % self.fully_qualified_name +\
+		return '// type API for %s\n' % self.ctype +\
 		'bool check_%s(lua_State *L, int idx);\n' % self.clean_name +\
 		'void to_c_%s(lua_State *L, int idx, void *obj);\n' % self.clean_name +\
 		'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy);\n' % self.clean_name
@@ -39,7 +39,7 @@ class LuaClassTypeDefaultConverter(LuaTypeConverterCommon):
 	auto p = lua_touserdata(L, idx);
 	auto w = reinterpret_cast<NativeObjectWrapper *>(p);
 	*obj = reinterpret_cast<%s*>(w->GetObj());
-''' % self.fully_qualified_name
+''' % self.ctype
 
 	def tmpl_from_c(self):
 		return '''
@@ -50,7 +50,7 @@ class LuaClassTypeDefaultConverter(LuaTypeConverterCommon):
 		case Owning:
 			return _wrap_obj<NativeObjectValueWrapper<%s>>(L, obj, %s);
 	}
-''' % (self.fully_qualified_name, self.type_tag, self.fully_qualified_name, self.type_tag)
+''' % (self.ctype, self.type_tag, self.ctype, self.type_tag)
 
 
 #

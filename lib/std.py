@@ -2,9 +2,6 @@ class VectorSequenceFeature:
 	def __init__(self, wrapped_conv):
 		self.wrapped_conv = wrapped_conv
 
-	def init_type_converter(self, gen, conv):
-		pass
-
 	def get_size(self, self_var, out_var):
 		return '%s = %s->size();\n' % (out_var, self_var)
 
