@@ -1,6 +1,6 @@
 import gen
-import lib.python.std as std
-import lib.python.stl as stl
+import lib.cpython.std as std
+import lib.cpython.stl as stl
 
 
 #
@@ -261,7 +261,7 @@ class PythonPtrTypeDefaultConverter(PythonTypeConverterCommon):
 
 
 #
-class PythonGenerator(gen.FABGen):
+class CPythonGenerator(gen.FABGen):
 	default_class_converter = PythonClassTypeDefaultConverter
 	default_ptr_converter = PythonPtrTypeDefaultConverter
 
