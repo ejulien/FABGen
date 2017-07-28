@@ -80,10 +80,6 @@ Provide native access for the target language to values stored in a container ty
 
 ### Extending function prototype with feature
 
-- 'lang': []
-
-Limit the binding of this prototype to a list of generator identified by language (as returned by `FABGen.get_language()`).
-
 - 'route': def router(var, args)
 
 This feature redirects an object method (static or not) to a function with a compatible signature.

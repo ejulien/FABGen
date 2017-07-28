@@ -1,5 +1,5 @@
 import lua
-import python
+import cpython
 
 import lib.std
 import lib.stl
@@ -2256,10 +2256,15 @@ def bind_math(gen):
 	lib.stl.bind_future_T(gen, 'gs::Matrix4', 'FutureMatrix4')
 
 	# math std::vector
-	lib.python.stl.register_PySequence_to_std_vector(gen, 'PySequenceOfVector3', vector3)
+	if gen.get_language() == 'CPython':
+		lib.cpython.stl.register_PySequence_to_std_vector(gen, 'PySequenceOfVector3', vector3)
+		lib.cpython.stl.register_PySequence_to_std_vector(gen, 'PySequenceOfVector4', vector3)
+		lib.cpython.stl.register_PySequence_to_std_vector(gen, 'PySequenceOfMatrix3', matrix3)
+		lib.cpython.stl.register_PySequence_to_std_vector(gen, 'PySequenceOfMatrix4', matrix4)
 
 	std_vector_vector3 = gen.begin_class('std::vector<gs::Vector3>', bound_name='Vector3List', features={'sequence': lib.std.VectorSequenceFeature(vector3)})
-	gen.bind_constructor(std_vector_vector3, ['PySequenceOfVector3 sequence'], ['lang': 'CPython'])
+	if gen.get_language() == 'CPython':
+		gen.bind_constructor(std_vector_vector3, ['PySequenceOfVector3 sequence'])
 	gen.end_class(std_vector_vector3)
 	
 	gen.insert_binding_code('static std::vector<gs::Vector3> pof() { return {gs::Vector3(1, 0, 2), gs::Vector3(5, 4, 8)}; }\n')
@@ -2622,7 +2627,7 @@ void InitializePluginsDefaultSearchPath() {
 	return gen.get_output()
 
 
-hdr, src = bind_gs(python.PythonGenerator())
+hdr, src = bind_gs(cpython.CPythonGenerator())
 
 with open('d:/gs-fabgen-test/bind_gs.h', mode='w', encoding='utf-8') as f:
 	f.write(hdr)
