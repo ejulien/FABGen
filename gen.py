@@ -258,13 +258,13 @@ class TypeConverter:
 	def from_c_call(self, out_var, expr, ownership):
 		assert 'not implemented in this converter'
 
-	def prepare_var_for_conv(self, var, var_ref):
+	def prepare_var_for_conv(self, var, input_ref):
 		"""Transform a variable for use with the converter from_c/to_c methods."""
-		return transform_var_ref_to(var, var_ref, self.arg_storage_ctype.get_ref())
+		return transform_var_ref_to(var, input_ref, self.arg_storage_ctype.get_ref())
 
-	def prepare_var_from_conv(self, var, var_ref):
+	def prepare_var_from_conv(self, var, target_ref):
 		"""Transform a converted variable back to its ctype reference."""
-		return transform_var_ref_to(var, self.arg_storage_ctype.get_ref(), var_ref)
+		return transform_var_ref_to(var, self.arg_storage_ctype.get_ref(), target_ref)
 
 
 def format_list_for_comment(lst):

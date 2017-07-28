@@ -1,4 +1,6 @@
 def bind_std(gen, PythonTypeConverterCommon):
+	gen.add_include('cstdint', True)
+
 	class PythonBoolConverter(PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)

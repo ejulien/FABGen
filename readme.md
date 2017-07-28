@@ -16,19 +16,20 @@ Fabgen is licensed under the GPLv3.
 1. Support multiple target language.
 1. Bidirectional binding. Bind C++ functions to target language and target language functions to C++.
 1. Provide an API for embedding (runtime C type name to target name query, human-readable type conversion functions, etc...).
+1. Full feature support for all target language unless inherently impossible in which case a sensible and preferably configurable callback should be provided.
 
 ## Philosophy
 
-1. Any feature that can be done using what's available should be culled (aka. no feature creep).
 1. Keep as much code as possible on the generic part of the generator.
-1. Support for more complex transformation should be written over the current API if possible.
+1. Any feature that can be done using what's available should be culled (aka. no feature creep).
 
 ## Features
 
 - Customizable type conversion from C/C++ and back.
-- Can bind most C/C++ constructions.
+- Can bind many C/C++ construct.
 - User specifiable bound name.
-- Types can hidden in the generated binding.
+- Types can be hidden from the generated binding interface.
+- Feature mechanism to extend types and prototypes.
 - Simple and hopefully easy to dive into codebase.
 
 ### Supported target language
@@ -112,3 +113,16 @@ This feature transfers the returned object ownership to the target language.
 - 'check_rval': def check(rvals):
 
 Insert return value checking code right after the native call.
+
+## Performance notes
+
+### Beware of silent conversions when providing advanced interoperability with a target language
+
+Consider the following example scenario when binding an std::vector<int> to CPython:
+
+1. The bound type will implement the Sequence protocol (if you use the standard StdVector type converter which implements this feature).
+1. We define a function with two equivalent prototypes taking one argument. One accepts std::vector<int>, the other one accepts PySequence of int as a convenience to the user.
+1. If the PySequence prototype is listed first Python will accept std::vector<int> as PySequence during dynamic dispatching since it implements the Sequence protocol.
+
+This can have serious performance implications as the PySequence always need to be extracted to a temporary std::vector<int> before the native call is made.
+A std::vector<int> does not undergo any transformation and is passed right away to the native layer.

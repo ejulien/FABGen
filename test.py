@@ -3,6 +3,19 @@ import cpython
 
 import lib.std
 import lib.stl
+import lib.cpython.std
+import lib.cpython.stl
+
+
+def bind_std_vector(gen, type, PySequence_T_type, T_conv):
+	if gen.get_language() == 'CPython':
+		gen.bind_type(lib.cpython.stl.PySequenceToStdVectorConverter(PySequence_T_type, T_conv))
+
+	conv = gen.begin_class('std::vector<%s>' % T_conv.ctype, bound_name=type, features={'sequence': lib.std.VectorSequenceFeature(T_conv)})
+	if gen.get_language() == 'CPython':
+		gen.bind_constructor(conv, ['%s sequence' % PySequence_T_type])
+	gen.end_class(conv)
+	return conv
 
 
 def bind_binary_blob(gen):
@@ -1088,42 +1101,91 @@ def bind_render(gen):
 		('bool', ['bool has_color'], ['proxy']),
 		('bool', ['bool has_color', 'const gs::gpu::Texture &texture'], ['proxy'])
 	])
+
+	gen.insert_binding_code('''\
+static void RenderSystemDrawLine_wrapper(gs::render::RenderSystem *render_system, gs::uint count, const std::vector<gs::Vector3> &pos) { render_system->DrawLine(count, pos.data()); }
+static void RenderSystemDrawLine_wrapper(gs::render::RenderSystem *render_system, gs::uint count, const std::vector<gs::Vector3> &pos, const std::vector<gs::Color> &col) { render_system->DrawLine(count, pos.data(), col.data()); }
+static void RenderSystemDrawLine_wrapper(gs::render::RenderSystem *render_system, gs::uint count, const std::vector<gs::Vector3> &pos, const std::vector<gs::Color> &col, const std::vector<gs::tVector2<float>> &uv) { render_system->DrawLine(count, pos.data(), col.data(), uv.data()); }
+
+static void RenderSystemDrawTriangle_wrapper(gs::render::RenderSystem *render_system, gs::uint count, const std::vector<gs::Vector3> &pos) { render_system->DrawTriangle(count, pos.data()); }
+static void RenderSystemDrawTriangle_wrapper(gs::render::RenderSystem *render_system, gs::uint count, const std::vector<gs::Vector3> &pos, const std::vector<gs::Color> &col) { render_system->DrawTriangle(count, pos.data(), col.data()); }
+static void RenderSystemDrawTriangle_wrapper(gs::render::RenderSystem *render_system, gs::uint count, const std::vector<gs::Vector3> &pos, const std::vector<gs::Color> &col, const std::vector<gs::tVector2<float>> &uv) { render_system->DrawTriangle(count, pos.data(), col.data(), uv.data()); }
+
+static void RenderSystemDrawSprite_wrapper(gs::render::RenderSystem *render_system, gs::uint count, const std::vector<gs::Vector3> &pos) { render_system->DrawSprite(count, pos.data()); }
+static void RenderSystemDrawSprite_wrapper(gs::render::RenderSystem *render_system, gs::uint count, const std::vector<gs::Vector3> &pos, const std::vector<gs::Color> &col) { render_system->DrawSprite(count, pos.data(), col.data()); }
+static void RenderSystemDrawSprite_wrapper(gs::render::RenderSystem *render_system, gs::uint count, const std::vector<gs::Vector3> &pos, const std::vector<gs::Color> &col, const std::vector<float> &size) { render_system->DrawSprite(count, pos.data(), col.data(), size.data()); }
+\n''', 'wrapper signatures to cast target language list and std::vector to raw pointers')
+
+	DrawLine_wrapper_route = lambda args: 'RenderSystemDrawLine_wrapper(%s);' % (', '.join(args))
+	DrawTriangle_wrapper_route = lambda args: 'RenderSystemDrawTriangle_wrapper(%s);' % (', '.join(args))
+	DrawSprite_wrapper_route = lambda args: 'RenderSystemDrawSprite_wrapper(%s);' % (', '.join(args))
+
 	gen.bind_method_overloads(shared_render_system, 'DrawLine', [
-		('void', ['gs::uint count', 'gs::Vector3 *pos'], ['proxy']),
-		('void', ['gs::uint count', 'gs::Vector3 *pos', 'gs::Color *col'], ['proxy']),
-		('void', ['gs::uint count', 'gs::Vector3 *pos', 'gs::Color *col', 'const gs::tVector2<float> *uv'], ['proxy']),
-		('void', ['gs::uint count', 'gs::Vector3 *pos', 'gs::Color *col', 'const gs::tVector2<float> *uv', 'uint16_t *idx', 'gs::uint vtx_count'], ['proxy'])
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos'], {'proxy': None, 'route': DrawLine_wrapper_route}),
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col'], {'proxy': None, 'route': DrawLine_wrapper_route}),
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<gs::tVector2<float>> &uv'], {'proxy': None, 'route': DrawLine_wrapper_route}),
+		('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawLine_wrapper_route}),
+		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawLine_wrapper_route}),
+		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfVector2 uv'], {'proxy': None, 'route': DrawLine_wrapper_route})
 	])
 	gen.bind_method_overloads(shared_render_system, 'DrawTriangle', [
-		('void', ['gs::uint count', 'gs::Vector3 *pos'], ['proxy']),
-		('void', ['gs::uint count', 'gs::Vector3 *pos', 'gs::Color *col'], ['proxy']),
-		('void', ['gs::uint count', 'gs::Vector3 *pos', 'gs::Color *col', 'const gs::tVector2<float> *uv'], ['proxy']),
-		('void', ['gs::uint count', 'gs::Vector3 *pos', 'gs::Color *col', 'const gs::tVector2<float> *uv', 'uint16_t *idx', 'gs::uint vtx_count'], ['proxy'])
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos'], {'proxy': None, 'route': DrawTriangle_wrapper_route}),
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col'], {'proxy': None, 'route': DrawTriangle_wrapper_route}),
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<gs::tVector2<float>> &uv'], {'proxy': None, 'route': DrawTriangle_wrapper_route}),
+		('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawTriangle_wrapper_route}),
+		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawTriangle_wrapper_route}),
+		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfVector2 uv'], {'proxy': None, 'route': DrawTriangle_wrapper_route})
 	])
 	gen.bind_method_overloads(shared_render_system, 'DrawSprite', [
-		('void', ['gs::uint count', 'gs::Vector3 *pos'], ['proxy']),
-		('void', ['gs::uint count', 'gs::Vector3 *pos', 'gs::Color *col'], ['proxy']),
-		('void', ['gs::uint count', 'gs::Vector3 *pos', 'gs::Color *col', 'const float *size'], ['proxy']),
-		('void', ['gs::uint count', 'gs::Vector3 *pos', 'gs::Color *col', 'const float *size', 'float global_size'], ['proxy'])
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos'], {'proxy': None, 'route': DrawSprite_wrapper_route}),
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col'], {'proxy': None, 'route': DrawSprite_wrapper_route}),
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<float> &size'], {'proxy': None, 'route': DrawSprite_wrapper_route}),
+		('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawSprite_wrapper_route}),
+		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawSprite_wrapper_route}),
+		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfFloat size'], {'proxy': None, 'route': DrawSprite_wrapper_route})
 	])
 
+	gen.insert_binding_code('''\
+static void RenderSystemDrawLineAuto_wrapper(gs::render::RenderSystem *render_system, gs::uint count, const std::vector<gs::Vector3> &pos) { render_system->DrawLineAuto(count, pos.data()); }
+static void RenderSystemDrawLineAuto_wrapper(gs::render::RenderSystem *render_system, gs::uint count, const std::vector<gs::Vector3> &pos, const std::vector<gs::Color> &col) { render_system->DrawLineAuto(count, pos.data(), col.data()); }
+static void RenderSystemDrawLineAuto_wrapper(gs::render::RenderSystem *render_system, gs::uint count, const std::vector<gs::Vector3> &pos, const std::vector<gs::Color> &col, const std::vector<gs::tVector2<float>> &uv, const gs::gpu::Texture *texture) { render_system->DrawLineAuto(count, pos.data(), col.data(), uv.data(), texture); }
+
+static void RenderSystemDrawTriangleAuto_wrapper(gs::render::RenderSystem *render_system, gs::uint count, const std::vector<gs::Vector3> &pos) { render_system->DrawTriangleAuto(count, pos.data()); }
+static void RenderSystemDrawTriangleAuto_wrapper(gs::render::RenderSystem *render_system, gs::uint count, const std::vector<gs::Vector3> &pos, const std::vector<gs::Color> &col) { render_system->DrawTriangleAuto(count, pos.data(), col.data()); }
+static void RenderSystemDrawTriangleAuto_wrapper(gs::render::RenderSystem *render_system, gs::uint count, const std::vector<gs::Vector3> &pos, const std::vector<gs::Color> &col, const std::vector<gs::tVector2<float>> &uv, const gs::gpu::Texture *texture) { render_system->DrawTriangleAuto(count, pos.data(), col.data(), uv.data(), texture); }
+
+static void RenderSystemDrawSpriteAuto_wrapper(gs::render::RenderSystem *render_system, gs::uint count, const std::vector<gs::Vector3> &pos, const gs::gpu::Texture &texture) { render_system->DrawSpriteAuto(count, pos.data(), texture); }
+static void RenderSystemDrawSpriteAuto_wrapper(gs::render::RenderSystem *render_system, gs::uint count, const std::vector<gs::Vector3> &pos, const gs::gpu::Texture &texture, const std::vector<gs::Color> &col) { render_system->DrawSpriteAuto(count, pos.data(), texture, col.data()); }
+static void RenderSystemDrawSpriteAuto_wrapper(gs::render::RenderSystem *render_system, gs::uint count, const std::vector<gs::Vector3> &pos, const gs::gpu::Texture &texture, const std::vector<gs::Color> &col, const std::vector<float> &size) { render_system->DrawSpriteAuto(count, pos.data(), texture, col.data(), size.data()); }
+\n''', 'wrapper signatures to cast target language list and std::vector to raw pointers')
+
+	DrawLineAuto_wrapper_route = lambda args: 'RenderSystemDrawLineAuto_wrapper(%s);' % (', '.join(args))
+	DrawTriangleAuto_wrapper_route = lambda args: 'RenderSystemDrawTriangleAuto_wrapper(%s);' % (', '.join(args))
+	DrawSpriteAuto_wrapper_route = lambda args: 'RenderSystemDrawSpriteAuto_wrapper(%s);' % (', '.join(args))
+
 	gen.bind_method_overloads(shared_render_system, 'DrawLineAuto', [
-		('void', ['gs::uint count', 'gs::Vector3 *pos'], ['proxy']),
-		('void', ['gs::uint count', 'gs::Vector3 *pos', 'gs::Color *col'], ['proxy']),
-		('void', ['gs::uint count', 'gs::Vector3 *pos', 'gs::Color *col', 'const gs::tVector2<float> *uv', 'const gs::gpu::Texture *texture'], ['proxy']),
-		('void', ['gs::uint count', 'gs::Vector3 *pos', 'gs::Color *col', 'const gs::tVector2<float> *uv', 'const gs::gpu::Texture *texture', 'uint16_t *idx', 'gs::uint vtx_count'], ['proxy'])
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos'], {'proxy': None, 'route': DrawLineAuto_wrapper_route}),
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col'], {'proxy': None, 'route': DrawLineAuto_wrapper_route}),
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<gs::tVector2<float>> &uv', 'const gs::gpu::Texture *texture'], {'proxy': None, 'route': DrawLineAuto_wrapper_route}),
+		('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawLineAuto_wrapper_route}),
+		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawLineAuto_wrapper_route}),
+		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfVector2 uv', 'const gs::gpu::Texture *texture'], {'proxy': None, 'route': DrawLineAuto_wrapper_route})
 	])
 	gen.bind_method_overloads(shared_render_system, 'DrawTriangleAuto', [
-		('void', ['gs::uint count', 'gs::Vector3 *pos'], ['proxy']),
-		('void', ['gs::uint count', 'gs::Vector3 *pos', 'gs::Color *col'], ['proxy']),
-		('void', ['gs::uint count', 'gs::Vector3 *pos', 'gs::Color *col', 'const gs::tVector2<float> *uv', 'const gs::gpu::Texture *texture'], ['proxy']),
-		('void', ['gs::uint count', 'gs::Vector3 *pos', 'gs::Color *col', 'const gs::tVector2<float> *uv', 'const gs::gpu::Texture *texture', 'uint16_t *idx', 'gs::uint vtx_count'], ['proxy'])
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route}),
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route}),
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<gs::tVector2<float>> &uv', 'const gs::gpu::Texture *texture'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route}),
+		('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route}),
+		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route}),
+		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfVector2 uv', 'const gs::gpu::Texture *texture'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route})
 	])
 	gen.bind_method_overloads(shared_render_system, 'DrawSpriteAuto', [
-		('void', ['gs::uint count', 'gs::Vector3 *pos', 'const gs::gpu::Texture &texture'], ['proxy']),
-		('void', ['gs::uint count', 'gs::Vector3 *pos', 'const gs::gpu::Texture &texture', 'gs::Color *col'], ['proxy']),
-		('void', ['gs::uint count', 'gs::Vector3 *pos', 'const gs::gpu::Texture &texture', 'gs::Color *col', 'const float *size'], ['proxy']),
-		('void', ['gs::uint count', 'gs::Vector3 *pos', 'const gs::gpu::Texture &texture', 'gs::Color *col', 'const float *size', 'float global_size'], ['proxy'])
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const gs::gpu::Texture &texture'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route}),
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const gs::gpu::Texture &texture', 'const std::vector<gs::Color> &col'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route}),
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const gs::gpu::Texture &texture', 'const std::vector<gs::Color> &col', 'const std::vector<float> &size'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route}),
+		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'const gs::gpu::Texture &texture'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route}),
+		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'const gs::gpu::Texture &texture', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route}),
+		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'const gs::gpu::Texture &texture', 'PySequenceOfColor col', 'PySequenceOfFloat size'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route})
 	])
 
 	gen.bind_method(shared_render_system, 'DrawQuad2D', 'void', ['const gs::Rect<float> &src_rect', 'const gs::Rect<float> &dst_rect'], ['proxy'])
@@ -1691,6 +1753,8 @@ def bind_color(gen):
 	gen.bind_function('gs::ColorFromVector3', 'gs::Color', ['const gs::Vector3 &v'])
 	gen.bind_function('gs::ColorFromVector4', 'gs::Color', ['const gs::Vector4 &v'])
 
+	bind_std_vector(gen, 'ColorList', 'PySequenceOfColor', color)
+
 
 def bind_font_engine(gen):
 	gen.add_include('engine/font_engine.h')
@@ -1941,9 +2005,10 @@ def bind_math(gen):
 		gen.bind_static_method(vector2, 'Dist', T, ['const gs::tVector2<%s> &a'%T, 'const gs::tVector2<%s> &b'%T])
 
 		gen.end_class(vector2)
+		return vector2
 
-	bind_vector2_T('float', 'Vector2')
-	bind_vector2_T('int', 'IntVector2')
+	vector2 = bind_vector2_T('float', 'Vector2')
+	ivector2 = bind_vector2_T('int', 'IntVector2')
 
 	# gs::Vector4
 	gen.add_include('foundation/vector4.h')
@@ -2250,22 +2315,20 @@ def bind_math(gen):
 	gen.bind_function('ToIntRect', 'gs::Rect<int>', ['const gs::Rect<float> &rect'])
 
 	# math futures
+	lib.stl.bind_future_T(gen, 'gs::tVector2<float>', 'FutureVector2')
+	lib.stl.bind_future_T(gen, 'gs::tVector2<int>', 'FutureIntVector2')
 	lib.stl.bind_future_T(gen, 'gs::Vector3', 'FutureVector3')
 	lib.stl.bind_future_T(gen, 'gs::Vector4', 'FutureVector4')
 	lib.stl.bind_future_T(gen, 'gs::Matrix3', 'FutureMatrix3')
 	lib.stl.bind_future_T(gen, 'gs::Matrix4', 'FutureMatrix4')
 
 	# math std::vector
-	if gen.get_language() == 'CPython':
-		lib.cpython.stl.register_PySequence_to_std_vector(gen, 'PySequenceOfVector3', vector3)
-		lib.cpython.stl.register_PySequence_to_std_vector(gen, 'PySequenceOfVector4', vector3)
-		lib.cpython.stl.register_PySequence_to_std_vector(gen, 'PySequenceOfMatrix3', matrix3)
-		lib.cpython.stl.register_PySequence_to_std_vector(gen, 'PySequenceOfMatrix4', matrix4)
-
-	std_vector_vector3 = gen.begin_class('std::vector<gs::Vector3>', bound_name='Vector3List', features={'sequence': lib.std.VectorSequenceFeature(vector3)})
-	if gen.get_language() == 'CPython':
-		gen.bind_constructor(std_vector_vector3, ['PySequenceOfVector3 sequence'])
-	gen.end_class(std_vector_vector3)
+	bind_std_vector(gen, 'Vector2List', 'PySequenceOfVector2', vector2)
+	bind_std_vector(gen, 'IntVector2List', 'PySequenceOfIntVector2', ivector2)
+	bind_std_vector(gen, 'Vector3List', 'PySequenceOfVector3', vector3)
+	bind_std_vector(gen, 'Vector4List', 'PySequenceOfVector4', vector4)
+	bind_std_vector(gen, 'Matrix3List', 'PySequenceOfMatrix3', matrix3)
+	bind_std_vector(gen, 'Matrix4List', 'PySequenceOfMatrix4', matrix4)
 
 
 def bind_frustum(gen):
@@ -2555,6 +2618,10 @@ static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixe
 def bind_gs(gen):
 	gen.start('gs')
 
+	if gen.get_language() == 'CPython':
+		lib.cpython.std.bind_std(gen, cpython.PythonTypeConverterCommon)
+		lib.cpython.stl.bind_stl(gen, cpython.PythonTypeConverterCommon)
+
 	gen.add_include('engine/engine.h')
 	gen.add_include('engine/engine_plugins.h')
 	gen.add_include('engine/engine_factories.h')
@@ -2592,6 +2659,9 @@ void InitializePluginsDefaultSearchPath() {
 
 	lib.stl.bind_future_T(gen, 'gs::uint', 'FutureUInt')
 	lib.stl.bind_future_T(gen, 'size_t', 'FutureSize')
+
+	bind_std_vector(gen, 'IntList', 'PySequenceOfInt', gen.get_conv('int'))
+	bind_std_vector(gen, 'FloatList', 'PySequenceOfFloat', gen.get_conv('float'))
 
 	bind_binary_blob(gen)
 	bind_time(gen)

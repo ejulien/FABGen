@@ -1,12 +1,9 @@
 import gen
-import lib.cpython.std as std
-import lib.cpython.stl as stl
 
 
-#
 class PythonTypeConverterCommon(gen.TypeConverter):
-	def __init__(self, type, storage_type=None, bound_name=None):
-		super().__init__(type, storage_type, bound_name)
+	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):
+		super().__init__(type, arg_storage_type, bound_name, rval_storage_type)
 
 	def get_type_api(self, module_name):
 		return 'bool check_%s(PyObject *o);\n' % self.bound_name +\
@@ -24,10 +21,9 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 		return "check_%s(%s)" % (self.bound_name, in_var)
 
 
-#
 class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
-	def __init__(self, type, storage_type=None, bound_name=None):
-		super().__init__(type, storage_type, bound_name)
+	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):
+		super().__init__(type, arg_storage_type, bound_name, rval_storage_type)
 
 	def get_type_glue(self, gen, module_name):
 		out = ''
@@ -232,8 +228,8 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 #
 class PythonPtrTypeDefaultConverter(PythonTypeConverterCommon):
-	def __init__(self, type, storage_type=None, bound_name=None):
-		super().__init__(type, storage_type, bound_name)
+	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):
+		super().__init__(type, arg_storage_type, bound_name, rval_storage_type)
 
 	def get_type_glue(self, gen, module_name):
 		out = '''bool check_%s(PyObject *o) {
@@ -325,9 +321,6 @@ static inline bool CheckArgsTuple(PyObject *args) {
 	return true;
 }
 \n'''
-
-		std.bind_std(self, PythonTypeConverterCommon)
-		stl.bind_stl(self, PythonTypeConverterCommon)
 
 	#
 	def set_error(self, type, reason):
