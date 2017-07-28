@@ -42,7 +42,7 @@ for (int i = 0; i < size; ++i) {
 	to_c_%s(PySequence_GetItem(o, i), &v);
 	(*sv)[i] = *v;
 }
-}\n''' % (self.bound_name, self.T_conv.ctype, self.T_conv.ctype, self.T_conv.storage_ctype, self.T_conv.bound_name)
+}\n''' % (self.bound_name, self.T_conv.ctype, self.T_conv.ctype, self.T_conv.arg_storage_ctype, self.T_conv.bound_name)
 
 			out += '''PyObject *from_c_%s(void *obj, OwnershipPolicy) {
 std::vector<%s> *sv = (std::vector<%s> *)obj;

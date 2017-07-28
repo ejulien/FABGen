@@ -217,10 +217,11 @@ def transform_var_ref_to(var, from_ref, to_ref):
 
 
 class TypeConverter:
-	def __init__(self, type, storage_type=None, bound_name=None):
+	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_ctype=None):
 		self.ctype = parse(type, _CType)
-		self.storage_ctype = parse(storage_type, _CType) if storage_type is not None else self.ctype.non_const()
+		self.arg_storage_ctype = parse(arg_storage_type, _CType) if arg_storage_type is not None else self.ctype.non_const()
 		self.bound_name = get_ctype_default_bound_name(self.ctype) if bound_name is None else bound_name
+		self.rval_storage_ctype = parse(rval_storage_ctype, _CType) if rval_storage_ctype is not None else None  # if None the prototype return value type will be used to determine adequate storage at binding time
 
 		self.type_tag = 'type_tag_' + self.bound_name
 
@@ -259,11 +260,11 @@ class TypeConverter:
 
 	def prepare_var_for_conv(self, var, var_ref):
 		"""Transform a variable for use with the converter from_c/to_c methods."""
-		return transform_var_ref_to(var, var_ref, self.storage_ctype.get_ref())
+		return transform_var_ref_to(var, var_ref, self.arg_storage_ctype.get_ref())
 
 	def prepare_var_from_conv(self, var, var_ref):
 		"""Transform a converted variable back to its ctype reference."""
-		return transform_var_ref_to(var, self.storage_ctype.get_ref(), var_ref)
+		return transform_var_ref_to(var, self.arg_storage_ctype.get_ref(), var_ref)
 
 
 def format_list_for_comment(lst):
@@ -382,15 +383,15 @@ class FABGen:
 		return conv
 
 	#
-	def typedef(self, type, alias_of, storage_type=None, bound_name=None):
+	def typedef(self, type, alias_of, arg_storage_type=None, bound_name=None):
 		conv = copy.deepcopy(self.__type_convs[alias_of])
 
-		default_storage_type = type if storage_type is None else storage_type
+		default_arg_storage_type = type if arg_storage_type is None else arg_storage_type
 
 		if bound_name is not None:
 			conv.bound_name=bound_name
 		conv.ctype = parse(type, _CType)
-		conv.storage_ctype = parse(default_storage_type, _CType)
+		conv.arg_storage_ctype = parse(default_arg_storage_type, _CType)
 
 		self.__type_convs[type] = conv
 
@@ -512,13 +513,17 @@ class FABGen:
 
 			rval_type, args, features = proto
 
-			rval = parse(rval_type, _CType)
+			rval_ctype = parse(rval_type, _CType)
+			rval_conv = self.select_ctype_conv(rval_ctype)
 
-			rval_var_ctype = rval  # prepare the return value variable CType
-			if rval_var_ctype.get_ref() == '':
-				rval_var_ctype = rval_var_ctype.non_const()
+			if rval_conv is not None and rval_conv.rval_storage_ctype is not None:
+				rval_storage_ctype = rval_conv.rval_storage_ctype
+			else:
+				rval_storage_ctype = rval_ctype  # prepare the return value variable CType
+				if rval_storage_ctype.get_ref() == '':
+					rval_storage_ctype = rval_storage_ctype.non_const()
 
-			_proto = {'rval': {'var_ctype': rval_var_ctype, 'conv': self.select_ctype_conv(rval)}, 'args': [], 'argsin': [], 'features': features}
+			_proto = {'rval': {'storage_ctype': rval_storage_ctype, 'conv': rval_conv}, 'args': [], 'argsin': [], 'features': features}
 
 			if not type(args) is type([]):
 				args = [args]
@@ -547,13 +552,13 @@ class FABGen:
 		if 'proxy' in features:
 			proxy = conv._features['proxy']
 
-			out += '	' + self.decl_var(conv.storage_ctype, '%s_wrapped' % out_var)
+			out += '	' + self.decl_var(conv.arg_storage_ctype, '%s_wrapped' % out_var)
 			out += '	' + conv.to_c_call(self.get_self(ctx), '&%s_wrapped' % out_var)
 
-			out += '	' + self.decl_var(proxy.wrapped_conv.storage_ctype, out_var)
+			out += '	' + self.decl_var(proxy.wrapped_conv.arg_storage_ctype, out_var)
 			out += proxy.unwrap('%s_wrapped' % out_var, out_var)
 		else:
-			out += '	' + self.decl_var(conv.storage_ctype, out_var)
+			out += '	' + self.decl_var(conv.arg_storage_ctype, out_var)
 			out += '	' + conv.to_c_call(self.get_self(ctx), '&%s' % out_var)
 		return out
 
@@ -564,7 +569,7 @@ class FABGen:
 		return conv.to_c_call(self.get_arg(idx, ctx), '&%s' % var)
 
 	def _prepare_c_arg(self, idx, conv, var, ctx='default'):
-		return self._declare_c_arg(conv.storage_ctype, var) + self._convert_c_arg(idx, conv, var, ctx)
+		return self._declare_c_arg(conv.arg_storage_ctype, var) + self._convert_c_arg(idx, conv, var, ctx)
 
 	def prepare_c_rval(self, conv, ctype, var, ownership=None):
 		if ownership is None:
@@ -583,9 +588,6 @@ class FABGen:
 
 			if self_conv is not None:
 				self.__assert_conv_feature(self_conv, 'proxy')
-
-		rval = proto['rval']['var_ctype']
-		rval_conv = proto['rval']['conv']
 
 		# prepare C call self argument
 		if self_conv:
@@ -608,8 +610,8 @@ class FABGen:
 				arg_ctype = conv.ctype
 				self._source += self._declare_c_arg(arg_ctype, var)
 			else:
-				arg_ctype = conv.storage_ctype
-				self._source += self._declare_c_arg(conv.storage_ctype, var)
+				arg_ctype = conv.arg_storage_ctype
+				self._source += self._declare_c_arg(conv.arg_storage_ctype, var)
 				self._source += self._convert_c_arg(argin_idx, conv, var, ctx)
 				argin_idx += 1
 
@@ -620,7 +622,8 @@ class FABGen:
 		rvals_prepare_args = []
 
 		if ctx == 'constructor':
-			rval_ptr = rval.add_ref('*')  # constructor returns a pointer
+			rval_conv = proto['rval']['conv']
+			rval_storage_ctype = proto['rval']['storage_ctype'].add_ref('*')  # constructor returns a pointer
 
 			if enable_proxy:
 				proxy = rval_conv._features['proxy']
@@ -628,18 +631,21 @@ class FABGen:
 				self._source += self.decl_var(proxy.wrapped_conv.ctype.add_ref('*'), 'rval_raw', ' = ')
 				self._source += 'new %s(%s);\n' % (proxy.wrapped_conv.ctype, ', '.join(c_call_args))
 
-				self._source += self.decl_var(rval_ptr, 'rval')
+				self._source += self.decl_var(rval_storage_ctype, 'rval')
 				self._source += proxy.wrap('rval_raw', 'rval')
 			else:
-				self._source += self.decl_var(rval_ptr, 'rval', ' = ')
-				self._source += 'new %s(%s);\n' % (rval, ', '.join(c_call_args))
+				self._source += self.decl_var(rval_storage_ctype, 'rval', ' = ')
+				self._source += 'new %s(%s);\n' % (rval_conv.ctype, ', '.join(c_call_args))
 
-			rvals_prepare_args.append((rval_conv, rval_ptr, 'rval', 'Owning'))  # constructor output is always owned by VM
+			rvals_prepare_args.append((rval_conv, rval_storage_ctype, 'rval', 'Owning'))  # constructor output is always owned by VM
 			rvals.append('rval')
 		else:
+			rval_conv = proto['rval']['conv']
+			rval_storage_ctype = proto['rval']['storage_ctype']
+
 			# return value is optional for a function call
 			if rval_conv:
-				self._source += self.decl_var(rval, 'rval', ' = ')
+				self._source += self.decl_var(rval_storage_ctype, 'rval', ' = ')
 
 			if 'route' in features:
 				if self_conv:
@@ -653,7 +659,7 @@ class FABGen:
 				if 'new_obj' in features:
 					ownership = 'Owning'  # force ownership when the prototype is flagged to return a new object
 
-				rvals_prepare_args.append((rval_conv, rval, 'rval', ownership))
+				rvals_prepare_args.append((rval_conv, rval_storage_ctype, 'rval', ownership))
 				rvals.append('rval')
 
 		# process argout
