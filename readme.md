@@ -14,7 +14,7 @@ Fabgen is licensed under the GPLv3.
 ## Goals
 
 1. Support multiple target language.
-1. Bidirectional binding. Bind C function to target language and target language function to C function.
+1. Bidirectional binding. Bind C++ functions to target language and target language functions to C++.
 1. Provide an API for embedding (runtime C type name to target name query, human-readable type conversion functions, etc...).
 
 ## Philosophy
@@ -79,6 +79,10 @@ class StdSharedPtrProxyFeature:
 Provide native access for the target language to values stored in a container type.
 
 ### Extending function prototype with feature
+
+- 'lang': []
+
+Limit the binding of this prototype to a list of generator identified by language (as returned by `FABGen.get_language()`).
 
 - 'route': def router(var, args)
 

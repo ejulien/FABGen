@@ -1834,6 +1834,7 @@ def bind_math(gen):
 	gen.begin_class('gs::Matrix44')
 
 	# math
+	gen.add_include('foundation/rect.h')
 	gen.add_include('foundation/math.h')
 
 	gen.bind_named_enum('gs::math::RotationOrder', [
@@ -2255,35 +2256,13 @@ def bind_math(gen):
 	lib.stl.bind_future_T(gen, 'gs::Matrix4', 'FutureMatrix4')
 
 	# math std::vector
-	class PySequenceToStdVectorConverter(python.PythonTypeConverterCommon):
-		def __init__(self, type, T_conv):
-			super().__init__(type, 'std::vector<%s>' % T_conv.ctype)
-			self.ctype = gen.parse_ctype('std::vector<%s>' % T_conv.ctype)
-			self.T_conv = T_conv
-
-		def get_type_glue(self, gen, module_name):
-			out = 'bool check_%s(PyObject *o) { return PySequence_Check(o) ? true : false; }\n' % self.bound_name
-
-			out += '''void to_c_%s(PyObject *o, void *obj) {
-	std::vector<%s> *sv = (std::vector<%s> *)obj;
-
-	int size = PySequence_Length(o);
-	sv->resize(size);
-	for (int i = 0; i < size; ++i) {
-		%s v;
-		to_c_%s(PySequence_GetItem(o, i), &v);
-		(*sv)[i] = *v;
-	}
-}\n''' % (self.bound_name, self.T_conv.ctype, self.T_conv.ctype, self.T_conv.storage_ctype, self.T_conv.bound_name)
-
-			out += 'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return NULL; }\n' % self.bound_name
-			return out
-
-	gen.bind_type(PySequenceToStdVectorConverter('PySequenceOfVector3', vector3))
+	lib.python.stl.register_PySequence_to_std_vector(gen, 'PySequenceOfVector3', vector3)
 
 	std_vector_vector3 = gen.begin_class('std::vector<gs::Vector3>', bound_name='Vector3List', features={'sequence': lib.std.VectorSequenceFeature(vector3)})
-	gen.bind_constructor(std_vector_vector3, ['PySequenceOfVector3 sequence'])
+	gen.bind_constructor(std_vector_vector3, ['PySequenceOfVector3 sequence'], ['lang': 'CPython'])
 	gen.end_class(std_vector_vector3)
+	
+	gen.insert_binding_code('static std::vector<gs::Vector3> pof() { return {gs::Vector3(1, 0, 2), gs::Vector3(5, 4, 8)}; }\n')
 
 	gen.bind_function('pof', 'PySequenceOfVector3', [])
 

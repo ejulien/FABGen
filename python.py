@@ -265,8 +265,8 @@ class PythonGenerator(gen.FABGen):
 	default_class_converter = PythonClassTypeDefaultConverter
 	default_ptr_converter = PythonPtrTypeDefaultConverter
 
-	def get_langage(self):
-		return "Python"
+	def get_language(self):
+		return "CPython"
 
 	def output_includes(self):
 		super().output_includes()
