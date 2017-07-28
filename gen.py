@@ -512,8 +512,13 @@ class FABGen:
 
 			rval_type, args, features = proto
 
-			rval = parse(proto[0]rval_type, _CType)
-			_proto = {'rval': {'conv': self.select_ctype_conv(rval)}, 'args': [], 'argsin': [], 'features': features}
+			rval = parse(rval_type, _CType)
+
+			rval_var_ctype = rval  # prepare the return value variable CType
+			if rval_var_ctype.get_ref() == '':
+				rval_var_ctype = rval_var_ctype.non_const()
+
+			_proto = {'rval': {'var_ctype': rval_var_ctype, 'conv': self.select_ctype_conv(rval)}, 'args': [], 'argsin': [], 'features': features}
 
 			if not type(args) is type([]):
 				args = [args]
@@ -579,9 +584,8 @@ class FABGen:
 			if self_conv is not None:
 				self.__assert_conv_feature(self_conv, 'proxy')
 
+		rval = proto['rval']['var_ctype']
 		rval_conv = proto['rval']['conv']
-		if rval_conv:
-			rval = rval_conv.ctype.non_const()
 
 		# prepare C call self argument
 		if self_conv:

@@ -2266,10 +2266,6 @@ def bind_math(gen):
 	if gen.get_language() == 'CPython':
 		gen.bind_constructor(std_vector_vector3, ['PySequenceOfVector3 sequence'])
 	gen.end_class(std_vector_vector3)
-	
-	gen.insert_binding_code('static std::vector<gs::Vector3> pof() { return {gs::Vector3(1, 0, 2), gs::Vector3(5, 4, 8)}; }\n')
-
-	gen.bind_function('pof', 'PySequenceOfVector3', [])
 
 
 def bind_frustum(gen):
@@ -2597,13 +2593,10 @@ void InitializePluginsDefaultSearchPath() {
 	lib.stl.bind_future_T(gen, 'gs::uint', 'FutureUInt')
 	lib.stl.bind_future_T(gen, 'size_t', 'FutureSize')
 
-	"""
 	bind_binary_blob(gen)
 	bind_time(gen)
 	bind_task_system(gen)
-	"""
 	bind_math(gen)
-	"""
 	bind_frustum(gen)
 	bind_window_system(gen)
 	bind_color(gen)
@@ -2620,7 +2613,6 @@ void InitializePluginsDefaultSearchPath() {
 	bind_input(gen)
 	bind_plus(gen)
 	bind_mixer(gen)
-	"""
 
 	gen.finalize()
 
