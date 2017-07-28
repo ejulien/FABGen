@@ -186,6 +186,14 @@ def bind_engine(gen):
 	gen.bind_function('gs::core::GetLastFrameDuration', 'gs::time_ns', [])
 	gen.bind_function('gs::core::ResetLastFrameDuration', 'void', [])
 
+	gen.add_include('foundation/projection.h')
+
+	gen.bind_function('gs::ZoomFactorToFov', 'float', ['float zoom_factor'])
+	gen.bind_function('gs::FovToZoomFactor', 'float', ['float fov'])
+
+	gen.bind_function('gs::ComputeOrthographicProjectionMatrix', 'gs::Matrix44', ['float znear', 'float zfar', 'float size', 'const gs::tVector2<float> &aspect_ratio'])
+	gen.bind_function('gs::ComputePerspectiveProjectionMatrix', 'gs::Matrix44', ['float znear', 'float zfar', 'float zoom_factor', 'const gs::tVector2<float> &aspect_ratio'])
+
 
 def bind_plugins(gen):
 	gen.bind_function_overloads('gs::core::LoadPlugins', [('gs::uint', [], []), ('gs::uint', ['const char *path'], [])])
@@ -795,9 +803,14 @@ def bind_gpu(gen):
 	gen.bind_method(shared_renderer, 'LoadNativeTexture', 'bool', ['gs::gpu::Texture &texture', 'const char *path'], ['proxy'])
 	gen.bind_method(shared_renderer, 'GetNativeTextureExt', 'const char *', [], ['proxy'])
 
+	gen.insert_binding_code('''\
+static void RendererBlitTexture_wrapper(gs::gpu::Renderer *renderer, gs::gpu::Texture &texture, const gs::Picture &picture) { renderer->BlitTexture(texture, picture.GetData(), picture.GetDataSize(), picture.GetWidth(), picture.GetHeight()); }
+\n''')
+
 	gen.bind_method_overloads(shared_renderer, 'BlitTexture', [
-		('void', ['gs::gpu::Texture &texture', 'const void *data', 'size_t data_size', 'gs::uint width', 'gs::uint height'], ['proxy']),
-		('void', ['gs::gpu::Texture &texture', 'const void *data', 'size_t data_size', 'gs::uint width', 'gs::uint height', 'gs::uint x', 'gs::uint y'], ['proxy'])
+		('void', ['gs::gpu::Texture &texture', 'const gs::Picture &picture'], {'proxy': None, 'route': lambda args: 'RendererBlitTexture_wrapper(%s);' % ', '.join(args)}),
+		#('void', ['gs::gpu::Texture &texture', 'const void *data', 'size_t data_size', 'gs::uint width', 'gs::uint height'], ['proxy']),
+		#('void', ['gs::gpu::Texture &texture', 'const void *data', 'size_t data_size', 'gs::uint width', 'gs::uint height', 'gs::uint x', 'gs::uint y'], ['proxy'])
 	])
 	gen.bind_method(shared_renderer, 'ResizeTexture', 'void', ['gs::gpu::Texture &texture', 'gs::uint width', 'gs::uint height'], ['proxy'])
 
