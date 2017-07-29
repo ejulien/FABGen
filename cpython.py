@@ -63,7 +63,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 			out += 'bool error = false;\n'
 			out += seq.get_item('_self', 'idx', 'rval', 'error')
 			out += '''if (error) {
-	PyErr_Format(PyExc_TypeError, "invalid lookup");
+	PyErr_Format(PyExc_IndexError, "invalid lookup");
 	return NULL;
 }\n'''
 			out += gen.prepare_c_rval(seq.wrapped_conv, seq.wrapped_conv.ctype, 'rval')
@@ -81,7 +81,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 			out += 'bool error = false;\n'
 			out += seq.set_item('_self', 'idx', 'cval', 'error')
 			out += '''if (error) {
-	PyErr_Format(PyExc_TypeError, "invalid assignation");
+	PyErr_Format(PyExc_IndexError, "invalid assignation");
 	return -1;
 }\n'''
 			out += '	return 0;\n'
