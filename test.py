@@ -424,8 +424,7 @@ def bind_scene(gen):
 	shared_component = gen.begin_class('std::shared_ptr<gs::core::Component>', bound_name='Component', features={'proxy': lib.stl.SharedPtrProxyFeature(component)})
 	gen.end_class(shared_component)
 
-	std_vector_shared_component = gen.begin_class('std::vector<std::shared_ptr<gs::core::Component>>', bound_name='ComponentList', features={'sequence': lib.std.VectorSequenceFeature(shared_component)})
-	gen.end_class(std_vector_shared_component)
+	bind_std_vector(gen, 'ComponentList', 'PySequenceOfComponent', shared_component)
 
 	# gs::core::Environment
 	gen.add_include('engine/environment.h')
@@ -651,8 +650,7 @@ def bind_scene(gen):
 
 	gen.end_class(shared_node)
 
-	std_vector_shared_node = gen.begin_class('std::vector<std::shared_ptr<gs::core::Node>>', bound_name='NodeList', features={'sequence': lib.std.VectorSequenceFeature(shared_node)})
-	gen.end_class(std_vector_shared_node)
+	bind_std_vector(gen, 'NodeList', 'PySequenceOfNode', shared_node)
 
 	# gs::core::SceneSystem
 	scene_system = gen.begin_class('gs::core::SceneSystem', bound_name='SceneSystem_hide_me', noncopyable=True, nobind=True)

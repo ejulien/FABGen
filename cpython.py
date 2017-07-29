@@ -102,7 +102,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 		# members
 		out += 'static PyGetSetDef %s_tp_getset[] = {\n' % self.bound_name
-		for member in self.members:
+		for member in self.get_all_members():
 			setter = member['setter']
 			if setter is None:
 				setter = 'NULL'
@@ -111,11 +111,13 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		out += '};\n\n'
 
 		# output binding code for static class members
-		if len(self.static_members) > 0:
+		static_members = self.get_all_static_members()
+
+		if len(static_members) > 0:
 			out += 'static void bind_%s_static_members(PyObject *o) {\n' % self.bound_name
 			out += '	PyObject *tmp;\n\n'
 
-			for i, attr in enumerate(self.static_members):
+			for i, attr in enumerate(static_members):
 				if attr['getter']:
 					out += '	// %s::%s\n' % (self.ctype, attr['name'])
 					out += '	tmp = %s(o, NULL);\n' % attr['getter']
@@ -125,9 +127,9 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 		# methods
 		out += 'static PyMethodDef %s_tp_methods[] = {\n' % self.bound_name
-		for method in self.methods:
+		for method in self.get_all_methods():
 			out += '	{"%s", (PyCFunction)%s, METH_VARARGS},\n' % (method['bound_name'], method['proxy_name'])
-		for method in self.static_methods:
+		for method in self.get_all_static_methods():
 			out += '	{"%s", (PyCFunction)%s, METH_VARARGS|METH_STATIC},\n' % (method['bound_name'], method['proxy_name'])
 		out += '	{NULL} /* Sentinel */\n'
 		out += '};\n\n'
@@ -220,7 +222,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 	def finalize_type(self):
 		out = '	%s_type = PyType_FromSpec(&%s_spec);\n' % (self.bound_name, self.bound_name)
-		if len(self.static_members) > 0:
+		if len(self.get_all_static_members()) > 0:
 			out += '	bind_%s_static_members(%s_type);\n' % (self.bound_name, self.bound_name)
 		out += '	PyModule_AddObject(m, "%s", %s_type);\n' % (self.bound_name, self.bound_name)
 		return out

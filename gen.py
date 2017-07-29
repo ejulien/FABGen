@@ -216,6 +216,21 @@ def transform_var_ref_to(var, from_ref, to_ref):
 	return ctype_ref_to(from_ref, to_ref) + var
 
 
+def add_list_unique(lst, val, dlg):
+	for ent in lst:
+		if dlg(val, ent):
+			return
+	lst.append(val)
+
+
+def collect_attr_from_conv_recursive(out, conv, attr, dlg):
+	for entry in getattr(conv, attr):
+		add_list_unique(out, entry, dlg)
+	for base in conv._bases:
+		collect_attr_from_conv_recursive(out, base, attr, dlg)
+	return out
+
+
 class TypeConverter:
 	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_ctype=None):
 		self.ctype = parse(type, _CType)
@@ -238,6 +253,7 @@ class TypeConverter:
 
 		self._features = {}
 		self._casts = []  # valid casts
+		self._bases = []  # bases
 
 		self.nobind = False
 
@@ -254,17 +270,24 @@ class TypeConverter:
 
 	def to_c_call(self, out_var, expr):
 		assert 'not implemented in this converter'
-
 	def from_c_call(self, out_var, expr, ownership):
 		assert 'not implemented in this converter'
 
 	def prepare_var_for_conv(self, var, input_ref):
 		"""Transform a variable for use with the converter from_c/to_c methods."""
 		return transform_var_ref_to(var, input_ref, self.arg_storage_ctype.get_ref())
-
 	def prepare_var_from_conv(self, var, target_ref):
 		"""Transform a converted variable back to its ctype reference."""
 		return transform_var_ref_to(var, self.arg_storage_ctype.get_ref(), target_ref)
+
+	def get_all_members(self):
+		return collect_attr_from_conv_recursive([], self, 'members', lambda a,b: a['name'] == b['name'])
+	def get_all_static_members(self):
+		return collect_attr_from_conv_recursive([], self, 'static_members', lambda a,b: a['name'] == b['name'])
+	def get_all_methods(self):
+		return collect_attr_from_conv_recursive([], self, 'methods', lambda a,b: a['bound_name'] == b['bound_name'])
+	def get_all_static_methods(self):
+		return collect_attr_from_conv_recursive([], self, 'static_methods', lambda a,b: a['bound_name'] == b['bound_name'])
 
 
 def format_list_for_comment(lst):
@@ -456,6 +479,12 @@ class FABGen:
 
 	def add_upcast(self, derived_conv, base_conv):
 		derived_conv._casts.append((base_conv, lambda in_var, out_var: '%s = (%s *)((%s *)%s);\n' % (out_var, base_conv.ctype, derived_conv.ctype, in_var)))
+
+	#
+	def set_bases(self, conv, bases):
+		for base in bases:
+			self.add_upcast(conv, base)
+			conv._bases.append(base)
 
 	#
 	def select_ctype_conv(self, ctype):

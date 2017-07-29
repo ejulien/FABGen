@@ -6,7 +6,7 @@ import shutil
 import sys
 import os
 
-import python
+import cpython
 
 
 start_path = os.path.dirname(__file__)
@@ -63,7 +63,7 @@ def run_test(gen, name, testbed):
 
 
 def run_tests(gen, names, testbed):
-	print("Starting tests with generator %s" % gen.get_langage())
+	print("Starting tests with generator %s" % gen.get_language())
 
 	test_count = len(names)
 	print("Running %d tests\n" % test_count)
@@ -77,7 +77,7 @@ def run_tests(gen, names, testbed):
 	failed_test_count = len(failed_test_list)
 
 	print("[Test summary: %d run, %d failed]" % (run_test_count, failed_test_count))
-	print("Done with generator %s" % gen.get_langage())
+	print("Done with generator %s" % gen.get_language())
 
 
 # --
@@ -145,7 +145,7 @@ AlwaysBreakTemplateDeclarations: false
 AlignTrailingComments: false''')
 
 
-class PythonTestBed:
+class CPythonTestBed:
 	def build_and_test_extension(self, work_path, module):
 		create_cmake_file("test", work_path, python_site_package, python_include_dir, python_library)
 		create_clang_format_file(work_path)
@@ -186,4 +186,4 @@ if args.debug_test:
 else:
 	test_names = [file[:-3] for file in os.listdir('./tests') if file.endswith('.py')]
 
-run_tests(python.PythonGenerator(), test_names, PythonTestBed())
+run_tests(cpython.CPythonGenerator(), test_names, CPythonTestBed())
