@@ -1,5 +1,10 @@
+import lib
+
+
 def bind_test(gen):
 	gen.start('my_test')
+
+	lib.bind_all_defaults(gen)
 
 	# inject test code in the wrapper
 	gen.insert_code('''\
@@ -12,7 +17,12 @@ int get(int v, int k, int b) { return v * k + b; }
 ''', True, False)
 
 	gen.bind_function('get_int', 'int', [])
-	gen.bind_function_overloads('get', [('int', []), ('int', ['int v']), ('int', ['int v', 'int k']), ('int', ['int v', 'int k', 'int b'])])
+	gen.bind_function_overloads('get', [
+		('int', [], []),
+		('int', ['int v'], []),
+		('int', ['int v', 'int k'], []),
+		('int', ['int v', 'int k', 'int b'], [])
+	])
 
 	gen.finalize()
 	return gen.get_output()

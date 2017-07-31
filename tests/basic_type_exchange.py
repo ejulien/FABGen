@@ -1,5 +1,10 @@
+import lib
+
+
 def bind_test(gen):
 	gen.start('my_test')
+
+	lib.bind_all_defaults(gen)
 
 	# inject test code in the wrapper
 	gen.insert_code('''\
@@ -28,9 +33,9 @@ int add_int_by_reference(int &a, int &b) { return a + b; }
 	gen.bind_function('return_int_by_pointer', 'int*', [])
 	gen.bind_function('return_int_by_reference', 'int&', [])
 
-	gen.bind_function('add_int_by_value', 'int', ['int', 'int'])
-	gen.bind_function('add_int_by_pointer', 'int', ['int*', 'int*'])
-	gen.bind_function('add_int_by_reference', 'int', ['int&', 'int&'])
+	gen.bind_function('add_int_by_value', 'int', ['int a', 'int b'])
+	gen.bind_function('add_int_by_pointer', 'int', ['int *a', 'int *b'])
+	gen.bind_function('add_int_by_reference', 'int', ['int &a', 'int &b'])
 
 	gen.finalize()
 	return gen.get_output()

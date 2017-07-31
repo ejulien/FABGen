@@ -1,5 +1,10 @@
+import lib
+
+
 def bind_test(gen):
 	gen.start('my_test')
+
+	lib.bind_all_defaults(gen)
 
 	# inject test code in the wrapper
 	gen.insert_code('''\
@@ -19,11 +24,14 @@ struct simple_struct {
 };
 ''', True, False)
 
-	gen.begin_class('simple_struct')
-	gen.bind_constructor('simple_struct', [])
-	gen.bind_method_overloads('simple_struct', 'set_a', [('int', ['int v']), ('bool', ['int v0', 'int v1'])])
-	gen.bind_method('simple_struct', 'get_a', 'int', [])
-	gen.end_class('simple_struct')
+	simple_struct = gen.begin_class('simple_struct')
+	gen.bind_constructor(simple_struct, [])
+	gen.bind_method_overloads(simple_struct, 'set_a', [
+		('int', ['int v'], []),
+		('bool', ['int v0', 'int v1'], [])
+	])
+	gen.bind_method(simple_struct, 'get_a', 'int', [])
+	gen.end_class(simple_struct)
 
 	gen.finalize()
 	return gen.get_output()

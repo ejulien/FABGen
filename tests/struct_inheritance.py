@@ -1,13 +1,10 @@
+import lib
+
+
 def bind_test(gen):
 	gen.start('my_test')
 
-	if gen.get_language() == 'CPython':
-		import lib.cpython.std
-		import lib.cpython.stl
-		import cpython
-
-		lib.cpython.std.bind_std(gen, cpython.PythonTypeConverterCommon)
-		lib.cpython.stl.bind_stl(gen, cpython.PythonTypeConverterCommon)
+	lib.bind_all_defaults(gen)
 
 	# inject test code in the wrapper
 	gen.insert_code('''\

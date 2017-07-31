@@ -16,20 +16,27 @@ Fabgen is licensed under the GPLv3.
 1. Support multiple target language.
 1. Bidirectional binding. Bind C++ functions to target language and target language functions to C++.
 1. Provide an API for embedding (runtime C type name to target name query, human-readable type conversion functions, etc...).
-1. Full feature support for all target language unless inherently impossible in which case a sensible and preferably configurable callback should be provided.
+1. Full feature support for all target language unless technicaly impossible in which case a sensible fallback should be provided.
+1. Fast
 
 ## Philosophy
 
-1. Keep as much code as possible on the generic part of the generator.
+1. Keep as much code as possible on the generic part of the generator (gen.py).
 1. Any feature that can be done using what's available should be culled (aka. no feature creep).
+1. Output library must feel as native as possible to the target language.
 
 ## Features
 
+- Generated code has no dependencies and is human readable.
+- Generator input is a Python script.
 - Customizable type conversion from C/C++ and back.
 - Can bind many C/C++ construct.
 - User specifiable bound name.
 - Types can be hidden from the generated binding interface.
-- Feature mechanism to extend types and prototypes.
+- Feature mechanism to extend types and prototypes such as:
+  - `arg_out`, `arg_in_out` to support output arguments.
+  - `route` to route methods to a customizable expression.
+  - `proxy` to support wrapper types such as std::shared_ptr<T>.
 - Simple and hopefully easy to dive into codebase.
 
 ### Supported target language

@@ -435,7 +435,7 @@ static inline bool CheckArgsTuple(PyObject *args) {
 
 	def output_module_init_function(self, module_def):
 		self._source += 'PyMODINIT_FUNC PyInit_%s(void) {\n' % self._name
-		self._source += '// custom initialization code'
+		self._source += '	// custom initialization code'
 		self._source += self._custom_init_code
 
 		self._source += '''

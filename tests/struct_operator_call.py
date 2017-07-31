@@ -1,5 +1,10 @@
+import lib
+
+
 def bind_test(gen):
 	gen.start('my_test')
+
+	lib.bind_all_defaults(gen)
 
 	# inject test code in the wrapper
 	gen.insert_code('''\
@@ -35,13 +40,22 @@ struct simple_struct {
 };
 ''', True, False)
 
-	gen.begin_class('simple_struct')
-	gen.bind_constructor('simple_struct', 'int')
-	gen.bind_arithmetic_ops_overloads('simple_struct', ['-', '+', '/', '*'], [('simple_struct', ['simple_struct b']), ('simple_struct', ['int k'])])
-	gen.bind_inplace_arithmetic_ops_overloads('simple_struct', ['-=', '+=', '/=', '*='], [['simple_struct b'], ['int k']])
-	gen.bind_comparison_ops_overloads('simple_struct', ['==', '!='], [['simple_struct b'], ['int k']])
-	gen.bind_member('simple_struct', 'int v')
-	gen.end_class('simple_struct')
+	simple_struct = gen.begin_class('simple_struct')
+	gen.bind_constructor(simple_struct, ['int v'])
+	gen.bind_arithmetic_ops_overloads(simple_struct, ['-', '+', '/', '*'], [
+		('simple_struct', ['simple_struct b'], []),
+		('simple_struct', ['int k'], [])
+	])
+	gen.bind_inplace_arithmetic_ops_overloads(simple_struct, ['-=', '+=', '/=', '*='], [
+		(['simple_struct b'], []),
+		(['int k'], [])
+	])
+	gen.bind_comparison_ops_overloads(simple_struct, ['==', '!='], [
+		(['simple_struct b'], []),
+		(['int k'], [])
+	])
+	gen.bind_member(simple_struct, 'int v')
+	gen.end_class(simple_struct)
 
 	gen.finalize()
 	return gen.get_output()

@@ -1,10 +1,9 @@
-import lua
-import cpython
+import lang.lua
+import lang.cpython
 
 import lib.std
 import lib.stl
-import lib.cpython.std
-import lib.cpython.stl
+import lib
 
 
 def bind_std_vector(gen, T_conv):
@@ -12,7 +11,7 @@ def bind_std_vector(gen, T_conv):
 		PySequence_T_type = 'PySequenceOf%s' % T_conv.bound_name.title()
 		gen.bind_type(lib.cpython.stl.PySequenceToStdVectorConverter(PySequence_T_type, T_conv))
 
-	conv = gen.begin_class('std::vector<%s>' % T_conv.ctype, bound_name='%sList' % T_conv.bound_name, features={'sequence': lib.std.VectorSequenceFeature(T_conv)})
+	conv = gen.begin_class('std::vector<%s>' % T_conv.ctype, bound_name='%sList' % T_conv.bound_name.title(), features={'sequence': lib.std.VectorSequenceFeature(T_conv)})
 	if gen.get_language() == 'CPython':
 		gen.bind_constructor(conv, ['%s sequence' % PySequence_T_type])
 	gen.end_class(conv)
@@ -3195,9 +3194,7 @@ static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixe
 def bind_gs(gen):
 	gen.start('gs')
 
-	if gen.get_language() == 'CPython':
-		lib.cpython.std.bind_std(gen, cpython.PythonTypeConverterCommon)
-		lib.cpython.stl.bind_stl(gen, cpython.PythonTypeConverterCommon)
+	lib.bind_all_defaults(gen)
 
 	gen.add_include('engine/engine.h')
 	gen.add_include('engine/engine_plugins.h')
@@ -3264,11 +3261,10 @@ void InitializePluginsDefaultSearchPath() {
 	bind_mixer(gen)
 
 	gen.finalize()
-
 	return gen.get_output()
 
 
-hdr, src = bind_gs(cpython.CPythonGenerator())
+hdr, src = bind_gs(lang.cpython.CPythonGenerator())
 
 with open('d:/gs-fabgen-test/bind_gs.h', mode='w', encoding='utf-8') as f:
 	f.write(hdr)

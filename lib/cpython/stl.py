@@ -1,11 +1,11 @@
-import cpython
+import lang.cpython
 
 
-def bind_stl(gen, PythonTypeConverterCommon):
+def bind_stl(gen):
 	gen.add_include('string', True)
 	gen.add_include('vector', True)
 
-	class PythonStringConverter(PythonTypeConverterCommon):
+	class PythonStringConverter(lang.cpython.PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
@@ -22,7 +22,7 @@ Py_DECREF(utf8_pyobj);
 	gen.bind_type(PythonStringConverter('std::string'))
 
 
-class PySequenceToStdVectorConverter(cpython.PythonTypeConverterCommon):
+class PySequenceToStdVectorConverter(lang.cpython.PythonTypeConverterCommon):
 	def __init__(self, type, T_conv):
 		native_type = 'std::vector<%s>' % T_conv.ctype
 		super().__init__(type, native_type, None, native_type)

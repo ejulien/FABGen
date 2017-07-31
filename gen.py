@@ -148,6 +148,14 @@ class _CType:
 		t.const = False
 		return t
 
+	def dereference_once(self):
+		t = copy.deepcopy(self)
+		if hasattr(t, 'ref'):
+			t.ref = t.ref[:-1]
+			if t.ref == '':
+				delattr(t, 'ref')
+		return t
+
 	def ref_stripped(self):
 		t = copy.deepcopy(self)
 		if hasattr(t, 'ref'):
@@ -494,23 +502,23 @@ class FABGen:
 	#
 	def select_ctype_conv(self, ctype):
 		"""Select a type converter."""
-		type = get_fully_qualified_ctype_name(ctype)
 
-		if type == 'void':
+		if repr(ctype) == 'void':
 			return None
 
-		if type in self.__type_convs:
-			return self.__type_convs[type]
+		while True:
+			type = repr(ctype)
+			if type in self.__type_convs:
+				return self.__type_convs[type]
 
-		non_const_type = get_fully_qualified_ctype_name(ctype.non_const())
+			type = repr(ctype.non_const())
+			if type in self.__type_convs:
+				return self.__type_convs[type]
 
-		if non_const_type in self.__type_convs:
-			return self.__type_convs[non_const_type]
+			if ctype.get_ref() == '':
+				break
 
-		non_const_ref_stripped_type = get_fully_qualified_ctype_name(ctype.non_const().ref_stripped())
-
-		if non_const_ref_stripped_type in self.__type_convs:
-			return self.__type_convs[non_const_ref_stripped_type]
+			ctype = ctype.dereference_once()
 
 		raise Exception("Unknown type %s (no converter available)" % ctype)
 
@@ -868,9 +876,9 @@ class FABGen:
 		arg = parse(member, _CArg)
 
 		# getter
-		expr_eval = lambda args: '_self->%s;' % arg.name
+		expr_eval = lambda args: '&_self->%s;' % arg.name
 
-		getter_protos = [(get_fully_qualified_ctype_name(arg.ctype), [], features)]
+		getter_protos = [(repr(arg.ctype.add_ref('*')), [], features)]
 		getter_proxy_name = 'py_get_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name)
 
 		self.__bind_proxy(getter_proxy_name, conv, getter_protos, 'get member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'getter', 0)
@@ -895,11 +903,11 @@ class FABGen:
 		# getter
 		if 'proxy' in features:
 			self.__assert_conv_feature(conv, 'proxy')
-			expr_eval = lambda args: '%s::%s;' % (conv._features['proxy'].wrapped_conv.ctype, arg.name)
+			expr_eval = lambda args: '&%s::%s;' % (conv._features['proxy'].wrapped_conv.ctype, arg.name)
 		else:
-			expr_eval = lambda args: '%s::%s;' % (conv.ctype, arg.name)
+			expr_eval = lambda args: '&%s::%s;' % (conv.ctype, arg.name)
 
-		getter_protos = [(get_fully_qualified_ctype_name(arg.ctype), [], features)]
+		getter_protos = [(repr(arg.ctype.add_ref('*')), [], features)]
 		getter_proxy_name = 'py_get_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name)
 		
 		self.__bind_proxy(getter_proxy_name, None, getter_protos, 'get static member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'getter', 0)
@@ -1076,6 +1084,7 @@ void *_type_tag_cast(void *in_ptr, const char *in_type_tag, const char *out_type
 		# cast to
 		self._source += self.get_type_tag_cast_function()
 
+		# statistics
 		if self.verbose:
 			self.__print_stats()
 

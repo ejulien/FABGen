@@ -1,11 +1,15 @@
+import lib
+
+
 def bind_test(gen):
 	gen.start('my_test')
+
+	lib.bind_all_defaults(gen)
 
 	# inject test code in the wrapper
 	gen.insert_code('''\
 struct nested_struct {
-	nested_struct() : v(8) {}
-	int v;
+	int v{8};
 };
 
 struct enclosing_struct {
@@ -13,15 +17,15 @@ struct enclosing_struct {
 };
 ''', True, False)
 
-	gen.begin_class('nested_struct')
-	gen.bind_constructor('nested_struct', [])
-	gen.bind_member('nested_struct', 'int v')
-	gen.end_class('nested_struct')
+	nested_struct = gen.begin_class('nested_struct')
+	gen.bind_constructor(nested_struct, [])
+	gen.bind_member(nested_struct, 'int v')
+	gen.end_class(nested_struct)
 
-	gen.begin_class('enclosing_struct')
-	gen.bind_constructor('enclosing_struct', [])
-	gen.bind_member('enclosing_struct', 'nested_struct n')
-	gen.end_class('enclosing_struct')
+	enclosing_struct = gen.begin_class('enclosing_struct')
+	gen.bind_constructor(enclosing_struct, [])
+	gen.bind_member(enclosing_struct, 'nested_struct n')
+	gen.end_class(enclosing_struct)
 
 	gen.finalize()
 	return gen.get_output()

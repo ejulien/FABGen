@@ -1,5 +1,10 @@
+import lib
+
+
 def bind_test(gen):
 	gen.start('my_test')
+
+	lib.bind_all_defaults(gen)
 
 	# inject test code in the wrapper
 	gen.insert_code('''\
@@ -20,22 +25,21 @@ void take_simple_struct_by_value(simple_struct v) { take_instance.v = -7; take_i
 void take_simple_struct_by_pointer(simple_struct *v) { take_instance.v = -7; take_instance = *v; }
 void take_simple_struct_by_ref(simple_struct &v) { take_instance.v = -7; take_instance = v; }
 
-bool test_simple_struct()
-{
+bool test_simple_struct() {
 	return take_instance.v == return_instance.v;
 }
 ''', True, False)
 
-	gen.begin_class('simple_struct')
-	gen.end_class('simple_struct')
+	simple_struct = gen.begin_class('simple_struct')
+	gen.end_class(simple_struct)
 
 	gen.bind_function('return_simple_struct_by_value', 'simple_struct', [])
 	gen.bind_function('return_simple_struct_by_pointer', 'simple_struct*', [])
 	gen.bind_function('return_simple_struct_by_ref', 'simple_struct&', [])
 
-	gen.bind_function('take_simple_struct_by_value', 'void', ['simple_struct'])
-	gen.bind_function('take_simple_struct_by_pointer', 'void', ['simple_struct*'])
-	gen.bind_function('take_simple_struct_by_ref', 'void', ['simple_struct&'])
+	gen.bind_function('take_simple_struct_by_value', 'void', ['simple_struct s'])
+	gen.bind_function('take_simple_struct_by_pointer', 'void', ['simple_struct *s'])
+	gen.bind_function('take_simple_struct_by_ref', 'void', ['simple_struct &s'])
 
 	gen.bind_function('test_simple_struct', 'bool', [])
 

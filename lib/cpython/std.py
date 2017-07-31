@@ -1,7 +1,10 @@
-def bind_std(gen, PythonTypeConverterCommon):
+import lang.cpython
+
+
+def bind_std(gen):
 	gen.add_include('cstdint', True)
 
-	class PythonBoolConverter(PythonTypeConverterCommon):
+	class PythonBoolConverter(lang.cpython.PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
@@ -12,7 +15,7 @@ def bind_std(gen, PythonTypeConverterCommon):
 
 	gen.bind_type(PythonBoolConverter('bool'))
 
-	class PythonIntConverter(PythonTypeConverterCommon):
+	class PythonIntConverter(lang.cpython.PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
@@ -31,7 +34,7 @@ def bind_std(gen, PythonTypeConverterCommon):
 	gen.bind_type(PythonIntConverter('char16_t'))
 	gen.bind_type(PythonIntConverter('char32_t'))
 
-	class PythonUnsignedIntConverter(PythonTypeConverterCommon):
+	class PythonUnsignedIntConverter(lang.cpython.PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
@@ -48,7 +51,7 @@ def bind_std(gen, PythonTypeConverterCommon):
 	gen.bind_type(PythonUnsignedIntConverter('uint16_t'))
 	gen.bind_type(PythonUnsignedIntConverter('uint32_t'))
 
-	class PythonInt64Converter(PythonTypeConverterCommon):
+	class PythonInt64Converter(lang.cpython.PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
@@ -59,7 +62,7 @@ def bind_std(gen, PythonTypeConverterCommon):
 
 	gen.bind_type(PythonInt64Converter('int64_t'))
 
-	class PythonUnsignedInt64Converter(PythonTypeConverterCommon):
+	class PythonUnsignedInt64Converter(lang.cpython.PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
@@ -70,7 +73,7 @@ def bind_std(gen, PythonTypeConverterCommon):
 
 	gen.bind_type(PythonUnsignedInt64Converter('uint64_t'))
 
-	class PythonSize_tConverter(PythonTypeConverterCommon):
+	class PythonSize_tConverter(lang.cpython.PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
@@ -81,7 +84,7 @@ def bind_std(gen, PythonTypeConverterCommon):
 
 	gen.bind_type(PythonSize_tConverter('size_t'))
 
-	class PythonFloatConverter(PythonTypeConverterCommon):
+	class PythonFloatConverter(lang.cpython.PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 
@@ -93,7 +96,7 @@ def bind_std(gen, PythonTypeConverterCommon):
 	gen.bind_type(PythonFloatConverter('float'))
 	gen.bind_type(PythonFloatConverter('double'))
 
-	class PythonConstCharPtrConverter(PythonTypeConverterCommon):
+	class PythonConstCharPtrConverter(lang.cpython.PythonTypeConverterCommon):
 		def __init__(self, type):
 			super().__init__(type)
 

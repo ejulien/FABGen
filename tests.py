@@ -3,10 +3,11 @@ import tempfile
 import subprocess
 import argparse
 import shutil
+import lib
 import sys
 import os
 
-import cpython
+import lang.cpython
 
 
 start_path = os.path.dirname(__file__)
@@ -186,4 +187,8 @@ if args.debug_test:
 else:
 	test_names = [file[:-3] for file in os.listdir('./tests') if file.endswith('.py')]
 
-run_tests(cpython.CPythonGenerator(), test_names, CPythonTestBed())
+
+gen = lang.cpython.CPythonGenerator()
+gen.verbose = False
+
+run_tests(gen, test_names, CPythonTestBed())
