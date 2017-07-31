@@ -873,12 +873,16 @@ class FABGen:
 			self.bind_member(conv, member, features)
 
 	def bind_member(self, conv, member, features=[]):
+		is_bitfield = member.endswith(':')
+		if is_bitfield:
+			member = member[:-1]
+
 		arg = parse(member, _CArg)
 
 		# getter
-		expr_eval = lambda args: '&_self->%s;' % arg.name
-
-		getter_protos = [(repr(arg.ctype.add_ref('*')), [], features)]
+		expr_eval = lambda args: '_self->%s;' % arg.name
+		arg_ctype = arg.ctype if is_bitfield else arg.ctype.add_ref('&')
+		getter_protos = [(repr(arg_ctype), [], features)]
 		getter_proxy_name = 'py_get_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name)
 
 		self.__bind_proxy(getter_proxy_name, conv, getter_protos, 'get member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'getter', 0)

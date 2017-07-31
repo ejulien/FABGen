@@ -321,7 +321,7 @@ def bind_core(gen):
 		(['gs::core::TextureUV wrap_u', 'gs::core::TextureUV wrap_v', 'gs::core::TextureFilter min_filter', 'gs::core::TextureFilter mag_filter'], []),
 	])
 	gen.bind_comparison_op(tex_unit_cfg, '==', ['const gs::core::TextureUnitConfig &config'])
-	gen.bind_members(tex_unit_cfg, ['gs::core::TextureUV wrap_u', 'gs::core::TextureUV wrap_v', 'gs::core::TextureFilter min_filter', 'gs::core::TextureFilter mag_filter'])
+	gen.bind_members(tex_unit_cfg, ['gs::core::TextureUV wrap_u:', 'gs::core::TextureUV wrap_v:', 'gs::core::TextureFilter min_filter:', 'gs::core::TextureFilter mag_filter:'])
 	gen.end_class(tex_unit_cfg)
 
 	# gs::core::VertexLayout
