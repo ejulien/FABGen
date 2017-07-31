@@ -477,14 +477,19 @@ class FABGen:
 		"""Declare a cast delegate from one type to another."""
 		src_conv._casts.append((tgt_conv, cast_delegate))
 
-	def add_upcast(self, derived_conv, base_conv):
-		derived_conv._casts.append((base_conv, lambda in_var, out_var: '%s = (%s *)((%s *)%s);\n' % (out_var, base_conv.ctype, derived_conv.ctype, in_var)))
-
 	#
-	def set_bases(self, conv, bases):
+	def __add_upcast(self, conv, base):
+		self.add_cast(conv, base, lambda in_var, out_var: '%s = (%s *)((%s *)%s);\n' % (out_var, base.ctype, conv.ctype, in_var))
+		for base_of_base in base._bases:
+			self.__add_upcast(conv, base_of_base)
+
+	def add_base(self, conv, base):
+		self.__add_upcast(conv, base)
+		conv._bases.append(base)
+
+	def add_bases(self, conv, bases):
 		for base in bases:
-			self.add_upcast(conv, base)
-			conv._bases.append(base)
+			self.add_base(conv, base)
 
 	#
 	def select_ctype_conv(self, ctype):

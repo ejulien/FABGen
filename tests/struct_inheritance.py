@@ -49,7 +49,7 @@ int read_virtual_method_through_base_class(base_class &o) {
 	gen.end_class(base_conv)
 
 	derived_conv = gen.begin_class('derived_class')
-	gen.set_bases(derived_conv, [base_conv])
+	gen.add_base(derived_conv, base_conv)
 	gen.bind_constructor(derived_conv, [])
 	gen.bind_method(derived_conv, 'derived_method', 'int', [])
 	gen.bind_method(derived_conv, 'base_method_override', 'int', [])
