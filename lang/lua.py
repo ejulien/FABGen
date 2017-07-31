@@ -8,41 +8,46 @@ class LuaTypeConverterCommon(gen.TypeConverter):
 
 	def get_type_api(self, module_name):
 		return '// type API for %s\n' % self.ctype +\
-		'bool check_%s(lua_State *L, int idx);\n' % self.clean_name +\
-		'void to_c_%s(lua_State *L, int idx, void *obj);\n' % self.clean_name +\
-		'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy);\n' % self.clean_name
+		'bool check_%s(lua_State *L, int idx);\n' % self.bound_name +\
+		'void to_c_%s(lua_State *L, int idx, void *obj);\n' % self.bound_name +\
+		'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy);\n' % self.bound_name +\
+		'\n'
 
-	def to_c_call(self, var, var_p):
-		return 'to_c_%s(L, %s, %s);\n' % (self.clean_name, var, var_p)
+	def to_c_call(self, in_var, out_var_p):
+		return 'to_c_%s(L, %s, %s);\n' % (self.bound_name, in_var, out_var_p)
 
 	def from_c_call(self, out_var, expr, ownership):
-		return "from_c_%s(L, %s, %s);\n" % (self.clean_name, expr, ownership)
+		return "from_c_%s(L, %s, %s);\n" % (self.bound_name, expr, ownership)
+
+	def check_call(self, in_var):
+		return "check_%s(%s)" % (self.bound_name, in_var)
 
 
 #
 class LuaClassTypeDefaultConverter(LuaTypeConverterCommon):
-	def __init__(self, type):
-		super().__init__(type, type + '*')
+	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):
+		super().__init__(type, arg_storage_type, bound_name, rval_storage_type)
 
-	def tmpl_check(self):
-		return '''
+	def get_type_glue(self, gen, module_name):
+		out = ''
+
+		# to/from C
+		out += '''bool check_%s(lua_State *L, int idx) {
 	auto p = lua_touserdata(L, idx);
 	if (!p)
 		return false;
 
 	auto w = reinterpret_cast<NativeObjectWrapper *>(p);
 	return w->IsNativeObjectWrapper() && w->GetTypeTag() == %s;
-''' % self.type_tag
+}\n''' % (self.bound_name, self.type_tag)
 
-	def tmpl_to_c(self):
-		return '''
+		out += '''void to_c_%s(lua_State *L, int idx, void *obj) {
 	auto p = lua_touserdata(L, idx);
 	auto w = reinterpret_cast<NativeObjectWrapper *>(p);
 	*obj = reinterpret_cast<%s*>(w->GetObj());
-''' % self.ctype
+}\n''' % (self.bound_name, self.ctype)
 
-	def tmpl_from_c(self):
-		return '''
+		out += '''int from_c_%s(lua_State *L, void *obj, OwnershipPolicy own_policy) {
 	switch (own_policy) {
 		default:
 		case NonOwning:
@@ -50,21 +55,28 @@ class LuaClassTypeDefaultConverter(LuaTypeConverterCommon):
 		case Owning:
 			return _wrap_obj<NativeObjectValueWrapper<%s>>(L, obj, %s);
 	}
-''' % (self.ctype, self.type_tag, self.ctype, self.type_tag)
+}\n''' % (self.bound_name, self.type_tag, self.ctype, self.type_tag, self.type_tag)
+
+		return out
+
+	def finalize_type(self):
+		out = ''
+		return out
 
 
 #
 class LuaGenerator(gen.FABGen):
-	def get_langage(self):
+	default_class_converter = LuaClassTypeDefaultConverter
+
+	def get_language(self):
 		return "Lua"
 
-	def start(self, module_name, namespace = None):
-		super().start(module_name, namespace)
+	def start(self, module_name):
+		super().start(module_name)
 
 		# templates for class type exchange
 		self.insert_code('''// wrap a C object
-template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj, const char *type_tag)
-{
+template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj, const char *type_tag) {
 	auto p = lua_newuserdata(L, sizeof(NATIVE_OBJECT_WRAPPER_T));
 	if (!p)
 		return 0;
@@ -78,11 +90,11 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 		class LuaNumberConverter(LuaTypeConverterCommon):
 			def __init__(self, type):
 				super().__init__(type)
-
-			def output_type_glue(self):
-				return 'bool check_%s(lua_State *L, int idx) { return lua_isnumber(L, idx) ? true : false; }\n' % self.clean_name +\
-				'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = lua_tonumber(L, idx); }\n' % (self.clean_name, self.ctype) +\
-				'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushinteger(L, *((%s*)obj)); return 1; }\n' % (self.clean_name, self.ctype)
+	
+			def get_type_glue(self, gen, module_name):
+				return 'bool check_%s(lua_State *L, int idx) { return lua_isnumber(L, idx) ? true : false; }\n' % self.bound_name +\
+				'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = lua_tonumber(L, idx); }\n' % (self.bound_name, self.ctype) +\
+				'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushinteger(L, *((%s*)obj)); return 1; }\n' % (self.bound_name, self.ctype)
 
 		self.bind_type(LuaNumberConverter('int'))
 		self.bind_type(LuaNumberConverter('float'))
@@ -91,10 +103,10 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 			def __init__(self, type):
 				super().__init__(type)
 
-			def output_type_glue(self):
-				return 'bool check_%s(lua_State *L, int idx) { return lua_isstring(L, idx) ? true : false; }\n' % self.clean_name +\
-				'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = lua_tostring(L, idx); }\n' % (self.clean_name, self.ctype) +\
-				'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushstring(L, ((%s*)obj)->c_str()); return 1; }\n' % (self.clean_name, self.ctype)
+			def get_type_glue(self, gen, module_name):
+				return 'bool check_%s(lua_State *L, int idx) { return lua_isstring(L, idx) ? true : false; }\n' % self.bound_name +\
+				'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = lua_tostring(L, idx); }\n' % (self.bound_name, self.ctype) +\
+				'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushstring(L, ((%s*)obj)->c_str()); return 1; }\n' % (self.bound_name, self.ctype)
 
 		self.bind_type(LuaStringConverter('std::string'))
 
@@ -102,33 +114,51 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 			def __init__(self, type):
 				super().__init__(type)
 
-			def output_type_glue(self):
-				return 'bool check_%s(lua_State *L, int idx) { return lua_isstring(L, idx) ? true : false; }\n' % self.clean_name +\
-				'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = lua_tostring(L, idx); }\n' % (self.clean_name, self.ctype) +\
-				'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushstring(L, (*(%s*)obj)); return 1; }\n' % (self.clean_name, self.ctype)
+			def get_type_glue(self, gen, module_name):
+				return 'bool check_%s(lua_State *L, int idx) { return lua_isstring(L, idx) ? true : false; }\n' % self.bound_name +\
+				'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = lua_tostring(L, idx); }\n' % (self.bound_name, self.ctype) +\
+				'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushstring(L, (*(%s*)obj)); return 1; }\n' % (self.bound_name, self.ctype)
 
 		self.bind_type(LuaConstCharPtrConverter('const char *'))
 
 	#
-	def new_function(self, name, args):
-		return "static int %s(lua_State *L) {\n" % name
+	def set_error(self, type, reason):
+		return 'return luaL_error(L, "%s");\n' % reason
 
-	def get_arg(self, i, args):
+	#
+	def get_self(self, ctx):
+		return 'self'
+
+	def get_arg(self, i, ctx):
 		return "%d" % i
 
-	# function call return values
-	def begin_convert_rvals(self, rval):
-		self._source += 'int rval_count = 0;\n'
+	def open_proxy(self, name, max_arg_count, ctx):
+		return 'static int %s(lua_State *L) {\n' % name
 
+	def close_proxy(self, ctx):
+		if ctx == 'setter':
+			self._source += '	return -1;\n}\n'
+		elif ctx == 'getter':
+			self._source += '}\n'
+		else:
+			self._source += '	return NULL;\n}\n'
+
+	def proxy_call_error(self, msg, ctx):
+		out = self.set_error('runtime', msg)
+
+		if ctx == 'setter':
+			out += 'return -1;\n'
+		else:
+			out += 'return NULL;\n'
+
+		return out
+
+	# function call return values
 	def return_void_from_c(self):
 		return 'return 0;'
 
 	def rval_from_c_ptr(self, conv, out_var, expr, ownership):
-		return 'rval_count += ' + conv.from_c_call(out_var, expr)
+		return 'rval_count += ' + conv.from_c_call(out_var, expr, ownership)
 
-	def commit_rvals(self, rval, ctx='default'):
+	def commit_rvals(self, rvals, ctx='default'):
 		return "return rval_count;\n"
-
-	#
-	def get_class_default_converter(self):
-		return LuaClassTypeDefaultConverter

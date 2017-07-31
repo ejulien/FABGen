@@ -1,12 +1,14 @@
 import gen
 
 
+#
 class PythonTypeConverterCommon(gen.TypeConverter):
 	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):
 		super().__init__(type, arg_storage_type, bound_name, rval_storage_type)
 
 	def get_type_api(self, module_name):
-		return 'bool check_%s(PyObject *o);\n' % self.bound_name +\
+		return '// type API for %s\n' % self.ctype +\
+		'bool check_%s(PyObject *o);\n' % self.bound_name +\
 		'void to_c_%s(PyObject *o, void *obj);\n' % self.bound_name +\
 		'PyObject *from_c_%s(void *obj, OwnershipPolicy);\n' % self.bound_name +\
 		'\n'
@@ -21,6 +23,7 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 		return "check_%s(%s)" % (self.bound_name, in_var)
 
 
+#
 class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):
 		super().__init__(type, arg_storage_type, bound_name, rval_storage_type)

@@ -2,7 +2,7 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "Tests",
+			"name": "Tests CPython",
 			"type": "python",
 			"request": "launch",
 			"stopOnEntry": false,
@@ -19,7 +19,7 @@
 			]
 		},
 		{
-			"name": "Tests --debug",
+			"name": "Tests CPython --debug",
 			"type": "python",
 			"request": "launch",
 			"stopOnEntry": false,
@@ -36,7 +36,24 @@
 			]
 		},
 		{
-			"name": "Test",
+			"name": "Tests Lua53 --debug",
+			"type": "python",
+			"request": "launch",
+			"stopOnEntry": false,
+			"pythonPath": "${config:python.pythonPath}",
+			"program": "${workspaceRoot}/tests.py",
+			"cwd": "${workspaceRoot}",
+			"args": ["--luabase", "D:/lua53", "--debug", "basic_type_exchange"],
+			"env": null,
+			"envFile": "${workspaceRoot}/.env",
+			"debugOptions": [
+				"WaitOnAbnormalExit",
+				"WaitOnNormalExit",
+				"RedirectOutput"
+			]
+		},
+		{
+			"name": "Bind Harfang",
 			"type": "python",
 			"request": "launch",
 			"stopOnEntry": false,
