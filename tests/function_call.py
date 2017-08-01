@@ -41,3 +41,16 @@ expect_eq(my_test.get(2), 1)
 expect_eq(my_test.get(4, 3), 12)
 expect_eq(my_test.get(4, 3, 2), 14)
 '''
+
+
+test_lua = '''\
+my_test = require "my_test"
+
+assert(my_test.get_int() == 8)
+
+-- overload
+assert(my_test.get() == 0)
+assert(my_test.get(2) == 1)
+assert(my_test.get(4, 3) == 12)
+assert(my_test.get(4, 3, 2) == 14)
+'''

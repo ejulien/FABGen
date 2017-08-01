@@ -3,8 +3,8 @@ import gen
 
 #
 class LuaTypeConverterCommon(gen.TypeConverter):
-	def __init__(self, type, storage_type=None):
-		super().__init__(type, storage_type)
+	def __init__(self, type, storage_type=None, bound_name=None, rval_storage_type=None):
+		super().__init__(type, storage_type, bound_name, rval_storage_type)
 
 	def get_type_api(self, module_name):
 		return '// type API for %s\n' % self.ctype +\
@@ -31,31 +31,69 @@ class LuaClassTypeDefaultConverter(LuaTypeConverterCommon):
 	def get_type_glue(self, gen, module_name):
 		out = ''
 
+		# type meta
+		out += 'static const luaL_Reg %s_meta[] = {\n' % self.bound_name
+		out += '	{"__gc", wrapped_Object_gc},\n'
+		out += '	{NULL, NULL}};\n\n'
+
+		# type methods
+		out += 'static const luaL_Reg %s_methods[] = {\n' % self.bound_name
+		for m in self.get_all_methods():
+			out += '	{"%s", %s},\n' % (m['bound_name'], m['proxy_name'])
+		out += '	{NULL, NULL}};\n\n'
+
+		# type registration
+		out += 'void register_%s(lua_State *L) {\n' % self.bound_name
+		out += '	luaL_newlib(L, %s_methods);\n' % self.bound_name  # methods
+
+		out += '	luaL_newmetatable(L, "%s");\n' % self.bound_name
+		out += '	luaL_setfuncs(L, %s_meta, 0);\n' % self.bound_name
+
+		out += '	lua_pushliteral(L, "__index");\n'
+		out += '	lua_pushvalue(L, -3);\n'  # dup methods table
+		out += '	lua_rawset(L, -3);\n'  # metatable.__index = methods
+		out += '	lua_pushliteral(L, "__metatable");\n'
+		out += '	lua_pushvalue(L, -3);\n'  # dup methods table
+		out += '	lua_rawset(L, -3);\n'  # hide metatable: metatable.__metatable = methods
+
+		out += '	lua_pop(L, 2);\n'  # drop metatable and methods
+		out += '}\n\n'
+
+		# delete delegate
+		out += 'static void delete_%s(void *o) { delete (%s *)o; }\n\n' % (self.bound_name, self.ctype)
+
 		# to/from C
 		out += '''bool check_%s(lua_State *L, int idx) {
-	auto p = lua_touserdata(L, idx);
-	if (!p)
+	wrapped_Object *w = cast_to_wrapped_Object_safe(L, idx);
+	if (!w)
 		return false;
-
-	auto w = reinterpret_cast<NativeObjectWrapper *>(p);
-	return w->IsNativeObjectWrapper() && w->GetTypeTag() == %s;
+	return _type_tag_can_cast(w->type_tag, %s);
 }\n''' % (self.bound_name, self.type_tag)
 
 		out += '''void to_c_%s(lua_State *L, int idx, void *obj) {
-	auto p = lua_touserdata(L, idx);
-	auto w = reinterpret_cast<NativeObjectWrapper *>(p);
-	*obj = reinterpret_cast<%s*>(w->GetObj());
-}\n''' % (self.bound_name, self.ctype)
+	wrapped_Object *w = cast_to_wrapped_Object_unsafe(L, idx);
+	*(void **)obj = _type_tag_cast(w->obj, w->type_tag, %s);
+}\n''' % (self.bound_name, self.type_tag)
 
-		out += '''int from_c_%s(lua_State *L, void *obj, OwnershipPolicy own_policy) {
-	switch (own_policy) {
-		default:
-		case NonOwning:
-			return _wrap_obj<NativeObjectPtrWrapper<%s>>(L, obj, %s);
-		case Owning:
-			return _wrap_obj<NativeObjectValueWrapper<%s>>(L, obj, %s);
+		if self._non_copyable:
+			if self._moveable:
+				copy_code = 'obj = new %s(std::move(*(%s *)obj));' % (self.ctype, self.ctype)
+			else:
+				copy_code = 'return luaL_error(L, "type %s is non-copyable and non-moveable");' % self.bound_name
+		else:
+			copy_code = 'obj = new %s(*(%s *)obj);' % (self.ctype, self.ctype)
+
+		out += '''int from_c_%s(lua_State *L, void *obj, OwnershipPolicy own) {
+	wrapped_Object *w = (wrapped_Object *)lua_newuserdata(L, sizeof(wrapped_Object));
+	if (own == Copy) {
+		%s
 	}
-}\n''' % (self.bound_name, self.type_tag, self.ctype, self.type_tag, self.type_tag)
+	init_wrapped_Object(w, %s, obj);
+	if (own != NonOwning)
+		w->on_delete = &delete_%s;
+	return 1;
+}
+\n''' % (self.bound_name, copy_code, self.type_tag, self.bound_name)
 
 		return out
 
@@ -83,50 +121,43 @@ class LuaGenerator(gen.FABGen):
 	def start(self, module_name):
 		super().start(module_name)
 
-		# templates for class type exchange
-		self.insert_code('''// wrap a C object
-template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj, const char *type_tag) {
-	auto p = lua_newuserdata(L, sizeof(NATIVE_OBJECT_WRAPPER_T));
-	if (!p)
-		return 0;
+		self._source += '''\
+typedef struct {
+	uint32_t magic_u32; // wrapped_Object marker
+	const char *type_tag; // wrapped pointer type tag
 
-	new (p) NATIVE_OBJECT_WRAPPER_T(obj, type_tag);
-	return 1;
-}\n
-''', True, False)
+	void *obj;
 
-		# bind basic types
-		class LuaIntConverter(LuaTypeConverterCommon):
-			def get_type_glue(self, gen, module_name):
-				return 'bool check_%s(lua_State *L, int idx) { return lua_isnumber(L, idx) ? true : false; }\n' % self.bound_name +\
-				'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = (%s)lua_tonumber(L, idx); }\n' % (self.bound_name, self.ctype, self.ctype) +\
-				'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushinteger(L, *((%s*)obj)); return 1; }\n' % (self.bound_name, self.ctype)
+	void (*on_delete)(void *);
+} wrapped_Object;
 
-		self.bind_type(LuaIntConverter('int'))
+static void init_wrapped_Object(wrapped_Object *o, const char *type_tag, void *obj) {
+	o->magic_u32 = 0x46414221;
+	o->type_tag = type_tag;
 
-		class LuaDoubleConverter(LuaTypeConverterCommon):
-			def get_type_glue(self, gen, module_name):
-				return 'bool check_%s(lua_State *L, int idx) { return lua_isnumber(L, idx) ? true : false; }\n' % self.bound_name +\
-				'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = (%s)lua_tonumber(L, idx); }\n' % (self.bound_name, self.ctype, self.ctype) +\
-				'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushnumber(L, *((%s*)obj)); return 1; }\n' % (self.bound_name, self.ctype)
+	o->obj = obj;
 
-		self.bind_type(LuaDoubleConverter('float'))
+	o->on_delete = NULL;
+}
 
-		class LuaStringConverter(LuaTypeConverterCommon):
-			def get_type_glue(self, gen, module_name):
-				return 'bool check_%s(lua_State *L, int idx) { return lua_isstring(L, idx) ? true : false; }\n' % self.bound_name +\
-				'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = lua_tostring(L, idx); }\n' % (self.bound_name, self.ctype) +\
-				'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushstring(L, ((%s*)obj)->c_str()); return 1; }\n' % (self.bound_name, self.ctype)
+static wrapped_Object *cast_to_wrapped_Object_safe(lua_State *L, int idx) {
+	wrapped_Object *w = (wrapped_Object *)lua_touserdata(L, idx);
+	if (!w || w->magic_u32 != 0x46414221)
+		return NULL;
+	return w;
+}
 
-		self.bind_type(LuaStringConverter('std::string'))
+static wrapped_Object *cast_to_wrapped_Object_unsafe(lua_State *L, int idx) { return (wrapped_Object *)lua_touserdata(L, idx); }
 
-		class LuaConstCharPtrConverter(LuaTypeConverterCommon):
-			def get_type_glue(self, gen, module_name):
-				return 'bool check_%s(lua_State *L, int idx) { return lua_isstring(L, idx) ? true : false; }\n' % self.bound_name +\
-				'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = lua_tostring(L, idx); }\n' % (self.bound_name, self.ctype) +\
-				'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushstring(L, (*(%s*)obj)); return 1; }\n' % (self.bound_name, self.ctype)
+static int wrapped_Object_gc(lua_State *L) {
+	wrapped_Object *w = cast_to_wrapped_Object_unsafe(L, 1);
 
-		self.bind_type(LuaConstCharPtrConverter('const char *'))
+	if (w->on_delete)
+		w->on_delete(w->obj);
+
+	return 0;
+}
+\n'''
 
 	#
 	def set_error(self, type, reason):
@@ -173,7 +204,7 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 		super().finalize()
 
 		# output module functions table
-		self._source += 'static const luaL_Reg %s_funcs[] = {\n' % self._name
+		self._source += 'static const luaL_Reg %s_global_functions[] = {\n' % self._name
 		for f in self._bound_functions:
 			self._source += '	{"%s", %s},\n' % (f['bound_name'], f['proxy_name'])
 		self._source += '	{NULL, NULL}};\n\n'
@@ -186,7 +217,6 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 \n'''
 
 		self._source += 'extern "C" _DLL_EXPORT_ int luaopen_%s(lua_State* L) {\n' % self._name
-		self._source += '	lua_newtable(L);\n'
-		self._source += '	luaL_setfuncs(L, %s_funcs, 0);\n' % self._name
+		self._source += '	luaL_newlib(L, %s_global_functions);\n' % self._name
 		self._source += '	return 1;\n'
 		self._source += '}\n'
