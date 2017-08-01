@@ -20,7 +20,7 @@ class LuaTypeConverterCommon(gen.TypeConverter):
 		return "from_c_%s(L, %s, %s);\n" % (self.bound_name, expr, ownership)
 
 	def check_call(self, in_var):
-		return "check_%s(%s)" % (self.bound_name, in_var)
+		return "check_%s(L, %s)" % (self.bound_name, in_var)
 
 
 #
@@ -71,6 +71,15 @@ class LuaGenerator(gen.FABGen):
 	def get_language(self):
 		return "Lua"
 
+	def output_includes(self):
+		super().output_includes()
+
+		self._source += '''extern "C" {
+#include "lauxlib.h"
+#include "lua.h"
+}
+\n'''
+
 	def start(self, module_name):
 		super().start(module_name)
 
@@ -87,22 +96,23 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 ''', True, False)
 
 		# bind basic types
-		class LuaNumberConverter(LuaTypeConverterCommon):
-			def __init__(self, type):
-				super().__init__(type)
-	
+		class LuaIntConverter(LuaTypeConverterCommon):
 			def get_type_glue(self, gen, module_name):
 				return 'bool check_%s(lua_State *L, int idx) { return lua_isnumber(L, idx) ? true : false; }\n' % self.bound_name +\
-				'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = lua_tonumber(L, idx); }\n' % (self.bound_name, self.ctype) +\
+				'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = (%s)lua_tonumber(L, idx); }\n' % (self.bound_name, self.ctype, self.ctype) +\
 				'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushinteger(L, *((%s*)obj)); return 1; }\n' % (self.bound_name, self.ctype)
 
-		self.bind_type(LuaNumberConverter('int'))
-		self.bind_type(LuaNumberConverter('float'))
+		self.bind_type(LuaIntConverter('int'))
+
+		class LuaDoubleConverter(LuaTypeConverterCommon):
+			def get_type_glue(self, gen, module_name):
+				return 'bool check_%s(lua_State *L, int idx) { return lua_isnumber(L, idx) ? true : false; }\n' % self.bound_name +\
+				'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = (%s)lua_tonumber(L, idx); }\n' % (self.bound_name, self.ctype, self.ctype) +\
+				'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushnumber(L, *((%s*)obj)); return 1; }\n' % (self.bound_name, self.ctype)
+
+		self.bind_type(LuaDoubleConverter('float'))
 
 		class LuaStringConverter(LuaTypeConverterCommon):
-			def __init__(self, type):
-				super().__init__(type)
-
 			def get_type_glue(self, gen, module_name):
 				return 'bool check_%s(lua_State *L, int idx) { return lua_isstring(L, idx) ? true : false; }\n' % self.bound_name +\
 				'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = lua_tostring(L, idx); }\n' % (self.bound_name, self.ctype) +\
@@ -111,9 +121,6 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 		self.bind_type(LuaStringConverter('std::string'))
 
 		class LuaConstCharPtrConverter(LuaTypeConverterCommon):
-			def __init__(self, type):
-				super().__init__(type)
-
 			def get_type_glue(self, gen, module_name):
 				return 'bool check_%s(lua_State *L, int idx) { return lua_isstring(L, idx) ? true : false; }\n' % self.bound_name +\
 				'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = lua_tostring(L, idx); }\n' % (self.bound_name, self.ctype) +\
@@ -130,18 +137,16 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 		return 'self'
 
 	def get_arg(self, i, ctx):
-		return "%d" % i
+		return "%d" % (i+1)
 
 	def open_proxy(self, name, max_arg_count, ctx):
-		return 'static int %s(lua_State *L) {\n' % name
+		return '''static int %s(lua_State *L) {
+	int arg_count = lua_gettop(L), rval_count = 0;
+
+''' % name
 
 	def close_proxy(self, ctx):
-		if ctx == 'setter':
-			self._source += '	return -1;\n}\n'
-		elif ctx == 'getter':
-			self._source += '}\n'
-		else:
-			self._source += '	return NULL;\n}\n'
+		return '	return 0;\n}\n'
 
 	def proxy_call_error(self, msg, ctx):
 		out = self.set_error('runtime', msg)
@@ -162,3 +167,26 @@ template<typename NATIVE_OBJECT_WRAPPER_T> int _wrap_obj(lua_State *L, void *obj
 
 	def commit_rvals(self, rvals, ctx='default'):
 		return "return rval_count;\n"
+
+	#
+	def finalize(self):
+		super().finalize()
+
+		# output module functions table
+		self._source += 'static const luaL_Reg %s_funcs[] = {\n' % self._name
+		for f in self._bound_functions:
+			self._source += '	{"%s", %s},\n' % (f['bound_name'], f['proxy_name'])
+		self._source += '	{NULL, NULL}};\n\n'
+
+		# registration function
+		self._source += '''\
+#if WIN32
+ #define _DLL_EXPORT_ __declspec(dllexport)
+#endif
+\n'''
+
+		self._source += 'extern "C" _DLL_EXPORT_ int luaopen_%s(lua_State* L) {\n' % self._name
+		self._source += '	lua_newtable(L);\n'
+		self._source += '	luaL_setfuncs(L, %s_funcs, 0);\n' % self._name
+		self._source += '	return 1;\n'
+		self._source += '}\n'

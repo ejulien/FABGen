@@ -345,33 +345,36 @@ static inline bool CheckArgsTuple(PyObject *args) {
 		return 'arg_pyobj[%d]' % i
 
 	def open_proxy(self, name, max_arg_count, ctx):
+		out = ''
+
 		if ctx == 'getter':
-			self._source += 'static PyObject *%s(PyObject *self, void *closure) {\n' % name
+			out += 'static PyObject *%s(PyObject *self, void *closure) {\n' % name
 		elif ctx == 'setter':
-			self._source += 'static int %s(PyObject *self, PyObject *val, void *closure) {\n' % name
+			out += 'static int %s(PyObject *self, PyObject *val, void *closure) {\n' % name
 		elif ctx in ['arithmetic_op', 'inplace_arithmetic_op', 'comparison_op']:
-			self._source += 'static PyObject *%s(PyObject *o1, PyObject *o2) {\n' % name
+			out += 'static PyObject *%s(PyObject *o1, PyObject *o2) {\n' % name
 		else:
-			self._source += 'static PyObject *%s(PyObject *self, PyObject *args) {\n' % name
-			self._source += '''	if (!CheckArgsTuple(args))
+			out += 'static PyObject *%s(PyObject *self, PyObject *args) {\n' % name
+			out += '''	if (!CheckArgsTuple(args))
 		return NULL;
 	int arg_count = PyTuple_Size(args);
 \n'''
 
 			if max_arg_count > 0:
-				self._source += '\
+				out += '\
 	PyObject *arg_pyobj[%d];\n\
 	for (int _i = 0; _i < arg_count && _i < %d; ++_i)\n\
 		arg_pyobj[_i] = PyTuple_GetItem(args, _i);\n\
 \n' % (max_arg_count, max_arg_count)
 
+		return out
+
 	def close_proxy(self, ctx):
 		if ctx == 'setter':
-			self._source += '	return -1;\n}\n'
+			return '	return -1;\n}\n'
 		elif ctx == 'getter':
-			self._source += '}\n'
-		else:
-			self._source += '	return NULL;\n}\n'
+			return '}\n'
+		return '	return NULL;\n}\n'
 
 	def proxy_call_error(self, msg, ctx):
 		out = self.set_error('runtime', msg)

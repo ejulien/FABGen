@@ -180,11 +180,14 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/")
 project(%s)
 enable_language(C CXX)
 
+link_directories("%s/build")
+
+add_definitions(-DLUA_USE_APICHECK)
 add_library(my_test SHARED test_module.cpp)
-set_target_properties(my_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "%s" RUNTIME_OUTPUT_DIRECTORY_RELEASE "%s" SUFFIX .pyd)
-target_include_directories(my_test PRIVATE "%s")
-#target_link_libraries(my_test "")
-''' % (module, lua_path, lua_path, lua_src))
+set_target_properties(my_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG %s)
+target_include_directories(my_test PRIVATE %s)
+target_link_libraries(my_test lua)
+''' % (module, lua_path, work_path.replace('\\', '/'), lua_src))
 
 
 def build_and_deploy_lua_extension(work_path, build_path, lua_interpreter):
@@ -200,17 +203,17 @@ def build_and_deploy_lua_extension(work_path, build_path, lua_interpreter):
 			file.write('''\
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LocalDebuggerCommand>%s</LocalDebuggerCommand>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>test.py</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>test.lua</LocalDebuggerCommandArguments>
     <LocalDebuggerWorkingDirectory>%s</LocalDebuggerWorkingDirectory>
   </PropertyGroup>
 </Project>''' % (lua_interpreter, work_path))
 
 	print("Building extension...")
 	try:
-		subprocess.check_output('cmake --build . --config Release')
+		subprocess.check_output('cmake --build . --config Debug')
 	except subprocess.CalledProcessError as e:
 		print(e.output.decode('utf-8'))
 		return False
@@ -220,14 +223,14 @@ def build_and_deploy_lua_extension(work_path, build_path, lua_interpreter):
 
 class LuaTestBed:
 	def build_and_test_extension(self, work_path, module):
-		create_lua_cmake_file("test", work_path, args.lua_base_path, os.path.join(args.lua_base_path, 'src'))
+		create_lua_cmake_file("test", work_path, args.lua_base_path, args.lua_base_path + '/src')
 		create_clang_format_file(work_path)
 
 		build_path = os.path.join(work_path, 'build')
 		os.mkdir(build_path)
 		os.chdir(build_path)
 
-		lua_interpreter = os.path.join(args.lua_base_path, 'lua.exe')
+		lua_interpreter = args.lua_base_path + '/build/Debug/lua.exe'
 		if not build_and_deploy_lua_extension(work_path, build_path, lua_interpreter):
 			return False
 
@@ -235,14 +238,13 @@ class LuaTestBed:
 		test_path = os.path.join(work_path, 'test.lua')
 		with open(test_path, 'w') as file:
 			file.write(module.test_lua)
-		shutil.copy(os.path.join(start_path, 'tests_api.lua'), os.path.join(work_path, 'tests_api.lua'))
 
 		print("Executing Lua test...")
 		os.chdir(work_path)
 
 		success = True
 		try:
-			subprocess.check_output('%s -m test' % lua_interpreter)
+			subprocess.check_output('%s/build/Debug/lua.exe test.lua' % args.lua_base_path, stderr=subprocess.STDOUT)
 		except subprocess.CalledProcessError as e:
 			print(e.output.decode('utf-8'))
 			success = False

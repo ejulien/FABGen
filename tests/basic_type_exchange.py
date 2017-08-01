@@ -22,7 +22,7 @@ int &return_int_by_reference() { return static_int; }
 int add_int_by_value(int a, int b) { return a + b; }
 int add_int_by_pointer(int *a, int *b) { return *a + *b; }
 int add_int_by_reference(int &a, int &b) { return a + b; }
-''', True, False)
+\n''', True, False)
 
 	gen.add_include('string', True)
 
@@ -59,7 +59,7 @@ expect_eq(my_test.add_int_by_reference(3, 4), 7)
 '''
 
 test_lua = '''\
-require my_test
+my_test = require "my_test"
 
 assert(my_test.return_int() == 8)
 assert(my_test.return_float() == 8)
