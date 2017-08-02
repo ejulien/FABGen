@@ -14,8 +14,8 @@ def bind_std(gen):
 
 	class LuaIntConverter(lang.lua.LuaTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
-			return 'bool check_%s(lua_State *L, int idx) { return lua_isinteger(L, idx) ? true : false; }\n' % self.bound_name +\
-			'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = (%s)lua_tointeger(L, idx); }\n' % (self.bound_name, self.ctype, self.ctype) +\
+			return 'bool check_%s(lua_State *L, int idx) { return lua_isnumber(L, idx) ? true : false; }\n' % self.bound_name +\
+			'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = (%s)lua_tonumber(L, idx); }\n' % (self.bound_name, self.ctype, self.ctype) +\
 			'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushinteger(L, *((%s*)obj)); return 1; }\n' % (self.bound_name, self.ctype)
 
 	gen.bind_type(LuaIntConverter('char'))

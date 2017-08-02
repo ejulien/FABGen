@@ -43,7 +43,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--luabase", "D:/lua53", "--debug", "std_vector"],
+			"args": ["--luabase", "D:/lua53", "--debug", "struct_static_const_member_access"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [

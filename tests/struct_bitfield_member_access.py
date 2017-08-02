@@ -44,3 +44,21 @@ expect_eq(s.a, 1)
 expect_eq(s.b, 7)
 expect_eq(s.c, 2)
 '''
+
+test_lua = '''\
+my_test = require "my_test"
+
+s = my_test.simple_struct()
+
+assert(s.a, 3)
+assert(s.b, 11)
+assert(s.c, 1)
+
+s.a = 1
+s.b = 7
+s.c = 2
+
+assert(s.a, 1)
+assert(s.b, 7)
+assert(s.c, 2)
+'''

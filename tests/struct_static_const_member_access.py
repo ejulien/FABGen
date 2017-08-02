@@ -34,3 +34,10 @@ from tests_api import expect_eq
 expect_eq(my_test.simple_struct.i, 5)
 expect_eq(my_test.simple_struct.s, "some string")
 '''
+
+test_lua = '''\
+my_test = require "my_test"
+
+assert(my_test.simple_struct.i == 5)
+assert(my_test.simple_struct.s == "some string")
+'''

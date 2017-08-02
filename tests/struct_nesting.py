@@ -52,3 +52,23 @@ expect_eq(e.n.v, 48)
 e.n.v //= 2
 expect_eq(e.n.v, 24)
 '''
+
+test_lua = '''\
+my_test = require "my_test"
+
+--
+n = my_test.nested_struct()
+assert(n.v == 8)
+n.v = n.v - 4
+assert(n.v == 4)
+
+--
+e = my_test.enclosing_struct()
+assert(e.n.v == 8)
+e.n.v = 12
+assert(e.n.v == 12)
+e.n.v = e.n.v * 4
+assert(e.n.v == 48)
+e.n.v = e.n.v / 2
+assert(e.n.v == 24)
+'''
