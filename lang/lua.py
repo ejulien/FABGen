@@ -60,6 +60,7 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 '''
 			out += gen.prepare_c_rval(seq.wrapped_conv, seq.wrapped_conv.ctype, 'rval')
 			out += gen.commit_rvals(['rval'])
+			out += '	return rval_count;\n'
 			out += '}\n\n'
 
 			# set_item
