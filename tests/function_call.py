@@ -42,7 +42,6 @@ expect_eq(my_test.get(4, 3), 12)
 expect_eq(my_test.get(4, 3, 2), 14)
 '''
 
-
 test_lua = '''\
 my_test = require "my_test"
 

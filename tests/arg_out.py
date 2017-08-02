@@ -38,3 +38,21 @@ expect_eq(r, 4)
 expect_eq(a, 16)
 expect_eq(b, 28)
 '''
+
+test_lua = '''\
+my_test = require "my_test"
+
+a, b = my_test.out_values_function_call(2, 3)
+assert(a == 16)
+assert(b == 42)
+
+r, a, b = my_test.out_values_function_call_rval(2)
+assert(r == 2)
+assert(a == 16)
+assert(b == 28)
+
+r, a, b = my_test.out_values_function_call_rval(2, 2)
+assert(r == 4)
+assert(a == 16)
+assert(b == 28)
+'''

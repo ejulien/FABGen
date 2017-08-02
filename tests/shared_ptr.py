@@ -53,3 +53,17 @@ sp2 = my_test.ssimple_struct(9.0)
 expect_eq(sp2.u, 9.0)
 expect_eq(sp2.v, 90)
 '''
+
+test_lua = '''\
+my_test = require "my_test"
+
+sp = my_test.get_shared_ptr_to_simple_struct()
+
+assert(sp.u == 4.0)
+assert(sp.v == 7)
+
+sp2 = my_test.ssimple_struct(9.0)
+
+assert(sp2.u == 9.0)
+assert(sp2.v == 90)
+'''

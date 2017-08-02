@@ -52,3 +52,17 @@ expect_eq(s.get_a(), 10)
 expect_eq(s.set_a(9), 9)
 expect_eq(s.get_a(), 9)
 '''
+
+test_lua = '''\
+my_test = require "my_test"
+
+s = my_test.simple_struct()
+
+assert(s:get_a() == 1)
+assert(s:set_a(8, 2) == true)
+
+assert(s:get_a() == 10)
+
+assert(s:set_a(9) == 9)
+assert(s:get_a() == 9)
+'''

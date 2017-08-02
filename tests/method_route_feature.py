@@ -33,3 +33,10 @@ from tests_api import expect_eq
 o = my_test.Object()
 expect_eq(o.Get(4), 15)
 '''
+
+test_lua = '''\
+my_test = require "my_test"
+
+o = my_test.Object()
+assert(o:Get(4) == 15)
+'''

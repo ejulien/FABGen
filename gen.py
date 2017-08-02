@@ -835,7 +835,7 @@ class FABGen:
 		expr_eval = lambda args: 'new %s(%s);' % (type, ', '.join(args))
 
 		protos = [(type, args[0], args[1]) for args in proto_args]
-		proxy_name = '%s_construct_' + (self.api_prefix, conv.bound_name)
+		proxy_name = '%s_construct_%s' % (self.api_prefix, conv.bound_name)
 
 		self.__bind_proxy(proxy_name, conv, protos, '%s constructor' % conv.bound_name, expr_eval, 'constructor')
 		conv.constructor = {'proxy_name': proxy_name, 'protos': protos}

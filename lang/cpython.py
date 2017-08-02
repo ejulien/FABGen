@@ -241,8 +241,7 @@ class PythonPtrTypeDefaultConverter(PythonTypeConverterCommon):
 	if (PyLong_Check(o))
 		return true;
 	if (wrapped_Object *w = cast_to_wrapped_Object_safe(o))
-		if (_type_tag_can_cast(w->type_tag, %s))
-			return true;
+		return _type_tag_can_cast(w->type_tag, %s);
 	return false;
 }\n''' % (self.bound_name, self.type_tag)
 
