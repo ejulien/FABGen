@@ -85,7 +85,7 @@ assert(s.a == -2)
 assert(s.b == -4.5)
 assert(s.c == false)
 
-s.a += 4
+s.a = s.a + 4
 assert(s.a == 2)
 
 -- FIXME
