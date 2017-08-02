@@ -4,7 +4,7 @@ import lib
 def bind_test(gen):
 	gen.start('my_test')
 
-	lib.bind_all_defaults(gen)
+	lib.bind_defaults(gen)
 
 	gen.insert_code('void out_values_function_call(int &a, int d, int *b, float k) { a = 8 * d; *b = 14 * k; }\n\n')
 	gen.bind_function('out_values_function_call', 'void', ['int &a', 'int d', 'int *b', 'float k'], {'arg_out': ['a', 'b']})

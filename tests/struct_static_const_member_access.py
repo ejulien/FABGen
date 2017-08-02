@@ -4,11 +4,12 @@ import lib
 def bind_test(gen):
 	gen.start('my_test')
 
-	lib.bind_all_defaults(gen)
+	lib.bind_defaults(gen)
 
 	# inject test code in the wrapper
 	gen.insert_code('''\
 struct simple_struct {
+	int v{3};
 	static int i;
 	static const char *s;
 };
@@ -18,6 +19,8 @@ const char *simple_struct::s = "some string";
 ''', True, False)
 
 	simple_struct = gen.begin_class('simple_struct')
+	gen.bind_constructor(simple_struct, [])
+	gen.bind_member(simple_struct, 'int v')
 	gen.bind_static_member(simple_struct, 'int i')
 	gen.bind_static_member(simple_struct, 'const char *s')
 	gen.end_class(simple_struct)
@@ -31,12 +34,18 @@ import my_test
 
 from tests_api import expect_eq
 
+v = my_test.simple_struct()
+expect_eq(v.v, 3)
+
 expect_eq(my_test.simple_struct.i, 5)
 expect_eq(my_test.simple_struct.s, "some string")
 '''
 
 test_lua = '''\
 my_test = require "my_test"
+
+v = my_test.simple_struct()
+assert(v.v == 3)
 
 assert(my_test.simple_struct.i == 5)
 assert(my_test.simple_struct.s == "some string")

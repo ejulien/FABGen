@@ -77,29 +77,30 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 			out += '	return 0;\n'
 			out += '}\n\n'
 
-		# type index dispatching logic
+		# type metatable maps
 		gen.add_include('map', True)
 		gen.add_include('string', True)
 
-		out += 'std::map<std::string, int (*)(lua_State *)> __index_member_map_%s = {\n' % self.bound_name
-		entries = []
-		for m in self.get_all_members():
-			entries.append('	{"%s", %s}' % (m['name'], m['getter']))
-		for m in self.get_all_static_members():
-			entries.append('	{"%s", %s}' % (m['name'], m['getter']))
-		out += ',\n'.join(entries)
-		out += '\n};\n\n'
+		def build_index_map(name, values, filter, gen_output):
+			out = 'std::map<std::string, int (*)(lua_State *)> %s = {\n' % name
+			entries = []
+			for v in values:
+				if filter(v):
+					entries.append(gen_output(v))
+			out += ',\n'.join(entries)
+			out += '\n};\n\n'
+			return out
 
-		out += 'std::map<std::string, int (*)(lua_State *)> __index_method_map_%s = {\n' % self.bound_name
-		entries = []
-		for m in self.get_all_methods():
-			entries.append('	{"%s", %s}' % (m['bound_name'], m['proxy_name']))
-		for m in self.get_all_static_methods():
-			entries.append('	{"%s", %s}' % (m['bound_name'], m['proxy_name']))
-		out += ',\n'.join(entries)
-		out += '\n};\n\n'
+		out += build_index_map('__index_member_map_%s' % self.bound_name, self.get_all_members() + self.get_all_static_members(), lambda v: True, lambda v: '	{"%s", %s}' % (v['name'], v['getter']))
+		out += build_index_map('__index_static_member_map_%s' % self.bound_name, self.get_all_static_members(), lambda v: True, lambda v: '	{"%s", %s}' % (v['name'], v['getter']))
+		out += build_index_map('__index_method_map_%s' % self.bound_name, self.get_all_methods() + self.get_all_static_methods(), lambda v: True, lambda v: '	{"%s", %s}' % (v['bound_name'], v['proxy_name']))
+		out += build_index_map('__index_static_method_map_%s' % self.bound_name, self.get_all_static_methods(), lambda v: True, lambda v: '	{"%s", %s}' % (v['bound_name'], v['proxy_name']))
+		out += build_index_map('__newindex_member_map_%s' % self.bound_name, self.get_all_members() + self.get_all_static_members(), lambda v: v['setter'], lambda v: '	{"%s", %s}' % (v['name'], v['setter']))
+		out += build_index_map('__newindex_static_member_map_%s' % self.bound_name, self.get_all_static_members(), lambda v: v['setter'], lambda v: '	{"%s", %s}' % (v['name'], v['setter']))
 
-		out += 'static int __index_%s(lua_State *L) {\n' % self.bound_name
+		# __index
+		out += 'static int __index_%s_instance(lua_State *L) {\n' % self.bound_name
+
 		if has_sequence:
 			out += '''\
 	if (lua_isinteger(L, -1)) {
@@ -125,18 +126,26 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 	return 0; // lookup failed
 }\n\n''' % (self.bound_name, self.bound_name, self.bound_name, self.bound_name)
 
-		out += 'std::map<std::string, int (*)(lua_State *)> __newindex_map_%s = {\n' % self.bound_name
-		entries = []
-		for m in self.get_all_members():
-			if m['setter']:
-				entries.append('	{"%s", %s}' % (m['name'], m['setter']))
-		for m in self.get_all_static_members():
-			if m['setter']:
-				entries.append('	{"%s", %s}' % (m['name'], m['setter']))
-		out += ',\n'.join(entries)
-		out += '\n};\n\n'
+		out += '''static int __index_%s_class(lua_State *L) {
+	if (lua_isstring(L, -1)) {
+		std::string key = lua_tostring(L, -1);
+		lua_pop(L, 1);
 
-		out += 'static int __newindex_%s(lua_State *L) {\n' % self.bound_name
+		auto i = __index_static_member_map_%s.find(key); // member lookup
+		if (i != __index_static_member_map_%s.end())
+			return i->second(L);
+
+		i = __index_static_method_map_%s.find(key); // method lookup
+		if (i != __index_static_method_map_%s.end()) {
+			lua_pushcfunction(L, i->second);
+			return 1;
+		}
+	}
+	return 0; // lookup failed
+}\n\n''' % (self.bound_name, self.bound_name, self.bound_name, self.bound_name, self.bound_name)
+
+		# __newindex
+		out += 'static int __newindex_%s_instance(lua_State *L) {\n' % self.bound_name
 		if has_sequence:
 			out += '''\
 	if (lua_isinteger(L, -2)) {
@@ -148,29 +157,66 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 	if (lua_isstring(L, -2)) {
 		std::string key = lua_tostring(L, -2);
 		lua_remove(L, -2);
-		auto i = __newindex_map_%s.find(key);
 
-		if (i != __newindex_map_%s.end())
+		auto i = __newindex_member_map_%s.find(key);
+		if (i != __newindex_member_map_%s.end())
 			return i->second(L);
 	}
 	return 0; // lookup failed
 }\n\n''' % (self.bound_name, self.bound_name)
 
-		# type meta
-		out += 'static const luaL_Reg %s_meta[] = {\n' % self.bound_name
+		out += '''static int __newindex_%s_class(lua_State *L) {
+	if (lua_isstring(L, -2)) {
+		std::string key = lua_tostring(L, -2);
+		lua_remove(L, -2);
+
+		auto i = __newindex_static_member_map_%s.find(key);
+		if (i != __newindex_static_member_map_%s.end())
+			return i->second(L);
+	}
+	return 0; // lookup failed
+}\n\n''' % (self.bound_name, self.bound_name, self.bound_name)
+
+		# type class metatable
+		out += 'static const luaL_Reg %s_class_meta[] = {\n' % self.bound_name
+		out += '	{"__index", __index_%s_class},\n' % self.bound_name
+		out += '	{"__newindex", __newindex_%s_class},\n' % self.bound_name
+		if self.constructor:
+			out += '	{"__call", %s},\n' % self.constructor['proxy_name']
+		out += '	{NULL, NULL}};\n\n'
+
+		# type instance metatable
+		comp_op_to_metaevent = {'<': '__lt', '<=': '__le', '==': '__eq' }
+		arit_op_to_metaevent = {'+': '__add', '-': '__sub', '*': '__mul', '/': '__div' }
+
+		out += 'static const luaL_Reg %s_instance_meta[] = {\n' % self.bound_name
 		out += '	{"__gc", wrapped_Object_gc},\n'
-		out += '	{"__index", __index_%s},\n' % self.bound_name
-		out += '	{"__newindex", __newindex_%s},\n' % self.bound_name
+		out += '	{"__index", __index_%s_instance},\n' % self.bound_name
+		out += '	{"__newindex", __newindex_%s_instance},\n' % self.bound_name
+		for i, ops in enumerate(self.comparison_ops):
+			if ops['op'] in comp_op_to_metaevent:
+				out += '	{"%s", %s},\n' % (comp_op_to_metaevent[ops['op']], ops['proxy_name'])
+		for i, ops in enumerate(self.arithmetic_ops):
+			if ops['op'] in arit_op_to_metaevent:
+				out += '	{"%s", %s},\n' % (arit_op_to_metaevent[ops['op']], ops['proxy_name'])
 		if has_sequence:
 			out += '	{"__len", __len_%s},\n' % self.bound_name
 		out += '	{NULL, NULL}};\n\n'
 
 		# type registration
-		out += 'void register_%s(lua_State *L) {\n' % self.bound_name
-		out += '	luaL_newmetatable(L, "%s");\n' % self.bound_name
-		out += '	luaL_setfuncs(L, %s_meta, 0);\n' % self.bound_name
-		out += '	lua_pop(L, 1);\n'  # pop metatable
-		out += '}\n\n'
+		out += '''void register_%s(lua_State *L) {
+	// setup class object
+	lua_newtable(L); // class object
+	lua_newtable(L); // class metatable
+	luaL_setfuncs(L, %s_class_meta, 0);
+	lua_setmetatable(L, -2);
+	lua_setfield(L, -2, "%s");
+
+	// setup type instance metatable
+	luaL_newmetatable(L, "%s");
+	luaL_setfuncs(L, %s_instance_meta, 0);
+	lua_pop(L, 1);
+}\n\n''' % (self.bound_name, self.bound_name, self.bound_name, self.bound_name, self.bound_name)
 
 		# delete delegate
 		out += 'static void delete_%s(void *o) { delete (%s *)o; }\n\n' % (self.bound_name, self.ctype)
@@ -307,20 +353,22 @@ static int wrapped_Object_gc(lua_State *L) {
 
 	def get_arg(self, i, ctx):
 		i += 1  # Lua stack starts at 1
-		if ctx in ['getter', 'setter', 'method']:
+		if ctx in ['getter', 'setter', 'method', 'arithmetic_op', 'comparison_op']:
 			i += 1  # account for self in those methods
 		return str(i)
 
 	def open_proxy(self, name, max_arg_count, ctx):
 		out = 'static int %s(lua_State *L) {\n' % name
-		if ctx == 'method':
+		if ctx in ['method']:
 			out += '	int arg_count = lua_gettop(L) - 1, rval_count = 0;\n\n'
 		else:
+			if ctx == 'constructor':
+				out += '	lua_remove(L, 1);\n'  # remove func from the stack (as passed in by the __call metamethod)
 			out += '	int arg_count = lua_gettop(L), rval_count = 0;\n\n'
 		return out
 
 	def close_proxy(self, ctx):
-		return '	return 0;\n}\n'
+		return '	return rval_count;\n}\n'
 
 	def proxy_call_error(self, msg, ctx):
 		out = self.set_error('runtime', msg)
@@ -340,7 +388,7 @@ static int wrapped_Object_gc(lua_State *L) {
 		return 'rval_count += ' + conv.from_c_call(out_var, expr, ownership)
 
 	def commit_rvals(self, rvals, ctx='default'):
-		return "return rval_count;\n"
+		return ''  #'return rval_count;\n'
 
 	#
 	def finalize(self):
@@ -350,9 +398,6 @@ static int wrapped_Object_gc(lua_State *L) {
 		self._source += 'static const luaL_Reg %s_global_functions[] = {\n' % self._name
 		for f in self._bound_functions:
 			self._source += '	{"%s", %s},\n' % (f['bound_name'], f['proxy_name'])
-		for t in self._bound_types:
-			if isinstance(t, LuaClassTypeConverter) and t.constructor:
-				self._source += '	{"%s", %s},\n' % (t.bound_name, t.constructor['proxy_name'])
 		self._source += '	{NULL, NULL}};\n\n'
 
 		# registration function
@@ -363,13 +408,15 @@ static int wrapped_Object_gc(lua_State *L) {
 \n'''
 
 		self._source += 'extern "C" _DLL_EXPORT_ int luaopen_%s(lua_State* L) {\n' % self._name
-		self._source += '	// register type metatables\n'
+		self._source += '	// new module table\n'
+		self._source += '	lua_newtable(L);\n'
+		self._source += '\n'
+		self._source += '	// register types\n'
 		for t in self._bound_types:
 			if isinstance(t, LuaClassTypeConverter):
 				self._source += '	register_%s(L);\n' % t.bound_name
 		self._source += '\n'
 		self._source += '	// register global functions\n'
-		self._source += '	lua_newtable(L);\n'
 		self._source += '	luaL_setfuncs(L, %s_global_functions, 0);\n' % self._name
 		self._source += '	return 1;\n'
 		self._source += '}\n'

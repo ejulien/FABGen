@@ -4,7 +4,7 @@ import lib
 def bind_test(gen):
 	gen.start('my_test')
 
-	lib.bind_all_defaults(gen)
+	lib.bind_defaults(gen)
 
 	gen.insert_code('''
 struct Object { int a{11}; };

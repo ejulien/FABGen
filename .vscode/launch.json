@@ -2,7 +2,7 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "Tests CPython",
+			"name": "CPython: Tests",
 			"type": "python",
 			"request": "launch",
 			"stopOnEntry": false,
@@ -19,14 +19,14 @@
 			]
 		},
 		{
-			"name": "Tests CPython --debug",
+			"name": "CPython: Tests --debug",
 			"type": "python",
 			"request": "launch",
 			"stopOnEntry": false,
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--pybase", "C:/Pythons/test-install", "--debug", "struct_bitfield_member_access"],
+			"args": ["--pybase", "C:/Pythons/test-install", "--debug", "struct_inheritance"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
@@ -36,24 +36,7 @@
 			]
 		},
 		{
-			"name": "Tests Lua53 --debug",
-			"type": "python",
-			"request": "launch",
-			"stopOnEntry": false,
-			"pythonPath": "${config:python.pythonPath}",
-			"program": "${workspaceRoot}/tests.py",
-			"cwd": "${workspaceRoot}",
-			"args": ["--luabase", "D:/lua53", "--debug", "struct_static_const_member_access"],
-			"env": null,
-			"envFile": "${workspaceRoot}/.env",
-			"debugOptions": [
-				"WaitOnAbnormalExit",
-				"WaitOnNormalExit",
-				"RedirectOutput"
-			]
-		},
-		{
-			"name": "Bind Harfang",
+			"name": "CPython: Bind Harfang",
 			"type": "python",
 			"request": "launch",
 			"stopOnEntry": false,
@@ -61,6 +44,40 @@
 			"program": "${workspaceRoot}/test.py",
 			"cwd": "${workspaceRoot}",
 			"args": ["--pybase", "C:/Pythons/test-install"],
+			"env": null,
+			"envFile": "${workspaceRoot}/.env",
+			"debugOptions": [
+				"WaitOnAbnormalExit",
+				"WaitOnNormalExit",
+				"RedirectOutput"
+			]
+		},
+		{
+			"name": "Lua53: Tests",
+			"type": "python",
+			"request": "launch",
+			"stopOnEntry": false,
+			"pythonPath": "${config:python.pythonPath}",
+			"program": "${workspaceRoot}/tests.py",
+			"cwd": "${workspaceRoot}",
+			"args": ["--luabase", "D:/lua53"],
+			"env": null,
+			"envFile": "${workspaceRoot}/.env",
+			"debugOptions": [
+				"WaitOnAbnormalExit",
+				"WaitOnNormalExit",
+				"RedirectOutput"
+			]
+		},
+		{
+			"name": "Lua53: Tests --debug",
+			"type": "python",
+			"request": "launch",
+			"stopOnEntry": false,
+			"pythonPath": "${config:python.pythonPath}",
+			"program": "${workspaceRoot}/tests.py",
+			"cwd": "${workspaceRoot}",
+			"args": ["--luabase", "D:/lua53", "--debug", "struct_inheritance"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [

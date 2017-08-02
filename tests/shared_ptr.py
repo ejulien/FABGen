@@ -6,7 +6,7 @@ from lib.stl import SharedPtrProxyFeature
 def bind_test(gen):
 	gen.start('my_test')
 
-	lib.bind_all_defaults(gen)
+	lib.bind_defaults(gen)
 
 	# inject test code in the wrapper
 	gen.insert_code('''\

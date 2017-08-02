@@ -4,7 +4,7 @@ import lib
 def bind_test(gen):
 	gen.start('my_test')
 
-	lib.bind_all_defaults(gen)
+	lib.bind_defaults(gen)
 
 	# inject test code in the wrapper
 	gen.insert_code('''\
@@ -89,6 +89,11 @@ expect_eq(base.override, 4)
 expect_eq(base.static_override, 1)
 expect_eq(derived.override, 12)  # member overshadowing
 expect_eq(derived.static_override, 42)  # static member overshadowing
+
+expect_eq(my_test.base_class.v, 7)
+expect_eq(my_test.derived_class.v, 7)
+expect_eq(my_test.base_class.static_override, 1)
+expect_eq(my_test.derived_class.static_override, 42)
 '''
 
 test_lua = '''\
@@ -117,4 +122,9 @@ assert(base.override == 4)
 assert(base.static_override == 1)
 assert(derived.override == 12)  -- member overshadowing
 assert(derived.static_override == 42)  -- static member overshadowing
+
+assert(my_test.base_class.v == 7)
+assert(my_test.derived_class.v == 7)
+assert(my_test.base_class.static_override == 1)
+assert(my_test.derived_class.static_override == 42)
 '''

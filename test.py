@@ -3194,7 +3194,7 @@ static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixe
 def bind_gs(gen):
 	gen.start('gs')
 
-	lib.bind_all_defaults(gen)
+	lib.bind_defaults(gen)
 
 	gen.add_include('engine/engine.h')
 	gen.add_include('engine/engine_plugins.h')

@@ -1,4 +1,4 @@
-def bind_all_defaults(gen):
+def bind_defaults(gen):
 	if gen.get_language() == 'CPython':
 		import lib.cpython.std
 		import lib.cpython.stl
