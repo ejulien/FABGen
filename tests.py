@@ -182,7 +182,7 @@ enable_language(C CXX)
 
 link_directories("%s/build")
 
-add_definitions(-DLUA_USE_APICHECK)
+#add_definitions(-DLUA_USE_APICHECK)
 add_library(my_test SHARED test_module.cpp)
 set_target_properties(my_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG %s)
 target_include_directories(my_test PRIVATE %s)

@@ -44,7 +44,8 @@ class LuaClassTypeDefaultConverter(LuaTypeConverterCommon):
 
 		# type registration
 		out += 'void register_%s(lua_State *L) {\n' % self.bound_name
-		out += '	luaL_newlib(L, %s_methods);\n' % self.bound_name  # methods
+		out += '	lua_newtable(L);\n'
+		out += '	luaL_setfuncs(L, %s_methods, 0);\n' % self.bound_name  # methods
 
 		out += '	luaL_newmetatable(L, "%s");\n' % self.bound_name
 		out += '	luaL_setfuncs(L, %s_meta, 0);\n' % self.bound_name
@@ -217,6 +218,7 @@ static int wrapped_Object_gc(lua_State *L) {
 \n'''
 
 		self._source += 'extern "C" _DLL_EXPORT_ int luaopen_%s(lua_State* L) {\n' % self._name
-		self._source += '	luaL_newlib(L, %s_global_functions);\n' % self._name
+		self._source += '	lua_newtable(L);\n'
+		self._source += '	luaL_setfuncs(L, %s_global_functions, 0);\n' % self._name
 		self._source += '	return 1;\n'
 		self._source += '}\n'
