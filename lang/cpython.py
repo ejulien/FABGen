@@ -254,7 +254,7 @@ class PythonPtrTypeDefaultConverter(PythonTypeConverterCommon):
 }\n''' % (self.bound_name, self.type_tag)
 
 		out += '''PyObject *from_c_%s(void *obj, OwnershipPolicy) {
-	return PyLong_FromVoidPtr(obj);
+	return PyLong_FromVoidPtr(*(void **)obj);
 }\n''' % self.bound_name
 
 		return out
