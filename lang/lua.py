@@ -105,9 +105,9 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 	if (lua_isinteger(L, -1)) {
 		return seq__index_%s(L);
 	}
-''' % self.bound_name
+\n''' % self.bound_name
 
-		out += '''
+		out += '''\
 	if (lua_isstring(L, -1)) {
 		std::string key = lua_tostring(L, -1);
 		lua_pop(L, 1);
@@ -150,9 +150,9 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 	if (lua_isinteger(L, -2)) {
 		return seq__newindex_%s(L);
 	}
-''' % self.bound_name
+\n''' % self.bound_name
 
-		out += '''
+		out += '''\
 	if (lua_isstring(L, -2)) {
 		std::string key = lua_tostring(L, -2);
 		lua_remove(L, -2);
