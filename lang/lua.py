@@ -408,15 +408,29 @@ static int wrapped_Object_gc(lua_State *L) {
 \n'''
 
 		self._source += 'extern "C" _DLL_EXPORT_ int luaopen_%s(lua_State* L) {\n' % self._name
+
 		self._source += '	// new module table\n'
 		self._source += '	lua_newtable(L);\n'
 		self._source += '\n'
-		self._source += '	// register types\n'
-		for t in self._bound_types:
-			if isinstance(t, LuaClassTypeConverter):
+
+		if len(self._enums) > 0:
+			for name, enum in self._enums.items():
+				self._source += '	// enumeration %s\n' % name
+				for name, value in enum.items():
+					self._source += '	lua_pushinteger(L, %s);\n' % value
+					self._source += '	lua_setfield(L, -2, "%s");\n' % name
+			self._source += '\n'
+
+		types_to_register = [t for t in self._bound_types if isinstance(t, LuaClassTypeConverter)]
+
+		if len(types_to_register) > 0:
+			self._source += '	// register types\n'
+			for t in types_to_register:
 				self._source += '	register_%s(L);\n' % t.bound_name
-		self._source += '\n'
+			self._source += '\n'
+
 		self._source += '	// register global functions\n'
 		self._source += '	luaL_setfuncs(L, %s_global_functions, 0);\n' % self._name
+
 		self._source += '	return 1;\n'
 		self._source += '}\n'

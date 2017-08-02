@@ -428,15 +428,6 @@ class FABGen:
 		self.__type_convs[type] = conv
 
 	#
-	def bind_enum(self, symbols, bound_name, storage_type='int', prefix=''):
-		self.typedef(name, storage_type)
-
-		enum = {}
-		for symbol in symbols:
-			enum[prefix + symbol] = symbol
-
-		self._enums[bound_name] = enum
-
 	def bind_named_enum(self, name, symbols, storage_type='int', bound_name=None, prefix='', namespace=None):
 		self.typedef(name, storage_type)
 
