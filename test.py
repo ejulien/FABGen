@@ -1,3 +1,5 @@
+import argparse
+
 import lang.lua
 import lang.cpython
 
@@ -1575,30 +1577,41 @@ static void RenderSystemDrawSprite_wrapper(gs::render::RenderSystem *render_syst
 	DrawTriangle_wrapper_route = lambda args: 'RenderSystemDrawTriangle_wrapper(%s);' % (', '.join(args))
 	DrawSprite_wrapper_route = lambda args: 'RenderSystemDrawSprite_wrapper(%s);' % (', '.join(args))
 
-	gen.bind_method_overloads(shared_render_system, 'DrawLine', [
+	draw_line_protos = [
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos'], {'proxy': None, 'route': DrawLine_wrapper_route}),
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col'], {'proxy': None, 'route': DrawLine_wrapper_route}),
-		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<gs::tVector2<float>> &uv'], {'proxy': None, 'route': DrawLine_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawLine_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawLine_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfVector2 uv'], {'proxy': None, 'route': DrawLine_wrapper_route})
-	])
-	gen.bind_method_overloads(shared_render_system, 'DrawTriangle', [
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<gs::tVector2<float>> &uv'], {'proxy': None, 'route': DrawLine_wrapper_route})	]
+	if gen.get_language() == "CPython":
+		draw_line_protos += [
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawLine_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawLine_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfVector2 uv'], {'proxy': None, 'route': DrawLine_wrapper_route})	]
+
+	gen.bind_method_overloads(shared_render_system, 'DrawLine', draw_line_protos)
+
+	draw_triangle_protos = [
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos'], {'proxy': None, 'route': DrawTriangle_wrapper_route}),
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col'], {'proxy': None, 'route': DrawTriangle_wrapper_route}),
-		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<gs::tVector2<float>> &uv'], {'proxy': None, 'route': DrawTriangle_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawTriangle_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawTriangle_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfVector2 uv'], {'proxy': None, 'route': DrawTriangle_wrapper_route})
-	])
-	gen.bind_method_overloads(shared_render_system, 'DrawSprite', [
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<gs::tVector2<float>> &uv'], {'proxy': None, 'route': DrawTriangle_wrapper_route})	]
+	if gen.get_language() == "CPython":
+		draw_triangle_protos += [
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawTriangle_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawTriangle_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfVector2 uv'], {'proxy': None, 'route': DrawTriangle_wrapper_route})	]
+
+	gen.bind_method_overloads(shared_render_system, 'DrawTriangle', draw_triangle_protos)
+
+	draw_sprite_protos = [
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos'], {'proxy': None, 'route': DrawSprite_wrapper_route}),
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col'], {'proxy': None, 'route': DrawSprite_wrapper_route}),
-		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<float> &size'], {'proxy': None, 'route': DrawSprite_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawSprite_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawSprite_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfFloat size'], {'proxy': None, 'route': DrawSprite_wrapper_route})
-	])
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<float> &size'], {'proxy': None, 'route': DrawSprite_wrapper_route})	]
+	if gen.get_language() == "CPython":
+		draw_sprite_protos += [
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawSprite_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawSprite_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfFloat size'], {'proxy': None, 'route': DrawSprite_wrapper_route})	]
+
+	gen.bind_method_overloads(shared_render_system, 'DrawSprite', draw_sprite_protos)
 
 	gen.insert_binding_code('''\
 static void RenderSystemDrawLineAuto_wrapper(gs::render::RenderSystem *render_system, gs::uint count, const std::vector<gs::Vector3> &pos) { render_system->DrawLineAuto(count, pos.data()); }
@@ -1618,30 +1631,41 @@ static void RenderSystemDrawSpriteAuto_wrapper(gs::render::RenderSystem *render_
 	DrawTriangleAuto_wrapper_route = lambda args: 'RenderSystemDrawTriangleAuto_wrapper(%s);' % (', '.join(args))
 	DrawSpriteAuto_wrapper_route = lambda args: 'RenderSystemDrawSpriteAuto_wrapper(%s);' % (', '.join(args))
 
-	gen.bind_method_overloads(shared_render_system, 'DrawLineAuto', [
+	draw_line_auto_protos = [
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos'], {'proxy': None, 'route': DrawLineAuto_wrapper_route}),
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col'], {'proxy': None, 'route': DrawLineAuto_wrapper_route}),
-		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<gs::tVector2<float>> &uv', 'const gs::gpu::Texture *texture'], {'proxy': None, 'route': DrawLineAuto_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawLineAuto_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawLineAuto_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfVector2 uv', 'const gs::gpu::Texture *texture'], {'proxy': None, 'route': DrawLineAuto_wrapper_route})
-	])
-	gen.bind_method_overloads(shared_render_system, 'DrawTriangleAuto', [
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<gs::tVector2<float>> &uv', 'const gs::gpu::Texture *texture'], {'proxy': None, 'route': DrawLineAuto_wrapper_route})	]
+	if gen.get_language() == "CPython":
+		draw_line_auto_protos += [	
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawLineAuto_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawLineAuto_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfVector2 uv', 'const gs::gpu::Texture *texture'], {'proxy': None, 'route': DrawLineAuto_wrapper_route})	]
+
+	gen.bind_method_overloads(shared_render_system, 'DrawLineAuto', draw_line_auto_protos)
+
+	draw_triangle_auto_protos = [
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route}),
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route}),
-		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<gs::tVector2<float>> &uv', 'const gs::gpu::Texture *texture'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfVector2 uv', 'const gs::gpu::Texture *texture'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route})
-	])
-	gen.bind_method_overloads(shared_render_system, 'DrawSpriteAuto', [
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<gs::tVector2<float>> &uv', 'const gs::gpu::Texture *texture'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route})	]
+	if gen.get_language() == "CPython":
+		draw_triangle_auto_protos += [
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfVector2 uv', 'const gs::gpu::Texture *texture'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route})	]
+
+	gen.bind_method_overloads(shared_render_system, 'DrawTriangleAuto', draw_triangle_auto_protos)
+
+	draw_sprite_auto_protos = [
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const gs::gpu::Texture &texture'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route}),
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const gs::gpu::Texture &texture', 'const std::vector<gs::Color> &col'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route}),
-		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const gs::gpu::Texture &texture', 'const std::vector<gs::Color> &col', 'const std::vector<float> &size'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'const gs::gpu::Texture &texture'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'const gs::gpu::Texture &texture', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'const gs::gpu::Texture &texture', 'PySequenceOfColor col', 'PySequenceOfFloat size'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route})
-	])
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const gs::gpu::Texture &texture', 'const std::vector<gs::Color> &col', 'const std::vector<float> &size'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route})	]
+	if gen.get_language() == "CPython":
+		draw_sprite_auto_protos += [
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'const gs::gpu::Texture &texture'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'const gs::gpu::Texture &texture', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'const gs::gpu::Texture &texture', 'PySequenceOfColor col', 'PySequenceOfFloat size'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route})	]
+
+	gen.bind_method_overloads(shared_render_system, 'DrawSpriteAuto', draw_sprite_auto_protos)
 
 	gen.bind_method(shared_render_system, 'DrawQuad2D', 'void', ['const gs::Rect<float> &src_rect', 'const gs::Rect<float> &dst_rect'], ['proxy'])
 	gen.bind_method(shared_render_system, 'DrawFullscreenQuad', 'void', ['const gs::tVector2<float> &uv'], ['proxy'])
@@ -3200,7 +3224,8 @@ def bind_gs(gen):
 	gen.add_include('engine/engine_plugins.h')
 	gen.add_include('engine/engine_factories.h')
 
-	gen.insert_code('''
+	if gen.get_language() == 'CPython':
+		gen.insert_code('''
 // Add the Python interpreter module search paths to the engine default plugins search path
 void InitializePluginsDefaultSearchPath() {
 	if (PyObject *sys_path = PySys_GetObject("path")) {
@@ -3213,6 +3238,10 @@ void InitializePluginsDefaultSearchPath() {
 		}
 	}
 }
+\n''')
+	elif gen.get_language() == 'Lua':
+		gen.insert_code('''
+void InitializePluginsDefaultSearchPath() {}
 \n''')
 
 	gen.add_custom_init_code('''
@@ -3264,7 +3293,16 @@ void InitializePluginsDefaultSearchPath() {
 	return gen.get_output()
 
 
-hdr, src = bind_gs(lang.cpython.CPythonGenerator())
+parser = argparse.ArgumentParser(description='Bind Harfang.')
+parser.add_argument('--lua', help='Bind to Lua target language', action="store_true")
+args = parser.parse_args()
+
+if args.lua:
+	gen = lang.lua.LuaGenerator()
+else:
+	gen = lang.cpython.CPythonGenerator()
+
+hdr, src = bind_gs(gen)
 
 with open('d:/gs-fabgen-test/bind_gs.h', mode='w', encoding='utf-8') as f:
 	f.write(hdr)

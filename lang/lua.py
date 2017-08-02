@@ -82,13 +82,11 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 		gen.add_include('string', True)
 
 		def build_index_map(name, values, filter, gen_output):
-			out = 'std::map<std::string, int (*)(lua_State *)> %s = {\n' % name
-			entries = []
-			for v in values:
-				if filter(v):
-					entries.append(gen_output(v))
-			out += ',\n'.join(entries)
-			out += '\n};\n\n'
+			out = 'std::map<std::string, int (*)(lua_State *)> %s = {' % name
+			if len(values) > 0:
+				entries = [gen_output(v) for v in values if filter(v)]
+				out += '\n' + ',\n'.join(entries) + '\n'
+			out += '};\n\n'
 			return out
 
 		out += build_index_map('__index_member_map_%s' % self.bound_name, self.get_all_members() + self.get_all_static_members(), lambda v: True, lambda v: '	{"%s", %s}' % (v['name'], v['getter']))
@@ -407,7 +405,15 @@ static int wrapped_Object_gc(lua_State *L) {
 #endif
 \n'''
 
+		self._source += '''static void declare_enum_value(lua_State *L, int idx, const char *name, int value) {
+	lua_pushinteger(L, value);
+	lua_setfield(L, idx, name);
+}\n\n'''
+
 		self._source += 'extern "C" _DLL_EXPORT_ int luaopen_%s(lua_State* L) {\n' % self._name
+
+		self._source += '	// custom initialization code'
+		self._source += self._custom_init_code
 
 		self._source += '	// new module table\n'
 		self._source += '	lua_newtable(L);\n'
@@ -417,8 +423,7 @@ static int wrapped_Object_gc(lua_State *L) {
 			for name, enum in self._enums.items():
 				self._source += '	// enumeration %s\n' % name
 				for name, value in enum.items():
-					self._source += '	lua_pushinteger(L, %s);\n' % value
-					self._source += '	lua_setfield(L, -2, "%s");\n' % name
+					self._source += '	declare_enum_value(L, -2, "%s", (int)%s);\n' % (name, value)
 			self._source += '\n'
 
 		types_to_register = [t for t in self._bound_types if isinstance(t, LuaClassTypeConverter)]
