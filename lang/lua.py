@@ -370,14 +370,7 @@ static int wrapped_Object_gc(lua_State *L) {
 		return '	return rval_count;\n}\n'
 
 	def proxy_call_error(self, msg, ctx):
-		out = self.set_error('runtime', msg)
-
-		if ctx == 'setter':
-			out += 'return -1;\n'
-		else:
-			out += 'return NULL;\n'
-
-		return out
+		return self.set_error('runtime', msg)
 
 	# function call return values
 	def return_void_from_c(self):

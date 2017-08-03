@@ -8,6 +8,10 @@ import lib.stl
 import lib
 
 
+def check_rval_lambda(gen, msg):
+	return lambda rvals, ctx: 'if (!%s) {\n%s}\n' % (rvals[0], gen.proxy_call_error(msg, ctx))
+
+
 def bind_std_vector(gen, T_conv):
 	if gen.get_language() == 'CPython':
 		PySequence_T_type = 'PySequenceOf%s' % T_conv.bound_name.title()
@@ -729,10 +733,10 @@ def bind_scene(gen):
 		('std::vector<std::shared_ptr<gs::core::Component>>', ['const char *aspect'], ['proxy'])
 	])
 
-	gen.bind_method(shared_node, 'GetComponent<gs::core::Transform>', 'std::shared_ptr<gs::core::Transform>', [], {'proxy': None, 'check_rval': lambda rvals, ctx: 'if (!%s) {\n%s}\n' % (rvals[0], gen.proxy_call_error('GetTransform failed, node has no Transform component', ctx))}, bound_name='GetTransform')
-	gen.bind_method(shared_node, 'GetComponent<gs::core::Camera>', 'std::shared_ptr<gs::core::Camera>', [], {'proxy': None, 'check_rval': lambda rvals, ctx: 'if (!%s) {\n%s}\n' % (rvals[0], gen.proxy_call_error('GetCamera failed, node has no Camera component', ctx))}, bound_name='GetCamera')
-	gen.bind_method(shared_node, 'GetComponent<gs::core::Object>', 'std::shared_ptr<gs::core::Object>', [], {'proxy': None, 'check_rval': lambda rvals, ctx: 'if (!%s) {\n%s}\n' % (rvals[0], gen.proxy_call_error('GetObject failed, node has no Object component', ctx))}, bound_name='GetObject')
-	gen.bind_method(shared_node, 'GetComponent<gs::core::Light>', 'std::shared_ptr<gs::core::Light>', [], {'proxy': None, 'check_rval': lambda rvals, ctx: 'if (!%s) {\n%s}\n' % (rvals[0], gen.proxy_call_error('GetLight failed, node has no Light component', ctx))}, bound_name='GetLight')
+	gen.bind_method(shared_node, 'GetComponent<gs::core::Transform>', 'std::shared_ptr<gs::core::Transform>', [], {'proxy': None, 'check_rval': check_rval_lambda(gen, 'GetTransform failed, node has no Transform component')}, bound_name='GetTransform')
+	gen.bind_method(shared_node, 'GetComponent<gs::core::Camera>', 'std::shared_ptr<gs::core::Camera>', [], {'proxy': None, 'check_rval': check_rval_lambda(gen, 'GetCamera failed, node has no Camera component')}, bound_name='GetCamera')
+	gen.bind_method(shared_node, 'GetComponent<gs::core::Object>', 'std::shared_ptr<gs::core::Object>', [], {'proxy': None, 'check_rval': check_rval_lambda(gen, 'GetObject failed, node has no Object component')}, bound_name='GetObject')
+	gen.bind_method(shared_node, 'GetComponent<gs::core::Light>', 'std::shared_ptr<gs::core::Light>', [], {'proxy': None, 'check_rval': check_rval_lambda(gen, 'GetLight failed, node has no Light component')}, bound_name='GetLight')
 
 	gen.bind_method(shared_node, 'HasAspect', 'bool', ['const char *aspect'], ['proxy'])
 	gen.bind_method(shared_node, 'IsReady', 'bool', [], ['proxy'])
@@ -1336,12 +1340,9 @@ static void RendererBlitTexture_wrapper(gs::gpu::Renderer *renderer, gs::gpu::Te
 static std::shared_ptr<gs::gpu::Renderer> CreateRenderer() { return gs::core::g_renderer_factory.get().Instantiate(); }
 	''', 'Renderer custom API')
 
-	def check_create_renderer_rval(rvals, ctx):
-		return 'if (!%s) {\n%s}\n' % (rvals[0], gen.proxy_call_error('CreateRenderer failed, was gs.LoadPlugins called succesfully?', ctx))
-
 	gen.bind_function_overloads('CreateRenderer', [
-		('std::shared_ptr<gs::gpu::Renderer>', [], {'check_rval': check_create_renderer_rval}),
-		('std::shared_ptr<gs::gpu::Renderer>', ['const char *name'], {'check_rval': check_create_renderer_rval})
+		('std::shared_ptr<gs::gpu::Renderer>', [], {'check_rval': check_rval_lambda(gen, 'CreateRenderer failed, was gs.LoadPlugins called succesfully?')}),
+		('std::shared_ptr<gs::gpu::Renderer>', ['const char *name'], {'check_rval': check_rval_lambda(gen, 'CreateRenderer failed, was gs.LoadPlugins called succesfully?')})
 	])
 
 	# gs::gpu::RendererAsync
@@ -2316,6 +2317,7 @@ def bind_color(gen):
 
 	gen.bind_constructor_overloads(color, [
 		([], []),
+		(['const gs::Color &color'], []),
 		(['float r', 'float g', 'float b'], []),
 		(['float r', 'float g', 'float b', 'float a'], [])
 	])
@@ -3046,101 +3048,103 @@ static size_t AudioData_GetFrameToBinaryBlob(gs::AudioData *audio_data, gs::Bina
 	gen.bind_method(shared_sound, 'SetNotReady', 'void', [], ['proxy'])
 	gen.end_class(shared_sound)
 
-	#
-	def bind_mixer_api(conv, features=[]):
-		gen.bind_static_members(conv, [
-			'const gs::audio::MixerChannelState DefaultState', 'const gs::audio::MixerChannelState RepeatState', 'const gs::audio::MixerChannelLocation DefaultLocation',
-			'const gs::audio::MixerPriority DefaultPriority', 'const gs::audio::MixerChannel ChannelError'], features)
-
-		gen.bind_method(conv, 'Open', 'bool', [], features)
-		gen.bind_method(conv, 'Close', 'void', [], features)
-
-		gen.bind_method(conv, 'GetMasterVolume', 'float', [], features)
-		gen.bind_method(conv, 'SetMasterVolume', 'void', ['float volume'], features)
-
-		gen.bind_method(conv, 'EnableSpatialization', 'bool', ['bool enable'], features)
-
-		gen.bind_method_overloads(conv, 'Start', [
-			('gs::audio::MixerChannel', ['gs::audio::Sound &sound'], features),
-			('gs::audio::MixerChannel', ['gs::audio::Sound &sound', 'gs::audio::MixerChannelState state'], features),
-			('gs::audio::MixerChannel', ['gs::audio::Sound &sound', 'gs::audio::MixerChannelLocation location'], features),
-			('gs::audio::MixerChannel', ['gs::audio::Sound &sound', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state'], features)
-		])
-		gen.bind_method_overloads(conv, 'StreamData', [
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'bool paused'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'bool paused', 'gs::time_ns t_start'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelState state'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelState state', 'bool paused'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'bool paused'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'bool paused', 'gs::time_ns t_start'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], features)
-		])
-
-		gen.bind_method(conv, 'GetPlayState', 'gs::audio::MixerPlayState', ['gs::audio::MixerChannel channel'], features)
-
-		gen.bind_method(conv, 'GetChannelState', 'gs::audio::MixerChannelState', ['gs::audio::MixerChannel channel'], features)
-		gen.bind_method(conv, 'SetChannelState', 'void', ['gs::audio::MixerChannel channel', 'gs::audio::MixerChannelState state'], features)
-
-		gen.bind_method(conv, 'GetChannelLocation', 'gs::audio::MixerChannelLocation', ['gs::audio::MixerChannel channel'], features)
-		gen.bind_method(conv, 'SetChannelLocation', 'void', ['gs::audio::MixerChannel channel', 'gs::audio::MixerChannelLocation location'], features)
-
-		gen.bind_method(conv, 'GetChannelTimestamp', 'gs::time_ns', ['gs::audio::MixerChannel channel'], features)
-
-		gen.bind_method(conv, 'Stop', 'void', ['gs::audio::MixerChannel channel'], features)
-		gen.bind_method(conv, 'Pause', 'void', ['gs::audio::MixerChannel channel'], features)
-		gen.bind_method(conv, 'Resume', 'void', ['gs::audio::MixerChannel channel'], features)
-		gen.bind_method(conv, 'StopAll', 'void', [], features)
-
-		gen.bind_method(conv, 'SetStreamLoopPoint', 'void', ['gs::audio::MixerChannel channel', 'gs::time_ns t'], features)
-		gen.bind_method(conv, 'SeekStream', 'void', ['gs::audio::MixerChannel channel', 'gs::time_ns t'], features)
-		gen.bind_method(conv, 'GetStreamBufferingPercentage', 'int', ['gs::audio::MixerChannel channel'], features)
-
-		gen.bind_method(conv, 'SetChannelStreamDataTransform', 'void', ['gs::audio::MixerChannel channel', 'const gs::Matrix4 &transform'], features)
-		gen.bind_method(conv, 'FlushChannelBuffers', 'void', ['gs::audio::MixerChannel channel'], features)
-
-		gen.bind_method(conv, 'GetListener', 'gs::Matrix4', [], features)
-		gen.bind_method(conv, 'SetListener', 'void', ['const gs::Matrix4 &transform'], features)
-
-		gen.bind_method_overloads(conv, 'Stream', [
-			('gs::audio::MixerChannel', ['const char *path'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'bool paused'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'bool paused', 'gs::time_ns t_start'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelState state'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelState state', 'bool paused'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'bool paused'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'bool paused', 'gs::time_ns t_start'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], features)
-		])
-
-		gen.bind_method_overloads(conv, 'LoadSoundData', [
-			('std::shared_ptr<gs::audio::Sound>', ['std::shared_ptr<gs::AudioData> data'], features),
-			('std::shared_ptr<gs::audio::Sound>', ['std::shared_ptr<gs::AudioData> data', 'const char *path'], features)
-		])
-
-		gen.bind_method(conv, 'LoadSound', 'std::shared_ptr<gs::audio::Sound>', ['const char *path'], features)
-		gen.bind_method(conv, 'FreeSound', 'void', ['gs::audio::Sound &sound'], features)
-
+	# gs::audio::Mixer
 	audio_mixer = gen.begin_class('gs::audio::Mixer', bound_name='Mixer_nobind', noncopyable=True, nobind=True)
 	gen.end_class(audio_mixer)
 
 	shared_audio_mixer = gen.begin_class('std::shared_ptr<gs::audio::Mixer>', bound_name='Mixer', features={'proxy': lib.stl.SharedPtrProxyFeature(audio_mixer)})
-	bind_mixer_api(shared_audio_mixer, ['proxy'])
+
+	gen.bind_static_members(shared_audio_mixer, [
+		'const gs::audio::MixerChannelState DefaultState', 'const gs::audio::MixerChannelState RepeatState', 'const gs::audio::MixerChannelLocation DefaultLocation',
+		'const gs::audio::MixerPriority DefaultPriority', 'const gs::audio::MixerChannel ChannelError'], ['proxy'])
+
+	gen.bind_method(shared_audio_mixer, 'Open', 'bool', [], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'Close', 'void', [], ['proxy'])
+
+	gen.bind_method(shared_audio_mixer, 'GetMasterVolume', 'float', [], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'SetMasterVolume', 'void', ['float volume'], ['proxy'])
+
+	gen.bind_method(shared_audio_mixer, 'EnableSpatialization', 'bool', ['bool enable'], ['proxy'])
+
+	gen.bind_method_overloads(shared_audio_mixer, 'Start', [
+		('gs::audio::MixerChannel', ['gs::audio::Sound &sound'], ['proxy']),
+		('gs::audio::MixerChannel', ['gs::audio::Sound &sound', 'gs::audio::MixerChannelState state'], ['proxy']),
+		('gs::audio::MixerChannel', ['gs::audio::Sound &sound', 'gs::audio::MixerChannelLocation location'], ['proxy']),
+		('gs::audio::MixerChannel', ['gs::audio::Sound &sound', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state'], ['proxy'])
+	])
+	gen.bind_method_overloads(shared_audio_mixer, 'StreamData', [
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'bool paused'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'bool paused', 'gs::time_ns t_start'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelState state'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelState state', 'bool paused'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'bool paused'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'bool paused', 'gs::time_ns t_start'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], ['proxy'])
+	])
+
+	gen.bind_method(shared_audio_mixer, 'GetPlayState', 'gs::audio::MixerPlayState', ['gs::audio::MixerChannel channel'], ['proxy'])
+
+	gen.bind_method(shared_audio_mixer, 'GetChannelState', 'gs::audio::MixerChannelState', ['gs::audio::MixerChannel channel'], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'SetChannelState', 'void', ['gs::audio::MixerChannel channel', 'gs::audio::MixerChannelState state'], ['proxy'])
+
+	gen.bind_method(shared_audio_mixer, 'GetChannelLocation', 'gs::audio::MixerChannelLocation', ['gs::audio::MixerChannel channel'], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'SetChannelLocation', 'void', ['gs::audio::MixerChannel channel', 'gs::audio::MixerChannelLocation location'], ['proxy'])
+
+	gen.bind_method(shared_audio_mixer, 'GetChannelTimestamp', 'gs::time_ns', ['gs::audio::MixerChannel channel'], ['proxy'])
+
+	gen.bind_method(shared_audio_mixer, 'Stop', 'void', ['gs::audio::MixerChannel channel'], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'Pause', 'void', ['gs::audio::MixerChannel channel'], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'Resume', 'void', ['gs::audio::MixerChannel channel'], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'StopAll', 'void', [], ['proxy'])
+
+	gen.bind_method(shared_audio_mixer, 'SetStreamLoopPoint', 'void', ['gs::audio::MixerChannel channel', 'gs::time_ns t'], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'SeekStream', 'void', ['gs::audio::MixerChannel channel', 'gs::time_ns t'], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'GetStreamBufferingPercentage', 'int', ['gs::audio::MixerChannel channel'], ['proxy'])
+
+	gen.bind_method(shared_audio_mixer, 'SetChannelStreamDataTransform', 'void', ['gs::audio::MixerChannel channel', 'const gs::Matrix4 &transform'], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'FlushChannelBuffers', 'void', ['gs::audio::MixerChannel channel'], ['proxy'])
+
+	gen.bind_method(shared_audio_mixer, 'GetListener', 'gs::Matrix4', [], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'SetListener', 'void', ['const gs::Matrix4 &transform'], ['proxy'])
+
+	gen.bind_method_overloads(shared_audio_mixer, 'Stream', [
+		('gs::audio::MixerChannel', ['const char *path'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'bool paused'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'bool paused', 'gs::time_ns t_start'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelState state'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelState state', 'bool paused'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'bool paused'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'bool paused', 'gs::time_ns t_start'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], ['proxy'])
+	])
+
+	gen.bind_method_overloads(shared_audio_mixer, 'LoadSoundData', [
+		('std::shared_ptr<gs::audio::Sound>', ['std::shared_ptr<gs::AudioData> data'], {'proxy': None, 'check_rval': check_rval_lambda(gen, 'LoadSoundData failed')}),
+		('std::shared_ptr<gs::audio::Sound>', ['std::shared_ptr<gs::AudioData> data', 'const char *path'], {'proxy': None, 'check_rval': check_rval_lambda(gen, 'LoadSoundData failed')})
+	])
+
+	gen.bind_method(shared_audio_mixer, 'LoadSound', 'std::shared_ptr<gs::audio::Sound>', ['const char *path'], {'proxy': None, 'check_rval': check_rval_lambda(gen, 'LoadSound failed')})
+	gen.bind_method(shared_audio_mixer, 'FreeSound', 'void', ['gs::audio::Sound &sound'], ['proxy'])
+
 	gen.end_class(shared_audio_mixer)
 
 	gen.insert_binding_code('''static std::shared_ptr<gs::audio::Mixer> CreateMixer(const char *name) { return gs::core::g_mixer_factory.get().Instantiate(name); }
 static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixer_factory.get().Instantiate(); }
 	''', 'Mixer custom API')
 
-	gen.bind_function_overloads('CreateMixer', [('std::shared_ptr<gs::audio::Mixer>', [], []), ('std::shared_ptr<gs::audio::Mixer>', ['const char *name'], [])])
+	gen.bind_function_overloads('CreateMixer', [
+		('std::shared_ptr<gs::audio::Mixer>', [], {'check_rval': check_rval_lambda(gen, 'CreateMixer failed, was gs.LoadPlugins called succesfully?')}),
+		('std::shared_ptr<gs::audio::Mixer>', ['const char *name'], {'check_rval': check_rval_lambda(gen, 'CreateMixer failed, was gs.LoadPlugins called succesfully?')})
+	])
 
 	# gs::audio::MixerAsync
 	mixer_async = gen.begin_class('gs::audio::MixerAsync', bound_name='MixerAsync_nobind', noncopyable=True, nobind=True)
@@ -3209,14 +3213,21 @@ static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixe
 	gen.bind_method(shared_mixer_async, 'GetListener', 'std::future<gs::Matrix4>', [], ['proxy'])
 	gen.bind_method(shared_mixer_async, 'SetListener', 'void', ['const gs::Matrix4 &transform'], ['proxy'])
 
-	gen.bind_method(shared_mixer_async, 'LoadSound', 'std::shared_ptr<gs::audio::Sound>', ['const char *path'], ['proxy'])
+	gen.bind_method(shared_mixer_async, 'LoadSound', 'std::shared_ptr<gs::audio::Sound>', ['const char *path'], {'proxy': None, 'check_rval': check_rval_lambda(gen, 'LoadSound failed')})
 	gen.bind_method(shared_mixer_async, 'FreeSound', 'void', ['const std::shared_ptr<gs::audio::Sound> &sound'], ['proxy'])
 
 	gen.end_class(shared_mixer_async)
 
 
+def bind_extras(gen):
+	gen.add_include('thread', True)
+
+	gen.insert_code('static void SleepThisThread(gs::time_ns duration) { std::this_thread::sleep_for(gs::time_to_chrono(duration)); }\n\n')
+	gen.bind_function('SleepThisThread', 'void', ['gs::time_ns duration'], bound_name='Sleep')
+
+
 def bind_gs(gen):
-	gen.start('gs')
+	gen.start('harfang')
 
 	lib.bind_defaults(gen)
 
@@ -3241,14 +3252,48 @@ void InitializePluginsDefaultSearchPath() {
 \n''')
 	elif gen.get_language() == 'Lua':
 		gen.insert_code('''
-void InitializePluginsDefaultSearchPath() {}
+#include "foundation/string.h"
+
+// Add the Lua interpreter package.cpath to the engine default plugins search path
+void InitializePluginsDefaultSearchPath(lua_State *L) {
+	lua_getglobal(L, "package");
+	lua_getfield(L, -1, "cpath");
+	std::string package_cpath = lua_tostring(L, -1);
+	lua_pop(L, 2);
+
+	std::vector<std::string> paths = std::split(package_cpath, ";"), out;
+
+	for (size_t i = 0; i < paths.size(); ++i) {
+		std::string path = paths[i];
+		std::replace(path.begin(), path.end(), '\\\\', '/');
+
+		std::vector<std::string> elms = std::split(path, "/");
+		path = "";
+		for (auto &elm : elms)
+			if (elm.find('?') == std::string::npos)
+				path += elm + "/";
+
+		if (path == "./")
+			continue;
+		if (std::ends_with(path, "loadall.dll/"))
+			continue;
+
+		out.push_back(path);
+	}
+
+	for (auto &path : out)
+		gs::core::plugins_default_search_paths.push_back(path);
+}
 \n''')
+
+	init_plugins_parm = ''
+	if gen.get_language() == 'Lua':
+		init_plugins_parm = 'L'
 
 	gen.add_custom_init_code('''
 	gs::core::Init();
-
-	InitializePluginsDefaultSearchPath();
-''')
+	InitializePluginsDefaultSearchPath(%s);
+\n''' % init_plugins_parm)
 
 	float_ptr = gen.bind_ptr('float *', bound_name='FloatPointer')
 	void_ptr = gen.bind_ptr('void *', bound_name='VoidPointer')
@@ -3288,23 +3333,30 @@ void InitializePluginsDefaultSearchPath() {}
 	bind_input(gen)
 	bind_plus(gen)
 	bind_mixer(gen)
+	bind_extras(gen)
 
 	gen.finalize()
 	return gen.get_output()
 
 
-parser = argparse.ArgumentParser(description='Bind Harfang.')
-parser.add_argument('--lua', help='Bind to Lua target language', action="store_true")
+parser = argparse.ArgumentParser(description='Harfang API binding script')
+parser.add_argument('--lua', help='Bind to Lua 5.2+', action="store_true")
+parser.add_argument('--cpython', help='Bind to CPython', action="store_true")
+parser.add_argument('--out', help='Path to output generated files', required=True)
 args = parser.parse_args()
 
+
+def output_binding(gen):
+	hdr, src = bind_gs(gen)
+
+	with open('%s/bind_harfang_%s.h' % (args.out, gen.get_language()), mode='w', encoding='utf-8') as f:
+		f.write(hdr)
+	with open('%s/bind_harfang_%s.cpp' % (args.out, gen.get_language()), mode='w', encoding='utf-8') as f:
+		f.write(src)
+
+
+if args.cpython:
+	output_binding(lang.cpython.CPythonGenerator())
+
 if args.lua:
-	gen = lang.lua.LuaGenerator()
-else:
-	gen = lang.cpython.CPythonGenerator()
-
-hdr, src = bind_gs(gen)
-
-with open('d:/gs-fabgen-test/bind_gs.h', mode='w', encoding='utf-8') as f:
-	f.write(hdr)
-with open('d:/gs-fabgen-test/bind_gs.cpp', mode='w', encoding='utf-8') as f:
-	f.write(src)
+	output_binding(lang.lua.LuaGenerator())
