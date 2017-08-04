@@ -293,7 +293,6 @@ class LuaGenerator(gen.FABGen):
 		super().__init__()
 
 		self.api_prefix = 'lua'
-		self.check_self_type_during_dispatch = False
 
 	def get_language(self):
 		return "Lua"

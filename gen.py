@@ -316,7 +316,7 @@ class FABGen:
 	def __init__(self):
 		self.verbose = True
 		self.api_prefix = 'gen'
-		self.check_self_type_during_dispatch = True
+		self.check_self_type_in_ops = False
 
 	def get_language(self):
 		assert 'not implemented in this generator'
@@ -614,9 +614,6 @@ class FABGen:
 		expr = transform_var_ref_to(var, ctype.get_ref(), conv.ctype.add_ref('*').get_ref())
 		return self.rval_from_c_ptr(conv, var+'_out', expr, ownership)
 
-	def ctx_needs_self(self, ctx):
-		return ctx in ['getter', 'setter', 'method', 'arithmetic_op', 'inplace_arithmetic_op', 'comparison_op']
-
 	def __proto_call(self, self_conv, proto, expr_eval, ctx, fixed_arg_count=None):
 		features = proto['features']
 
@@ -629,7 +626,7 @@ class FABGen:
 
 		# prepare C call self argument
 		if self_conv:
-			if self.ctx_needs_self(ctx):
+			if ctx in ['getter', 'setter', 'method', 'arithmetic_op', 'inplace_arithmetic_op', 'comparison_op']:
 				self._source += self._prepare_c_arg_self(self_conv, '_self', ctx, features)
 
 		# prepare C call arguments
@@ -744,7 +741,7 @@ class FABGen:
 		self._source += self.open_proxy(name, max_arg_count, ctx)
 
 		# check self
-		if self_conv and self.check_self_type_during_dispatch:
+		if self.check_self_type_in_ops and ctx in ['arithmetic_op', 'inplace_arithmetic_op', 'comparison_op']:
 			self._source += 'if (!%s) {\n' % self_conv.check_call(self.get_self(ctx))
 			self._source += self.proxy_call_error('incorrect type for argument 0 to %s, expected %s' % (desc, self_conv.bound_name), ctx)
 			self._source += '}\n\n'

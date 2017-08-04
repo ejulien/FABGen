@@ -269,6 +269,7 @@ class CPythonGenerator(gen.FABGen):
 		super().__init__()
 
 		self.api_prefix = 'cpython'
+		self.check_self_type_in_ops = True
 
 	def get_language(self):
 		return "CPython"
