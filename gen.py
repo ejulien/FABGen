@@ -258,6 +258,7 @@ class TypeConverter:
 
 		self._non_copyable = False
 		self._moveable = False
+		self._inline = False
 
 		self._features = {}
 		self._casts = []  # valid casts

@@ -96,6 +96,8 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 		# constructor
 		out += 'static PyObject *%s_tp_new(PyTypeObject *subtype, PyObject *args, PyObject *kwds) {\n' % self.bound_name
+		if self._inline:
+			out += '	assert(sizeof(%s) <= 16);\n\n' % self.ctype
 		if self.constructor:
 			out += '	return %s(NULL, args);\n' % self.constructor['proxy_name']
 		else:
@@ -185,7 +187,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		# delete delegate
 		out += 'static void delete_%s(void *o) { delete (%s *)o; }\n\n' % (self.bound_name, self.ctype)
 
-		# to/from C
+		# check
 		out += '''bool check_%s(PyObject *o) {
 	wrapped_Object *w = cast_to_wrapped_Object_safe(o);
 	if (!w)
@@ -194,12 +196,15 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 }
 \n''' % (self.bound_name, self.type_tag)
 
+		# to C
 		out += '''void to_c_%s(PyObject *o, void *obj) {
 	wrapped_Object *w = cast_to_wrapped_Object_unsafe(o);
 	*(void **)obj = _type_tag_cast(w->obj, w->type_tag, %s);
 }
 \n''' % (self.bound_name, self.type_tag)
 
+		# from C
+		is_inline = False
 		if self._non_copyable:
 			if self._moveable:
 				copy_code = 'obj = new %s(std::move(*(%s *)obj));' % (self.ctype, self.ctype)
@@ -207,7 +212,23 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 				copy_code = '''PyErr_SetString(PyExc_RuntimeError, "type %s is non-copyable and non-moveable");
 		return NULL;''' % self.bound_name
 		else:
-			copy_code = 'obj = new %s(*(%s *)obj);' % (self.ctype, self.ctype)
+			if self._inline:
+				is_inline = True
+				copy_code = 'obj = new((void *)pyobj->inline_obj) %s(*(%s *)obj);' % (self.ctype, self.ctype)
+			else:
+				copy_code = 'obj = new %s(*(%s *)obj);' % (self.ctype, self.ctype)
+
+		if is_inline:
+			delete_code = 'pyobj->on_delete = &delete_inline_%s;' % self.bound_name
+		else:
+			delete_code = 'pyobj->on_delete = &delete_%s;' % self.bound_name
+
+		if is_inline:
+			out += '''
+static void delete_inline_%s(void *o) {
+	using T = %s;
+	((T*)o)->~T();
+}\n\n''' % (self.bound_name, self.ctype)
 
 		out += '''PyObject *from_c_%s(void *obj, OwnershipPolicy own) {
 	wrapped_Object *pyobj = PyObject_New(wrapped_Object, (PyTypeObject *)%s_type);
@@ -216,10 +237,10 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	}
 	init_wrapped_Object(pyobj, %s, obj);
 	if (own != NonOwning)
-		pyobj->on_delete = &delete_%s;
+		%s
 	return (PyObject *)pyobj;
 }
-\n''' % (self.bound_name, self.bound_name, copy_code, self.type_tag, self.bound_name)
+\n''' % (self.bound_name, self.bound_name, copy_code, self.type_tag, delete_code)
 
 		return out
 
@@ -292,6 +313,7 @@ typedef struct {
 	const char *type_tag; // wrapped pointer type tag
 
 	void *obj;
+	char inline_obj[16]; // storage for inline objects
 
 	void (*on_delete)(void *);
 } wrapped_Object;

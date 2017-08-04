@@ -20,6 +20,11 @@ def bind_std_vector(gen, T_conv):
 	conv = gen.begin_class('std::vector<%s>' % T_conv.ctype, bound_name='%sList' % T_conv.bound_name.title(), features={'sequence': lib.std.VectorSequenceFeature(T_conv)})
 	if gen.get_language() == 'CPython':
 		gen.bind_constructor(conv, ['%s sequence' % PySequence_T_type])
+
+	gen.bind_method(conv, 'push_back', 'void', ['%s v' % T_conv.ctype])
+	gen.bind_method(conv, 'size', 'size_t', [])
+	gen.bind_method(conv, 'at', repr(T_conv.ctype), ['int idx'])
+
 	gen.end_class(conv)
 	return conv
 
@@ -2311,6 +2316,7 @@ def bind_color(gen):
 	gen.add_include('foundation/color_api.h')
 
 	color = gen.begin_class('gs::Color')
+	color._inline = True  # use inline alloc where possible
 
 	gen.bind_static_members(color, ['const gs::Color Zero', 'const gs::Color One', 'const gs::Color White', 'const gs::Color Grey', 'const gs::Color Black', 'const gs::Color Red', 'const gs::Color Green', 'const gs::Color Blue', 'const gs::Color Yellow', 'const gs::Color Orange', 'const gs::Color Purple', 'const gs::Color Transparent'])
 	gen.bind_members(color, ['float r', 'float g', 'float b', 'float a'])
@@ -2611,6 +2617,7 @@ def bind_math(gen):
 	gen.add_include('foundation/vector4.h')
 
 	vector4 = gen.begin_class('gs::Vector4')
+	vector4._inline = True
 	gen.bind_members(vector4, ['float x', 'float y', 'float z', 'float w'])
 
 	gen.bind_constructor_overloads(vector4, [
@@ -2818,6 +2825,7 @@ def bind_math(gen):
 	gen.add_include('foundation/vector3_api.h')
 
 	vector3 = gen.begin_class('gs::Vector3')
+	vector3._inline = True
 
 	gen.bind_static_members(vector3, ['const gs::Vector3 Zero', 'const gs::Vector3 One', 'const gs::Vector3 Left', 'const gs::Vector3 Right', 'const gs::Vector3 Up', 'const gs::Vector3 Down', 'const gs::Vector3 Front', 'const gs::Vector3 Back'])
 	gen.bind_members(vector3, ['float x', 'float y', 'float z'])
@@ -2867,6 +2875,7 @@ def bind_math(gen):
 	# gs::Rect<T>
 	def bind_rect_T(T, bound_name):
 		rect = gen.begin_class('gs::Rect<%s>'%T, bound_name=bound_name)
+		rect._inline = True
 
 		gen.bind_members(rect, ['%s sx'%T, '%s sy'%T, '%s ex'%T, '%s ey'%T])
 

@@ -203,7 +203,10 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 		out += '	{NULL, NULL}};\n\n'
 
 		# type registration
-		out += '''void register_%s(lua_State *L) {
+		out += 'void register_%s(lua_State *L) {' % self.bound_name
+		if self._inline:
+			out += '	assert(sizeof(%s) <= 16);\n\n' % self.ctype
+		out += '''\
 	// setup class object
 	lua_newtable(L); // class object
 	lua_newtable(L); // class metatable
@@ -215,12 +218,12 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 	luaL_newmetatable(L, "%s");
 	luaL_setfuncs(L, %s_instance_meta, 0);
 	lua_pop(L, 1);
-}\n\n''' % (self.bound_name, self.bound_name, self.bound_name, self.bound_name, self.bound_name)
+}\n\n''' % (self.bound_name, self.bound_name, self.bound_name, self.bound_name)
 
-		# delete delegate
+		# delete delegates
 		out += 'static void delete_%s(void *o) { delete (%s *)o; }\n\n' % (self.bound_name, self.ctype)
 
-		# to/from C
+		# check
 		out += '''bool check_%s(lua_State *L, int idx) {
 	wrapped_Object *w = cast_to_wrapped_Object_safe(L, idx);
 	if (!w)
@@ -228,10 +231,14 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 	return _type_tag_can_cast(w->type_tag, %s);
 }\n''' % (self.bound_name, self.type_tag)
 
+		# to C
 		out += '''void to_c_%s(lua_State *L, int idx, void *obj) {
 	wrapped_Object *w = cast_to_wrapped_Object_unsafe(L, idx);
 	*(void **)obj = _type_tag_cast(w->obj, w->type_tag, %s);
 }\n''' % (self.bound_name, self.type_tag)
+
+		# from C
+		is_inline = False
 
 		if self._non_copyable:
 			if self._moveable:
@@ -239,20 +246,35 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 			else:
 				copy_code = 'return luaL_error(L, "type %s is non-copyable and non-moveable");' % self.bound_name
 		else:
-			copy_code = 'obj = new %s(*(%s *)obj);' % (self.ctype, self.ctype)
+			if self._inline:
+				is_inline = True
+				copy_code = 'obj = new((void *)w->inline_obj) %s(*(%s *)obj);' % (self.ctype, self.ctype)
+			else:
+				copy_code = 'obj = new %s(*(%s *)obj);' % (self.ctype, self.ctype)
+
+		if is_inline:
+			delete_code = 'w->on_delete = &delete_inline_%s;' % self.bound_name
+		else:
+			delete_code = 'w->on_delete = &delete_%s;' % self.bound_name
+
+		if is_inline:
+			out += '''
+static void delete_inline_%s(void *o) {
+	using T = %s;
+	((T*)o)->~T();
+}\n\n''' % (self.bound_name, self.ctype)
 
 		out += '''int from_c_%s(lua_State *L, void *obj, OwnershipPolicy own) {
 	wrapped_Object *w = (wrapped_Object *)lua_newuserdata(L, sizeof(wrapped_Object));
-	if (own == Copy) {
+	if (own == Copy)
 		%s
-	}
 	init_wrapped_Object(w, %s, obj);
 	if (own != NonOwning)
-		w->on_delete = &delete_%s;
+		%s
 	luaL_setmetatable(L, "%s");
 	return 1;
 }
-\n''' % (self.bound_name, copy_code, self.type_tag, self.bound_name, self.bound_name)
+\n''' % (self.bound_name, copy_code, self.type_tag, delete_code, self.bound_name)
 
 		return out
 
@@ -315,6 +337,7 @@ typedef struct {
 	const char *type_tag; // wrapped pointer type tag
 
 	void *obj;
+	char inline_obj[16]; // storage for inline objects
 
 	void (*on_delete)(void *);
 } wrapped_Object;
