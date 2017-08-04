@@ -289,6 +289,12 @@ class LuaGenerator(gen.FABGen):
 	default_ptr_converter = LuaPtrTypeConverter
 	default_class_converter = LuaClassTypeConverter
 
+	def __init__(self):
+		super().__init__()
+
+		self.api_prefix = 'lua'
+		self.check_self_type_during_dispatch = False
+
 	def get_language(self):
 		return "Lua"
 

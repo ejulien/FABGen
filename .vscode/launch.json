@@ -2,6 +2,22 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+			"name": "Fireworks",
+			"type": "python",
+			"request": "launch",
+			"stopOnEntry": false,
+			"pythonPath": "C:/Pythons/test-install/python.exe",
+			"program": "d:/fireworks.py",
+			"cwd": "${workspaceRoot}",
+			"env": {},
+			"envFile": "${workspaceRoot}/.env",
+			"debugOptions": [
+				"WaitOnAbnormalExit",
+				"WaitOnNormalExit",
+				"RedirectOutput"
+			]
+		},
+		{
 			"name": "CPython: Tests",
 			"type": "python",
 			"request": "launch",
@@ -43,7 +59,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/test.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--pybase", "C:/Pythons/test-install"],
+			"args": ["--cpython", "--out", "d:/gs-fabgen-test/"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
@@ -94,7 +110,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/test.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--lua"],
+			"args": ["--lua", "--out", "d:/gs-fabgen-test/"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [

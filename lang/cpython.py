@@ -265,6 +265,11 @@ class CPythonGenerator(gen.FABGen):
 	default_class_converter = PythonClassTypeDefaultConverter
 	default_ptr_converter = PythonPtrTypeDefaultConverter
 
+	def __init__(self):
+		super().__init__()
+
+		self.api_prefix = 'cpython'
+
 	def get_language(self):
 		return "CPython"
 
