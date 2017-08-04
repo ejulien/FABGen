@@ -1341,8 +1341,8 @@ static std::shared_ptr<gs::gpu::Renderer> CreateRenderer() { return gs::core::g_
 	''', 'Renderer custom API')
 
 	gen.bind_function_overloads('CreateRenderer', [
-		('std::shared_ptr<gs::gpu::Renderer>', [], {'check_rval': check_rval_lambda(gen, 'CreateRenderer failed, was gs.LoadPlugins called succesfully?')}),
-		('std::shared_ptr<gs::gpu::Renderer>', ['const char *name'], {'check_rval': check_rval_lambda(gen, 'CreateRenderer failed, was gs.LoadPlugins called succesfully?')})
+		('std::shared_ptr<gs::gpu::Renderer>', [], {'check_rval': check_rval_lambda(gen, 'CreateRenderer failed, was LoadPlugins called succesfully?')}),
+		('std::shared_ptr<gs::gpu::Renderer>', ['const char *name'], {'check_rval': check_rval_lambda(gen, 'CreateRenderer failed, was LoadPlugins called succesfully?')})
 	])
 
 	# gs::gpu::RendererAsync
@@ -1805,8 +1805,8 @@ def bind_plus(gen):
 	])
 
 	gen.bind_method_overloads(plus_conv, 'RenderInit', [
-		('bool', ['int width', 'int height'], []),
-		('bool', ['int width', 'int height', 'const char *core_path'], [])
+		('bool', ['int width', 'int height'], {'check_rval': check_rval_lambda(gen, 'RenderInit failed')}),
+		('bool', ['int width', 'int height', 'const char *core_path'], {'check_rval': check_rval_lambda(gen, 'RenderInit failed')})
 	])
 	gen.bind_method(plus_conv, 'RenderUninit', 'void', [])
 
@@ -3142,8 +3142,8 @@ static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixe
 	''', 'Mixer custom API')
 
 	gen.bind_function_overloads('CreateMixer', [
-		('std::shared_ptr<gs::audio::Mixer>', [], {'check_rval': check_rval_lambda(gen, 'CreateMixer failed, was gs.LoadPlugins called succesfully?')}),
-		('std::shared_ptr<gs::audio::Mixer>', ['const char *name'], {'check_rval': check_rval_lambda(gen, 'CreateMixer failed, was gs.LoadPlugins called succesfully?')})
+		('std::shared_ptr<gs::audio::Mixer>', [], {'check_rval': check_rval_lambda(gen, 'CreateMixer failed, was LoadPlugins called succesfully?')}),
+		('std::shared_ptr<gs::audio::Mixer>', ['const char *name'], {'check_rval': check_rval_lambda(gen, 'CreateMixer failed, was LoadPlugins called succesfully?')})
 	])
 
 	# gs::audio::MixerAsync
