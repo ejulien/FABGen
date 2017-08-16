@@ -3366,24 +3366,29 @@ def bind_imgui(gen):
 	gen.bind_function('ImGui::GetID', 'ImGuiID', ['const char *id'], bound_name='ImGuiGetID')
 
 	gen.bind_function('ImGui::Text', 'void', ['const char *text'], bound_name='ImGuiText')
-	gen.bind_function('ImGui::TextV', 'void', ['const char *text'], bound_name='ImGuiTextV')
 	gen.bind_function('ImGui::TextColored', 'void', ['const ImVec4 &color', 'const char *text'], bound_name='ImGuiTextColored')
-	gen.bind_function('ImGui::TextColoredV', 'void', ['const ImVec4 &color', 'const char *text'], bound_name='ImGuiTextColoredV')
 	gen.bind_function('ImGui::TextDisabled', 'void', ['const char *text'], bound_name='ImGuiTextDisabled')
-	gen.bind_function('ImGui::TextDisabledV', 'void', ['const char *text'], bound_name='ImGuiTextDisabledV')
 	gen.bind_function('ImGui::TextWrapped', 'void', ['const char *text'], bound_name='ImGuiTextWrapped')
-	gen.bind_function('ImGui::TextWrappedV', 'void', ['const char *text'], bound_name='ImGuiTextWrappedV')
 	gen.bind_function('ImGui::TextUnformatted', 'void', ['const char *text'], bound_name='ImGuiTextUnformatted')
-	gen.bind_function('ImGui::LabelText', 'void', ['const char *label'], bound_name='ImGuiLabelText')
-	gen.bind_function('ImGui::LabelTextV', 'void', ['const char *label'], bound_name='ImGuiLabelTextV')
+	gen.bind_function('ImGui::LabelText', 'void', ['const char *label', 'const char *text'], bound_name='ImGuiLabelText')
 	gen.bind_function('ImGui::Bullet', 'void', [], bound_name='ImGuiBullet')
 	gen.bind_function('ImGui::BulletText', 'void', ['const char *label'], bound_name='ImGuiBulletText')
-	gen.bind_function('ImGui::BulletTextV', 'void', ['const char *label'], bound_name='ImGuiBulletTextV')
 	gen.bind_function('ImGui::Button', 'bool', ['const char *label', '?const ImVec2 &size'], bound_name='ImGuiButton')
 	gen.bind_function('ImGui::SmallButton', 'bool', ['const char *label'], bound_name='ImGuiSmallButton')
 	gen.bind_function('ImGui::InvisibleButton', 'bool', ['const char *text', 'const ImVec2 &size'], bound_name='ImGuiInvisibleButton')
-	#IMGUI_API void          Image(ImTextureID user_texture_id, const ImVec2& size, const ImVec2& uv0 = ImVec2(0,0), const ImVec2& uv1 = ImVec2(1,1), const ImVec4& tint_col = ImVec4(1,1,1,1), const ImVec4& border_col = ImVec4(0,0,0,0));
-	#IMGUI_API bool          ImageButton(ImTextureID user_texture_id, const ImVec2& size, const ImVec2& uv0 = ImVec2(0,0),  const ImVec2& uv1 = ImVec2(1,1), int frame_padding = -1, const ImVec4& bg_col = ImVec4(0,0,0,0), const ImVec4& tint_col = ImVec4(1,1,1,1));    // <0 frame_padding uses default frame padding settings. 0 for no padding
+
+	gen.bind_function_overloads('ImGui::Image', [
+		('void', ['gs::gpu::Texture *texture', 'const ImVec2 &size'], []),
+		('void', ['gs::gpu::Texture *texture', 'const ImVec2 &size', 'const ImVec2 &uv0', 'const ImVec2 &uv1'], []),
+		('void', ['gs::gpu::Texture *texture', 'const ImVec2 &size', 'const ImVec2 &uv0', 'const ImVec2 &uv1', 'const ImVec4 &tint_col', 'const ImVec4 &border_col'], [])
+	], bound_name='ImGuiImage')
+	gen.bind_function_overloads('ImGui::ImageButton', [
+		('void', ['gs::gpu::Texture *texture', 'const ImVec2 &size'], []),
+		('void', ['gs::gpu::Texture *texture', 'const ImVec2 &size', 'const ImVec2 &uv0', 'const ImVec2 &uv1'], []),
+		('void', ['gs::gpu::Texture *texture', 'const ImVec2 &size', 'const ImVec2 &uv0', 'const ImVec2 &uv1', 'int frame_padding'], []),
+		('void', ['gs::gpu::Texture *texture', 'const ImVec2 &size', 'const ImVec2 &uv0', 'const ImVec2 &uv1', 'int frame_padding', 'const ImVec4 &bg_col', 'const ImVec4 &tint_col'], [])
+	], bound_name='ImGuiImageButton')
+
 	gen.bind_function('ImGui::Checkbox', 'bool', ['const char *label'], bound_name='ImGuiCheckbox')
 	#IMGUI_API bool          CheckboxFlags(const char* label, unsigned int* flags, unsigned int flags_value);
 	gen.bind_function('ImGui::RadioButton', 'bool', ['const char *label', 'bool active'], bound_name='ImGuiRadioButton')

@@ -650,7 +650,7 @@ class FABGen:
 
 		# prepare C call arguments
 		args = proto['args']
-		argout = features['arg_out'] if 'arg_out' in features else None
+		arg_out = features['arg_out'] if 'arg_out' in features else None
 
 		c_call_args = []
 
@@ -660,7 +660,7 @@ class FABGen:
 
 			var = 'arg%d' % idx
 
-			if argout is not None and arg['carg'].name in argout:
+			if arg_out is not None and arg['carg'].name in arg_out:
 				arg_ctype = conv.ctype
 				self._source += self._declare_c_arg(arg_ctype, var)
 			else:
@@ -670,6 +670,11 @@ class FABGen:
 				argin_idx += 1
 
 			c_call_args.append(transform_var_ref_to(var, arg_ctype.get_ref(), arg['carg'].ctype.get_ref()))
+
+		if 'arg_in_out' in features:  # add in_out vars to the arg_out list
+			if arg_out is None:
+				arg_out = []
+			arg_out = arg_out + features['arg_in_out']
 
 		# declare return value
 		rvals = []
@@ -716,10 +721,10 @@ class FABGen:
 				rvals_prepare_args.append((rval_conv, rval_storage_ctype, 'rval', ownership))
 				rvals.append('rval')
 
-		# process argout
-		if argout is not None:
+		# process arg_out
+		if arg_out is not None:
 			for idx, arg in enumerate(args):
-				if arg['carg'].name in argout:
+				if arg['carg'].name in arg_out:
 					rvals_prepare_args.append((arg['conv'], arg['conv'].ctype, 'arg%d' % idx))
 					rvals.append('arg%d' % idx)
 

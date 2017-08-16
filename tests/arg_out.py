@@ -15,6 +15,9 @@ def bind_test(gen):
 		('int', ['int &a', 'int d', 'int *b', 'float k'], {'arg_out': ['a', 'b']})
 	])
 
+	gen.insert_code('bool in_out_value(int *in_out) { *in_out = *in_out * 4; return true; }')
+	gen.bind_function('in_out_value', 'bool', ['int *in_out'], {'arg_in_out': ['in_out']})
+
 	gen.finalize()
 	return gen.get_output()
 
@@ -37,6 +40,10 @@ r, a, b = my_test.out_values_function_call_rval(2, 2)
 expect_eq(r, 4)
 expect_eq(a, 16)
 expect_eq(b, 28)
+
+r, v = my_test.in_out_value(5)
+expect_eq(r, True)
+expect_eq(v, 20)
 '''
 
 test_lua = '''\
@@ -55,4 +62,8 @@ r, a, b = my_test.out_values_function_call_rval(2, 2)
 assert(r == 4)
 assert(a == 16)
 assert(b == 28)
+
+r, v = my_test.in_out_value(5)
+assert(r == true)
+assert(v == 20)
 '''

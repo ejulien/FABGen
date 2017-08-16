@@ -42,7 +42,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--pybase", "C:/Pythons/test-install", "--debug", "enumeration"],
+			"args": ["--pybase", "C:/Pythons/test-install", "--debug", "arg_out"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
@@ -93,7 +93,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--luabase", "D:/lua53", "--debug", "enumeration"],
+			"args": ["--luabase", "D:/lua53", "--debug", "arg_out"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
