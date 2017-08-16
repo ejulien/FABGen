@@ -540,6 +540,24 @@ class FABGen:
 		return 'Copy' if ctype.get_ref() == '' else 'NonOwning'
 
 	# --
+	def __expand_protos(self, protos):
+		_protos = []
+
+		for proto in protos:
+			_proto = (proto[0], [], proto[2])
+
+			for arg in proto[1]:
+				if arg.startswith('?'):
+					_protos.append(_proto)
+					_proto = copy.deepcopy(_proto)
+					arg = arg[1:]
+
+				_proto[1].append(arg)
+
+			_protos.append(_proto)
+
+		return _protos
+
 	def __prepare_protos(self, protos):
 		"""Prepare a list of prototypes, select converter objects"""
 		_protos = []
@@ -719,6 +737,7 @@ class FABGen:
 		if self.verbose:
 			print('Binding proxy %s' % name)
 
+		protos = self.__expand_protos(protos)
 		protos = self.__prepare_protos(protos)
 
 		# categorize prototypes by number of argument they take
