@@ -4,7 +4,7 @@ import lib
 def bind_test(gen):
 	gen.start('my_test')
 
-	lib.bind_all_defaults(gen)
+	lib.bind_defaults(gen)
 
 	# inject test code in the wrapper
 	gen.insert_code('''\
@@ -64,6 +64,22 @@ expect_eq(my_test.test_simple_struct(), True)
 s = my_test.return_simple_struct_by_ref()
 my_test.take_simple_struct_by_value(s)
 expect_eq(my_test.test_simple_struct(), True)
+'''
 
-# ...
+
+test_lua = '''\
+my_test = require "my_test"
+
+-- take by value
+s = my_test.return_simple_struct_by_value()
+my_test.take_simple_struct_by_value(s)
+assert(my_test.test_simple_struct() == true)
+
+s = my_test.return_simple_struct_by_pointer()
+my_test.take_simple_struct_by_value(s)
+assert(my_test.test_simple_struct() == true)
+
+s = my_test.return_simple_struct_by_ref()
+my_test.take_simple_struct_by_value(s)
+assert(my_test.test_simple_struct() == true)
 '''

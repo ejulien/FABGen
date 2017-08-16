@@ -2,13 +2,11 @@ import lang.cpython
 
 
 def bind_stl(gen):
-	gen.add_include('string', True)
 	gen.add_include('vector', True)
 
-	class PythonStringConverter(lang.cpython.PythonTypeConverterCommon):
-		def __init__(self, type):
-			super().__init__(type)
+	gen.add_include('string', True)
 
+	class PythonStringConverter(lang.cpython.PythonTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
 			return 'bool check_%s(PyObject *o) { return PyUnicode_Check(o) ? true : false; }\n' % self.bound_name +\
 			'''void to_c_%s(PyObject *o, void *obj) {

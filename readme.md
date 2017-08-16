@@ -1,6 +1,6 @@
 # Fabgen - The fabulous generator
 
-Fabgen is a set of Python scripts to generate C++ binding code to different languages (CPython 3.2+ only at the moment).
+Fabgen is a set of Python scripts to generate C++ binding code to different languages.  
 It was written as a SWIG replacement for the Harfang Multimedia Framework (http://www.harfang3d.com).
 
 ## Author
@@ -17,7 +17,7 @@ Fabgen is licensed under the GPLv3.
 1. Bidirectional binding. Bind C++ functions to target language and target language functions to C++.
 1. Provide an API for embedding (runtime C type name to target name query, human-readable type conversion functions, etc...).
 1. Full feature support for all target language unless technicaly impossible in which case a sensible fallback should be provided.
-1. Fast
+1. Provide fast binding
 
 ## Philosophy
 
@@ -39,9 +39,10 @@ Fabgen is licensed under the GPLv3.
   - `proxy` to support wrapper types such as std::shared_ptr<T>.
 - Simple and hopefully easy to dive into codebase.
 
-### Supported target language
+## Supported target language
 
-- CPython 3.2+ using the CPython limited API (`Py_Limited_API`) so that generated modules can be used on all Python 3.2+ versions of CPython.
+- CPython 3.2+ using the CPython limited API (`Py_Limited_API`) (generated modules can be used on all CPython version >=3.2)
+- Lua 5.2+
 
 ## Contributions
 
@@ -125,11 +126,11 @@ Insert return value checking code right after the native call.
 
 ### Beware of silent conversions when providing advanced interoperability with a target language
 
-Consider the following example scenario when binding an std::vector<int> to CPython:
+Consider the following example scenario when binding `std::vector<int>` to CPython:
 
 1. The bound type will implement the Sequence protocol (if you use the standard StdVector type converter which implements this feature).
-1. We define a function with two equivalent prototypes taking one argument. One accepts std::vector<int>, the other one accepts PySequence of int as a convenience to the user.
-1. If the PySequence prototype is listed first Python will accept std::vector<int> as PySequence during dynamic dispatching since it implements the Sequence protocol.
+1. We define a function with two equivalent prototypes taking one argument. One accepts `std::vector<int>`, the other one a PySequence of int as a convenience to the user.
+1. If the PySequence prototype is listed first CPython will accept `std::vector<int>` as PySequence during dynamic dispatch since it implements the Sequence protocol.
 
-This can have serious performance implications as the PySequence always need to be extracted to a temporary std::vector<int> before the native call is made.
-A std::vector<int> does not undergo any transformation and is passed right away to the native layer.
+This can have serious performance implications as the PySequence always need to be extracted to a temporary `std::vector<int>` before the native call is made.  
+A wrapped `std::vector<int>` object does not undergo any transformation and is passed right away to the native layer.

@@ -5,9 +5,6 @@ def bind_std(gen):
 	gen.add_include('cstdint', True)
 
 	class PythonBoolConverter(lang.cpython.PythonTypeConverterCommon):
-		def __init__(self, type):
-			super().__init__(type)
-
 		def get_type_glue(self, gen, module_name):
 			return 'bool check_%s(PyObject *o) { return PyBool_Check(o) ? true : false; }\n' % self.bound_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = o == Py_True; }\n' % (self.bound_name, self.ctype) +\
@@ -16,9 +13,6 @@ def bind_std(gen):
 	gen.bind_type(PythonBoolConverter('bool'))
 
 	class PythonIntConverter(lang.cpython.PythonTypeConverterCommon):
-		def __init__(self, type):
-			super().__init__(type)
-
 		def get_type_glue(self, gen, module_name):
 			return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.bound_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = (%s)PyLong_AsLong(o); }\n' % (self.bound_name, self.ctype, self.ctype) +\
@@ -35,9 +29,6 @@ def bind_std(gen):
 	gen.bind_type(PythonIntConverter('char32_t'))
 
 	class PythonUnsignedIntConverter(lang.cpython.PythonTypeConverterCommon):
-		def __init__(self, type):
-			super().__init__(type)
-
 		def get_type_glue(self, gen, module_name):
 			return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.bound_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = (%s)PyLong_AsUnsignedLong(o); }\n' % (self.bound_name, self.ctype, self.ctype) +\
@@ -52,9 +43,6 @@ def bind_std(gen):
 	gen.bind_type(PythonUnsignedIntConverter('uint32_t'))
 
 	class PythonInt64Converter(lang.cpython.PythonTypeConverterCommon):
-		def __init__(self, type):
-			super().__init__(type)
-
 		def get_type_glue(self, gen, module_name):
 			return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.bound_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyLong_AsLongLong(o); }\n' % (self.bound_name, self.ctype) +\
@@ -63,9 +51,6 @@ def bind_std(gen):
 	gen.bind_type(PythonInt64Converter('int64_t'))
 
 	class PythonUnsignedInt64Converter(lang.cpython.PythonTypeConverterCommon):
-		def __init__(self, type):
-			super().__init__(type)
-
 		def get_type_glue(self, gen, module_name):
 			return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.bound_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyLong_AsUnsignedLongLong(o); }\n' % (self.bound_name, self.ctype) +\
@@ -74,9 +59,6 @@ def bind_std(gen):
 	gen.bind_type(PythonUnsignedInt64Converter('uint64_t'))
 
 	class PythonSize_tConverter(lang.cpython.PythonTypeConverterCommon):
-		def __init__(self, type):
-			super().__init__(type)
-
 		def get_type_glue(self, gen, module_name):
 			return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.bound_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyLong_AsSize_t(o); }\n' % (self.bound_name, self.ctype) +\
@@ -85,9 +67,6 @@ def bind_std(gen):
 	gen.bind_type(PythonSize_tConverter('size_t'))
 
 	class PythonFloatConverter(lang.cpython.PythonTypeConverterCommon):
-		def __init__(self, type):
-			super().__init__(type)
-
 		def get_type_glue(self, gen, module_name):
 			return 'bool check_%s(PyObject *o) { return PyFloat_Check(o) || PyLong_Check(o) ? true : false; }\n' % self.bound_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = (%s)PyFloat_AsDouble(o); }\n' % (self.bound_name, self.ctype, self.ctype) +\
@@ -97,9 +76,6 @@ def bind_std(gen):
 	gen.bind_type(PythonFloatConverter('double'))
 
 	class PythonConstCharPtrConverter(lang.cpython.PythonTypeConverterCommon):
-		def __init__(self, type):
-			super().__init__(type)
-
 		def get_type_glue(self, gen, module_name):
 			return 'bool check_%s(PyObject *o) { return PyUnicode_Check(o) ? true : false; }\n' % self.bound_name +\
 			'''void to_c_%s(PyObject *o, void *obj) {

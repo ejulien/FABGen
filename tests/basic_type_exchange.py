@@ -4,7 +4,7 @@ import lib
 def bind_test(gen):
 	gen.start('my_test')
 
-	lib.bind_all_defaults(gen)
+	lib.bind_defaults(gen)
 
 	# inject test code in the wrapper
 	gen.insert_code('''\
@@ -22,7 +22,7 @@ int &return_int_by_reference() { return static_int; }
 int add_int_by_value(int a, int b) { return a + b; }
 int add_int_by_pointer(int *a, int *b) { return *a + *b; }
 int add_int_by_reference(int &a, int &b) { return a + b; }
-''', True, False)
+\n''', True, False)
 
 	gen.add_include('string', True)
 
@@ -56,4 +56,19 @@ expect_eq(my_test.return_int_by_reference(), 9)
 expect_eq(my_test.add_int_by_value(3, 4), 7)
 expect_eq(my_test.add_int_by_pointer(3, 4), 7)
 expect_eq(my_test.add_int_by_reference(3, 4), 7)
+'''
+
+test_lua = '''\
+my_test = require "my_test"
+
+assert(my_test.return_int() == 8)
+assert(my_test.return_float() == 8)
+assert(my_test.return_const_char_ptr() == "const char * -> string")
+
+assert(my_test.return_int_by_pointer() == 9)
+assert(my_test.return_int_by_reference() == 9)
+
+assert(my_test.add_int_by_value(3, 4) == 7)
+assert(my_test.add_int_by_pointer(3, 4) == 7)
+assert(my_test.add_int_by_reference(3, 4) == 7)
 '''

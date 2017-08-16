@@ -4,7 +4,7 @@ import lib
 def bind_test(gen):
 	gen.start('my_test')
 
-	lib.bind_all_defaults(gen)
+	lib.bind_defaults(gen)
 
 	# inject test code in the wrapper
 	gen.insert_code('''\
@@ -25,4 +25,11 @@ from tests_api import expect_eq
 
 expect_eq(my_test.get_int(), 8)
 expect_eq(my_test.get_float(), 8)
+'''
+
+test_lua = '''\
+my_test = require "my_test"
+
+assert(my_test.get_int() == 8)
+assert(my_test.get_float() == 8)
 '''

@@ -1,12 +1,14 @@
 import gen
 
 
+#
 class PythonTypeConverterCommon(gen.TypeConverter):
 	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):
 		super().__init__(type, arg_storage_type, bound_name, rval_storage_type)
 
 	def get_type_api(self, module_name):
-		return 'bool check_%s(PyObject *o);\n' % self.bound_name +\
+		return '// type API for %s\n' % self.ctype +\
+		'bool check_%s(PyObject *o);\n' % self.bound_name +\
 		'void to_c_%s(PyObject *o, void *obj);\n' % self.bound_name +\
 		'PyObject *from_c_%s(void *obj, OwnershipPolicy);\n' % self.bound_name +\
 		'\n'
@@ -21,6 +23,7 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 		return "check_%s(%s)" % (self.bound_name, in_var)
 
 
+#
 class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):
 		super().__init__(type, arg_storage_type, bound_name, rval_storage_type)
@@ -93,6 +96,8 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 		# constructor
 		out += 'static PyObject *%s_tp_new(PyTypeObject *subtype, PyObject *args, PyObject *kwds) {\n' % self.bound_name
+		if self._inline:
+			out += '	assert(sizeof(%s) <= 16);\n\n' % self.ctype
 		if self.constructor:
 			out += '	return %s(NULL, args);\n' % self.constructor['proxy_name']
 		else:
@@ -151,7 +156,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		out += 'static PyType_Slot %s_slots[] = {\n' % self.bound_name
 		out += '	{Py_tp_new, &%s_tp_new},\n' % self.bound_name
 		out += '	{Py_tp_doc, "TODO doc"},\n'
-		out += '	{Py_tp_dealloc, &wrapped_PyObject_tp_dealloc},\n'
+		out += '	{Py_tp_dealloc, &wrapped_Object_tp_dealloc},\n'
 		out += '	{Py_tp_getset, &%s_tp_getset},\n' % self.bound_name
 		out += '	{Py_tp_methods, &%s_tp_methods},\n' % self.bound_name
 		out += '	{Py_tp_richcompare, &%s_tp_richcompare},\n' % self.bound_name
@@ -172,7 +177,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		# specification
 		out += '''static PyType_Spec %s_spec = {
 	"%s", /* name */
-	sizeof(wrapped_PyObject), /* basicsize */
+	sizeof(wrapped_Object), /* basicsize */
 	0, /* itemsize*/
 	Py_TPFLAGS_DEFAULT, /* flags */
 	%s_slots
@@ -182,21 +187,24 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		# delete delegate
 		out += 'static void delete_%s(void *o) { delete (%s *)o; }\n\n' % (self.bound_name, self.ctype)
 
-		# to/from C
+		# check
 		out += '''bool check_%s(PyObject *o) {
-	wrapped_PyObject *w = cast_to_wrapped_PyObject_safe(o);
+	wrapped_Object *w = cast_to_wrapped_Object_safe(o);
 	if (!w)
 		return false;
 	return _type_tag_can_cast(w->type_tag, %s);
 }
 \n''' % (self.bound_name, self.type_tag)
 
+		# to C
 		out += '''void to_c_%s(PyObject *o, void *obj) {
-	wrapped_PyObject *w = cast_to_wrapped_PyObject_unsafe(o);
+	wrapped_Object *w = cast_to_wrapped_Object_unsafe(o);
 	*(void **)obj = _type_tag_cast(w->obj, w->type_tag, %s);
 }
 \n''' % (self.bound_name, self.type_tag)
 
+		# from C
+		is_inline = False
 		if self._non_copyable:
 			if self._moveable:
 				copy_code = 'obj = new %s(std::move(*(%s *)obj));' % (self.ctype, self.ctype)
@@ -204,19 +212,35 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 				copy_code = '''PyErr_SetString(PyExc_RuntimeError, "type %s is non-copyable and non-moveable");
 		return NULL;''' % self.bound_name
 		else:
-			copy_code = 'obj = new %s(*(%s *)obj);' % (self.ctype, self.ctype)
+			if self._inline:
+				is_inline = True
+				copy_code = 'obj = new((void *)pyobj->inline_obj) %s(*(%s *)obj);' % (self.ctype, self.ctype)
+			else:
+				copy_code = 'obj = new %s(*(%s *)obj);' % (self.ctype, self.ctype)
+
+		if is_inline:
+			delete_code = 'pyobj->on_delete = &delete_inline_%s;' % self.bound_name
+		else:
+			delete_code = 'pyobj->on_delete = &delete_%s;' % self.bound_name
+
+		if is_inline:
+			out += '''
+static void delete_inline_%s(void *o) {
+	using T = %s;
+	((T*)o)->~T();
+}\n\n''' % (self.bound_name, self.ctype)
 
 		out += '''PyObject *from_c_%s(void *obj, OwnershipPolicy own) {
-	wrapped_PyObject *pyobj = PyObject_New(wrapped_PyObject, (PyTypeObject *)%s_type);
+	wrapped_Object *pyobj = PyObject_New(wrapped_Object, (PyTypeObject *)%s_type);
 	if (own == Copy) {
 		%s
 	}
-	init_wrapped_PyObject(pyobj, %s, obj);
+	init_wrapped_Object(pyobj, %s, obj);
 	if (own != NonOwning)
-		pyobj->on_delete = &delete_%s;
+		%s
 	return (PyObject *)pyobj;
 }
-\n''' % (self.bound_name, self.bound_name, copy_code, self.type_tag, self.bound_name)
+\n''' % (self.bound_name, self.bound_name, copy_code, self.type_tag, delete_code)
 
 		return out
 
@@ -237,22 +261,21 @@ class PythonPtrTypeDefaultConverter(PythonTypeConverterCommon):
 		out = '''bool check_%s(PyObject *o) {
 	if (PyLong_Check(o))
 		return true;
-	if (wrapped_PyObject *w = cast_to_wrapped_PyObject_safe(o))
-		if (_type_tag_can_cast(w->type_tag, %s))
-			return true;
+	if (wrapped_Object *w = cast_to_wrapped_Object_safe(o))
+		return _type_tag_can_cast(w->type_tag, %s);
 	return false;
 }\n''' % (self.bound_name, self.type_tag)
 
 		out += '''void to_c_%s(PyObject *o, void *obj) {
 	if (PyLong_Check(o)) {
 		*(void **)obj = PyLong_AsVoidPtr(o);
-	} else if (wrapped_PyObject *w = cast_to_wrapped_PyObject_unsafe(o)) {
+	} else if (wrapped_Object *w = cast_to_wrapped_Object_unsafe(o)) {
 		*(void **)obj = _type_tag_cast(w->obj, w->type_tag, %s);
 	}
 }\n''' % (self.bound_name, self.type_tag)
 
 		out += '''PyObject *from_c_%s(void *obj, OwnershipPolicy) {
-	return PyLong_FromVoidPtr(obj);
+	return PyLong_FromVoidPtr(*(void **)obj);
 }\n''' % self.bound_name
 
 		return out
@@ -262,6 +285,12 @@ class PythonPtrTypeDefaultConverter(PythonTypeConverterCommon):
 class CPythonGenerator(gen.FABGen):
 	default_class_converter = PythonClassTypeDefaultConverter
 	default_ptr_converter = PythonPtrTypeDefaultConverter
+
+	def __init__(self):
+		super().__init__()
+
+		self.api_prefix = 'cpython'
+		self.check_self_type_in_ops = True
 
 	def get_language(self):
 		return "CPython"
@@ -280,15 +309,16 @@ class CPythonGenerator(gen.FABGen):
 typedef struct {
 	PyObject_HEAD;
 
-	uint32_t magic_u32; // wrapped_PyObject marker
+	uint32_t magic_u32; // wrapped_Object marker
 	const char *type_tag; // wrapped pointer type tag
 
 	void *obj;
+	char inline_obj[16]; // storage for inline objects
 
 	void (*on_delete)(void *);
-} wrapped_PyObject;
+} wrapped_Object;
 
-static void init_wrapped_PyObject(wrapped_PyObject *o, const char *type_tag, void *obj) {
+static void init_wrapped_Object(wrapped_Object *o, const char *type_tag, void *obj) {
 	o->magic_u32 = 0x46414221;
 	o->type_tag = type_tag;
 
@@ -297,24 +327,26 @@ static void init_wrapped_PyObject(wrapped_PyObject *o, const char *type_tag, voi
 	o->on_delete = NULL;
 }
 
-static wrapped_PyObject *cast_to_wrapped_PyObject_safe(PyObject *o) {
-	wrapped_PyObject *w = (wrapped_PyObject *)o;
+static wrapped_Object *cast_to_wrapped_Object_safe(PyObject *o) {
+	wrapped_Object *w = (wrapped_Object *)o;
 	if (w->magic_u32 != 0x46414221)
 		return NULL;
 	return w;
 }
 
-static wrapped_PyObject *cast_to_wrapped_PyObject_unsafe(PyObject *o) { return (wrapped_PyObject *)o; }
+static wrapped_Object *cast_to_wrapped_Object_unsafe(PyObject *o) { return (wrapped_Object *)o; }
 
-static void wrapped_PyObject_tp_dealloc(PyObject *self) {
-	wrapped_PyObject *w = (wrapped_PyObject *)self;
+static void wrapped_Object_tp_dealloc(PyObject *self) {
+	wrapped_Object *w = (wrapped_Object *)self;
 
 	if (w->on_delete)
 		w->on_delete(w->obj);
 
 	PyObject_Del(self); // tp_free should be used but PyType_GetSlot is 3.4+
 }
+\n'''
 
+		self._source += '''\
 static inline bool CheckArgsTuple(PyObject *args) {
 	if (!PyTuple_Check(args)) {
 		PyErr_SetString(PyExc_RuntimeError, "invalid arguments object (expected a tuple)");
@@ -342,33 +374,36 @@ static inline bool CheckArgsTuple(PyObject *args) {
 		return 'arg_pyobj[%d]' % i
 
 	def open_proxy(self, name, max_arg_count, ctx):
+		out = ''
+
 		if ctx == 'getter':
-			self._source += 'static PyObject *%s(PyObject *self, void *closure) {\n' % name
+			out += 'static PyObject *%s(PyObject *self, void *closure) {\n' % name
 		elif ctx == 'setter':
-			self._source += 'static int %s(PyObject *self, PyObject *val, void *closure) {\n' % name
+			out += 'static int %s(PyObject *self, PyObject *val, void *closure) {\n' % name
 		elif ctx in ['arithmetic_op', 'inplace_arithmetic_op', 'comparison_op']:
-			self._source += 'static PyObject *%s(PyObject *o1, PyObject *o2) {\n' % name
+			out += 'static PyObject *%s(PyObject *o1, PyObject *o2) {\n' % name
 		else:
-			self._source += 'static PyObject *%s(PyObject *self, PyObject *args) {\n' % name
-			self._source += '''	if (!CheckArgsTuple(args))
+			out += 'static PyObject *%s(PyObject *self, PyObject *args) {\n' % name
+			out += '''	if (!CheckArgsTuple(args))
 		return NULL;
 	int arg_count = PyTuple_Size(args);
 \n'''
 
 			if max_arg_count > 0:
-				self._source += '\
+				out += '\
 	PyObject *arg_pyobj[%d];\n\
 	for (int _i = 0; _i < arg_count && _i < %d; ++_i)\n\
 		arg_pyobj[_i] = PyTuple_GetItem(args, _i);\n\
 \n' % (max_arg_count, max_arg_count)
 
+		return out
+
 	def close_proxy(self, ctx):
 		if ctx == 'setter':
-			self._source += '	return -1;\n}\n'
+			return '	return -1;\n}\n'
 		elif ctx == 'getter':
-			self._source += '}\n'
-		else:
-			self._source += '	return NULL;\n}\n'
+			return '}\n'
+		return '	return NULL;\n}\n'
 
 	def proxy_call_error(self, msg, ctx):
 		out = self.set_error('runtime', msg)

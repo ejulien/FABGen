@@ -1,9 +1,15 @@
+import argparse
+
 import lang.lua
 import lang.cpython
 
 import lib.std
 import lib.stl
 import lib
+
+
+def check_rval_lambda(gen, msg):
+	return lambda rvals, ctx: 'if (!%s) {\n%s}\n' % (rvals[0], gen.proxy_call_error(msg, ctx))
 
 
 def bind_std_vector(gen, T_conv):
@@ -14,6 +20,11 @@ def bind_std_vector(gen, T_conv):
 	conv = gen.begin_class('std::vector<%s>' % T_conv.ctype, bound_name='%sList' % T_conv.bound_name.title(), features={'sequence': lib.std.VectorSequenceFeature(T_conv)})
 	if gen.get_language() == 'CPython':
 		gen.bind_constructor(conv, ['%s sequence' % PySequence_T_type])
+
+	gen.bind_method(conv, 'push_back', 'void', ['%s v' % T_conv.ctype])
+	gen.bind_method(conv, 'size', 'size_t', [])
+	gen.bind_method(conv, 'at', repr(T_conv.ctype), ['int idx'])
+
 	gen.end_class(conv)
 	return conv
 
@@ -727,10 +738,10 @@ def bind_scene(gen):
 		('std::vector<std::shared_ptr<gs::core::Component>>', ['const char *aspect'], ['proxy'])
 	])
 
-	gen.bind_method(shared_node, 'GetComponent<gs::core::Transform>', 'std::shared_ptr<gs::core::Transform>', [], {'proxy': None, 'check_rval': lambda rvals, ctx: 'if (!%s) {\n%s}\n' % (rvals[0], gen.proxy_call_error('GetTransform failed, node has no Transform component', ctx))}, bound_name='GetTransform')
-	gen.bind_method(shared_node, 'GetComponent<gs::core::Camera>', 'std::shared_ptr<gs::core::Camera>', [], {'proxy': None, 'check_rval': lambda rvals, ctx: 'if (!%s) {\n%s}\n' % (rvals[0], gen.proxy_call_error('GetCamera failed, node has no Camera component', ctx))}, bound_name='GetCamera')
-	gen.bind_method(shared_node, 'GetComponent<gs::core::Object>', 'std::shared_ptr<gs::core::Object>', [], {'proxy': None, 'check_rval': lambda rvals, ctx: 'if (!%s) {\n%s}\n' % (rvals[0], gen.proxy_call_error('GetObject failed, node has no Object component', ctx))}, bound_name='GetObject')
-	gen.bind_method(shared_node, 'GetComponent<gs::core::Light>', 'std::shared_ptr<gs::core::Light>', [], {'proxy': None, 'check_rval': lambda rvals, ctx: 'if (!%s) {\n%s}\n' % (rvals[0], gen.proxy_call_error('GetLight failed, node has no Light component', ctx))}, bound_name='GetLight')
+	gen.bind_method(shared_node, 'GetComponent<gs::core::Transform>', 'std::shared_ptr<gs::core::Transform>', [], {'proxy': None, 'check_rval': check_rval_lambda(gen, 'GetTransform failed, node has no Transform component')}, bound_name='GetTransform')
+	gen.bind_method(shared_node, 'GetComponent<gs::core::Camera>', 'std::shared_ptr<gs::core::Camera>', [], {'proxy': None, 'check_rval': check_rval_lambda(gen, 'GetCamera failed, node has no Camera component')}, bound_name='GetCamera')
+	gen.bind_method(shared_node, 'GetComponent<gs::core::Object>', 'std::shared_ptr<gs::core::Object>', [], {'proxy': None, 'check_rval': check_rval_lambda(gen, 'GetObject failed, node has no Object component')}, bound_name='GetObject')
+	gen.bind_method(shared_node, 'GetComponent<gs::core::Light>', 'std::shared_ptr<gs::core::Light>', [], {'proxy': None, 'check_rval': check_rval_lambda(gen, 'GetLight failed, node has no Light component')}, bound_name='GetLight')
 
 	gen.bind_method(shared_node, 'HasAspect', 'bool', ['const char *aspect'], ['proxy'])
 	gen.bind_method(shared_node, 'IsReady', 'bool', [], ['proxy'])
@@ -1334,12 +1345,9 @@ static void RendererBlitTexture_wrapper(gs::gpu::Renderer *renderer, gs::gpu::Te
 static std::shared_ptr<gs::gpu::Renderer> CreateRenderer() { return gs::core::g_renderer_factory.get().Instantiate(); }
 	''', 'Renderer custom API')
 
-	def check_create_renderer_rval(rvals, ctx):
-		return 'if (!%s) {\n%s}\n' % (rvals[0], gen.proxy_call_error('CreateRenderer failed, was gs.LoadPlugins called succesfully?', ctx))
-
 	gen.bind_function_overloads('CreateRenderer', [
-		('std::shared_ptr<gs::gpu::Renderer>', [], {'check_rval': check_create_renderer_rval}),
-		('std::shared_ptr<gs::gpu::Renderer>', ['const char *name'], {'check_rval': check_create_renderer_rval})
+		('std::shared_ptr<gs::gpu::Renderer>', [], {'check_rval': check_rval_lambda(gen, 'CreateRenderer failed, was LoadPlugins called succesfully?')}),
+		('std::shared_ptr<gs::gpu::Renderer>', ['const char *name'], {'check_rval': check_rval_lambda(gen, 'CreateRenderer failed, was LoadPlugins called succesfully?')})
 	])
 
 	# gs::gpu::RendererAsync
@@ -1575,30 +1583,41 @@ static void RenderSystemDrawSprite_wrapper(gs::render::RenderSystem *render_syst
 	DrawTriangle_wrapper_route = lambda args: 'RenderSystemDrawTriangle_wrapper(%s);' % (', '.join(args))
 	DrawSprite_wrapper_route = lambda args: 'RenderSystemDrawSprite_wrapper(%s);' % (', '.join(args))
 
-	gen.bind_method_overloads(shared_render_system, 'DrawLine', [
+	draw_line_protos = [
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos'], {'proxy': None, 'route': DrawLine_wrapper_route}),
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col'], {'proxy': None, 'route': DrawLine_wrapper_route}),
-		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<gs::tVector2<float>> &uv'], {'proxy': None, 'route': DrawLine_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawLine_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawLine_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfVector2 uv'], {'proxy': None, 'route': DrawLine_wrapper_route})
-	])
-	gen.bind_method_overloads(shared_render_system, 'DrawTriangle', [
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<gs::tVector2<float>> &uv'], {'proxy': None, 'route': DrawLine_wrapper_route})	]
+	if gen.get_language() == "CPython":
+		draw_line_protos += [
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawLine_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawLine_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfVector2 uv'], {'proxy': None, 'route': DrawLine_wrapper_route})	]
+
+	gen.bind_method_overloads(shared_render_system, 'DrawLine', draw_line_protos)
+
+	draw_triangle_protos = [
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos'], {'proxy': None, 'route': DrawTriangle_wrapper_route}),
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col'], {'proxy': None, 'route': DrawTriangle_wrapper_route}),
-		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<gs::tVector2<float>> &uv'], {'proxy': None, 'route': DrawTriangle_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawTriangle_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawTriangle_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfVector2 uv'], {'proxy': None, 'route': DrawTriangle_wrapper_route})
-	])
-	gen.bind_method_overloads(shared_render_system, 'DrawSprite', [
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<gs::tVector2<float>> &uv'], {'proxy': None, 'route': DrawTriangle_wrapper_route})	]
+	if gen.get_language() == "CPython":
+		draw_triangle_protos += [
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawTriangle_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawTriangle_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfVector2 uv'], {'proxy': None, 'route': DrawTriangle_wrapper_route})	]
+
+	gen.bind_method_overloads(shared_render_system, 'DrawTriangle', draw_triangle_protos)
+
+	draw_sprite_protos = [
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos'], {'proxy': None, 'route': DrawSprite_wrapper_route}),
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col'], {'proxy': None, 'route': DrawSprite_wrapper_route}),
-		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<float> &size'], {'proxy': None, 'route': DrawSprite_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawSprite_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawSprite_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfFloat size'], {'proxy': None, 'route': DrawSprite_wrapper_route})
-	])
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<float> &size'], {'proxy': None, 'route': DrawSprite_wrapper_route})	]
+	if gen.get_language() == "CPython":
+		draw_sprite_protos += [
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawSprite_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawSprite_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfFloat size'], {'proxy': None, 'route': DrawSprite_wrapper_route})	]
+
+	gen.bind_method_overloads(shared_render_system, 'DrawSprite', draw_sprite_protos)
 
 	gen.insert_binding_code('''\
 static void RenderSystemDrawLineAuto_wrapper(gs::render::RenderSystem *render_system, gs::uint count, const std::vector<gs::Vector3> &pos) { render_system->DrawLineAuto(count, pos.data()); }
@@ -1618,30 +1637,41 @@ static void RenderSystemDrawSpriteAuto_wrapper(gs::render::RenderSystem *render_
 	DrawTriangleAuto_wrapper_route = lambda args: 'RenderSystemDrawTriangleAuto_wrapper(%s);' % (', '.join(args))
 	DrawSpriteAuto_wrapper_route = lambda args: 'RenderSystemDrawSpriteAuto_wrapper(%s);' % (', '.join(args))
 
-	gen.bind_method_overloads(shared_render_system, 'DrawLineAuto', [
+	draw_line_auto_protos = [
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos'], {'proxy': None, 'route': DrawLineAuto_wrapper_route}),
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col'], {'proxy': None, 'route': DrawLineAuto_wrapper_route}),
-		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<gs::tVector2<float>> &uv', 'const gs::gpu::Texture *texture'], {'proxy': None, 'route': DrawLineAuto_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawLineAuto_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawLineAuto_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfVector2 uv', 'const gs::gpu::Texture *texture'], {'proxy': None, 'route': DrawLineAuto_wrapper_route})
-	])
-	gen.bind_method_overloads(shared_render_system, 'DrawTriangleAuto', [
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<gs::tVector2<float>> &uv', 'const gs::gpu::Texture *texture'], {'proxy': None, 'route': DrawLineAuto_wrapper_route})	]
+	if gen.get_language() == "CPython":
+		draw_line_auto_protos += [	
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawLineAuto_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawLineAuto_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfVector2 uv', 'const gs::gpu::Texture *texture'], {'proxy': None, 'route': DrawLineAuto_wrapper_route})	]
+
+	gen.bind_method_overloads(shared_render_system, 'DrawLineAuto', draw_line_auto_protos)
+
+	draw_triangle_auto_protos = [
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route}),
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route}),
-		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<gs::tVector2<float>> &uv', 'const gs::gpu::Texture *texture'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfVector2 uv', 'const gs::gpu::Texture *texture'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route})
-	])
-	gen.bind_method_overloads(shared_render_system, 'DrawSpriteAuto', [
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const std::vector<gs::Color> &col', 'const std::vector<gs::tVector2<float>> &uv', 'const gs::gpu::Texture *texture'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route})	]
+	if gen.get_language() == "CPython":
+		draw_triangle_auto_protos += [
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'PySequenceOfColor col', 'PySequenceOfVector2 uv', 'const gs::gpu::Texture *texture'], {'proxy': None, 'route': DrawTriangleAuto_wrapper_route})	]
+
+	gen.bind_method_overloads(shared_render_system, 'DrawTriangleAuto', draw_triangle_auto_protos)
+
+	draw_sprite_auto_protos = [
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const gs::gpu::Texture &texture'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route}),
 		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const gs::gpu::Texture &texture', 'const std::vector<gs::Color> &col'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route}),
-		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const gs::gpu::Texture &texture', 'const std::vector<gs::Color> &col', 'const std::vector<float> &size'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'const gs::gpu::Texture &texture'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'const gs::gpu::Texture &texture', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route}),
-		('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'const gs::gpu::Texture &texture', 'PySequenceOfColor col', 'PySequenceOfFloat size'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route})
-	])
+		('void', ['gs::uint count', 'const std::vector<gs::Vector3> &pos', 'const gs::gpu::Texture &texture', 'const std::vector<gs::Color> &col', 'const std::vector<float> &size'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route})	]
+	if gen.get_language() == "CPython":
+		draw_sprite_auto_protos += [
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'const gs::gpu::Texture &texture'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'const gs::gpu::Texture &texture', 'PySequenceOfColor col'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route}),
+			('void', ['gs::uint count', 'PySequenceOfVector3 pos', 'const gs::gpu::Texture &texture', 'PySequenceOfColor col', 'PySequenceOfFloat size'], {'proxy': None, 'route': DrawSpriteAuto_wrapper_route})	]
+
+	gen.bind_method_overloads(shared_render_system, 'DrawSpriteAuto', draw_sprite_auto_protos)
 
 	gen.bind_method(shared_render_system, 'DrawQuad2D', 'void', ['const gs::Rect<float> &src_rect', 'const gs::Rect<float> &dst_rect'], ['proxy'])
 	gen.bind_method(shared_render_system, 'DrawFullscreenQuad', 'void', ['const gs::tVector2<float> &uv'], ['proxy'])
@@ -1780,8 +1810,8 @@ def bind_plus(gen):
 	])
 
 	gen.bind_method_overloads(plus_conv, 'RenderInit', [
-		('bool', ['int width', 'int height'], []),
-		('bool', ['int width', 'int height', 'const char *core_path'], [])
+		('bool', ['int width', 'int height'], {'check_rval': check_rval_lambda(gen, 'RenderInit failed')}),
+		('bool', ['int width', 'int height', 'const char *core_path'], {'check_rval': check_rval_lambda(gen, 'RenderInit failed')})
 	])
 	gen.bind_method(plus_conv, 'RenderUninit', 'void', [])
 
@@ -2286,18 +2316,23 @@ def bind_color(gen):
 	gen.add_include('foundation/color_api.h')
 
 	color = gen.begin_class('gs::Color')
+	color._inline = True  # use inline alloc where possible
 
 	gen.bind_static_members(color, ['const gs::Color Zero', 'const gs::Color One', 'const gs::Color White', 'const gs::Color Grey', 'const gs::Color Black', 'const gs::Color Red', 'const gs::Color Green', 'const gs::Color Blue', 'const gs::Color Yellow', 'const gs::Color Orange', 'const gs::Color Purple', 'const gs::Color Transparent'])
 	gen.bind_members(color, ['float r', 'float g', 'float b', 'float a'])
 
 	gen.bind_constructor_overloads(color, [
 		([], []),
+		(['const gs::Color &color'], []),
 		(['float r', 'float g', 'float b'], []),
 		(['float r', 'float g', 'float b', 'float a'], [])
 	])
 
 	gen.bind_arithmetic_ops_overloads(color, ['+', '-', '/', '*'], [('gs::Color', ['const gs::Color &color'], []), ('gs::Color', ['float k'], [])])
-	gen.bind_inplace_arithmetic_ops_overloads(color, ['+=', '-=', '*=', '/='], [('gs::Color &color', []), ('float k', [])])
+	gen.bind_inplace_arithmetic_ops_overloads(color, ['+=', '-=', '*=', '/='], [
+		(['gs::Color &color'], []),
+		(['float k'], [])
+	])
 	gen.bind_comparison_ops(color, ['==', '!='], ['const gs::Color &color'])
 
 	gen.end_class(color)
@@ -2555,8 +2590,8 @@ def bind_math(gen):
 			('gs::tVector2<%s>'%T, ['const gs::Matrix3 &m'], [])
 		])
 		gen.bind_inplace_arithmetic_ops_overloads(vector2, ['+=', '-=', '*=', '/='], [
-			('const gs::tVector2<%s> &v'%T, []),
-			('const %s k'%T, [])
+			(['const gs::tVector2<%s> &v'%T], []),
+			(['const %s k'%T], [])
 		])
 
 		gen.bind_method(vector2, 'Min', 'gs::tVector2<%s>'%T, ['const gs::tVector2<%s> &v'%T])
@@ -2585,6 +2620,7 @@ def bind_math(gen):
 	gen.add_include('foundation/vector4.h')
 
 	vector4 = gen.begin_class('gs::Vector4')
+	vector4._inline = True
 	gen.bind_members(vector4, ['float x', 'float y', 'float z', 'float w'])
 
 	gen.bind_constructor_overloads(vector4, [
@@ -2603,8 +2639,8 @@ def bind_math(gen):
 	])
 
 	gen.bind_inplace_arithmetic_ops_overloads(vector4, ['+=', '-=', '*=', '/='], [
-		('gs::Vector4 &v', []),
-		('float k', [])
+		(['gs::Vector4 &v'], []),
+		(['float k'], [])
 	])
 
 	gen.bind_method(vector4, 'Abs', 'gs::Vector4', [])
@@ -2792,6 +2828,7 @@ def bind_math(gen):
 	gen.add_include('foundation/vector3_api.h')
 
 	vector3 = gen.begin_class('gs::Vector3')
+	vector3._inline = True
 
 	gen.bind_static_members(vector3, ['const gs::Vector3 Zero', 'const gs::Vector3 One', 'const gs::Vector3 Left', 'const gs::Vector3 Right', 'const gs::Vector3 Up', 'const gs::Vector3 Down', 'const gs::Vector3 Front', 'const gs::Vector3 Back'])
 	gen.bind_members(vector3, ['float x', 'float y', 'float z'])
@@ -2806,7 +2843,10 @@ def bind_math(gen):
 	gen.bind_arithmetic_ops_overloads(vector3, ['+', '-', '/'], [('gs::Vector3', ['gs::Vector3 &v'], []), ('gs::Vector3', ['float k'], [])])
 	gen.bind_arithmetic_ops_overloads(vector3, ['*'], [('gs::Vector3', ['gs::Vector3 &v'], []), ('gs::Vector3', ['float k'], []), ('gs::Vector3', ['gs::Matrix3 m'], []), ('gs::Vector3', ['gs::Matrix4 m'], [])])
 
-	gen.bind_inplace_arithmetic_ops_overloads(vector3, ['+=', '-=', '*=', '/='], [('gs::Vector3 &v', []), ('float k', [])])
+	gen.bind_inplace_arithmetic_ops_overloads(vector3, ['+=', '-=', '*=', '/='], [
+		(['gs::Vector3 &v'], []),
+		(['float k'], [])
+	])
 	gen.bind_comparison_ops(vector3, ['==', '!='], ['const gs::Vector3 &v'])
 
 	gen.bind_function('gs::Dot', 'float', ['const gs::Vector3 &u', 'const gs::Vector3 &v'])
@@ -2829,7 +2869,7 @@ def bind_math(gen):
 	gen.bind_function_overloads('gs::Refract', [
 		('gs::Vector3', ['const gs::Vector3 &v', 'const gs::Vector3 &normal'], []),
 		('gs::Vector3', ['const gs::Vector3 &v', 'const gs::Vector3 &normal', 'float index_of_refraction_in', 'float index_of_refraction_out'], [])
-		])
+	])
 
 	gen.bind_method(vector3, 'Len2', 'float', [])
 	gen.bind_method(vector3, 'Len', 'float', [])
@@ -2841,6 +2881,7 @@ def bind_math(gen):
 	# gs::Rect<T>
 	def bind_rect_T(T, bound_name):
 		rect = gen.begin_class('gs::Rect<%s>'%T, bound_name=bound_name)
+		rect._inline = True
 
 		gen.bind_members(rect, ['%s sx'%T, '%s sy'%T, '%s ex'%T, '%s ey'%T])
 
@@ -3022,101 +3063,103 @@ static size_t AudioData_GetFrameToBinaryBlob(gs::AudioData *audio_data, gs::Bina
 	gen.bind_method(shared_sound, 'SetNotReady', 'void', [], ['proxy'])
 	gen.end_class(shared_sound)
 
-	#
-	def bind_mixer_api(conv, features=[]):
-		gen.bind_static_members(conv, [
-			'const gs::audio::MixerChannelState DefaultState', 'const gs::audio::MixerChannelState RepeatState', 'const gs::audio::MixerChannelLocation DefaultLocation',
-			'const gs::audio::MixerPriority DefaultPriority', 'const gs::audio::MixerChannel ChannelError'], features)
-
-		gen.bind_method(conv, 'Open', 'bool', [], features)
-		gen.bind_method(conv, 'Close', 'void', [], features)
-
-		gen.bind_method(conv, 'GetMasterVolume', 'float', [], features)
-		gen.bind_method(conv, 'SetMasterVolume', 'void', ['float volume'], features)
-
-		gen.bind_method(conv, 'EnableSpatialization', 'bool', ['bool enable'], features)
-
-		gen.bind_method_overloads(conv, 'Start', [
-			('gs::audio::MixerChannel', ['gs::audio::Sound &sound'], features),
-			('gs::audio::MixerChannel', ['gs::audio::Sound &sound', 'gs::audio::MixerChannelState state'], features),
-			('gs::audio::MixerChannel', ['gs::audio::Sound &sound', 'gs::audio::MixerChannelLocation location'], features),
-			('gs::audio::MixerChannel', ['gs::audio::Sound &sound', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state'], features)
-		])
-		gen.bind_method_overloads(conv, 'StreamData', [
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'bool paused'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'bool paused', 'gs::time_ns t_start'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelState state'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelState state', 'bool paused'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'bool paused'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'bool paused', 'gs::time_ns t_start'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused'], features),
-			('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], features)
-		])
-
-		gen.bind_method(conv, 'GetPlayState', 'gs::audio::MixerPlayState', ['gs::audio::MixerChannel channel'], features)
-
-		gen.bind_method(conv, 'GetChannelState', 'gs::audio::MixerChannelState', ['gs::audio::MixerChannel channel'], features)
-		gen.bind_method(conv, 'SetChannelState', 'void', ['gs::audio::MixerChannel channel', 'gs::audio::MixerChannelState state'], features)
-
-		gen.bind_method(conv, 'GetChannelLocation', 'gs::audio::MixerChannelLocation', ['gs::audio::MixerChannel channel'], features)
-		gen.bind_method(conv, 'SetChannelLocation', 'void', ['gs::audio::MixerChannel channel', 'gs::audio::MixerChannelLocation location'], features)
-
-		gen.bind_method(conv, 'GetChannelTimestamp', 'gs::time_ns', ['gs::audio::MixerChannel channel'], features)
-
-		gen.bind_method(conv, 'Stop', 'void', ['gs::audio::MixerChannel channel'], features)
-		gen.bind_method(conv, 'Pause', 'void', ['gs::audio::MixerChannel channel'], features)
-		gen.bind_method(conv, 'Resume', 'void', ['gs::audio::MixerChannel channel'], features)
-		gen.bind_method(conv, 'StopAll', 'void', [], features)
-
-		gen.bind_method(conv, 'SetStreamLoopPoint', 'void', ['gs::audio::MixerChannel channel', 'gs::time_ns t'], features)
-		gen.bind_method(conv, 'SeekStream', 'void', ['gs::audio::MixerChannel channel', 'gs::time_ns t'], features)
-		gen.bind_method(conv, 'GetStreamBufferingPercentage', 'int', ['gs::audio::MixerChannel channel'], features)
-
-		gen.bind_method(conv, 'SetChannelStreamDataTransform', 'void', ['gs::audio::MixerChannel channel', 'const gs::Matrix4 &transform'], features)
-		gen.bind_method(conv, 'FlushChannelBuffers', 'void', ['gs::audio::MixerChannel channel'], features)
-
-		gen.bind_method(conv, 'GetListener', 'gs::Matrix4', [], features)
-		gen.bind_method(conv, 'SetListener', 'void', ['const gs::Matrix4 &transform'], features)
-
-		gen.bind_method_overloads(conv, 'Stream', [
-			('gs::audio::MixerChannel', ['const char *path'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'bool paused'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'bool paused', 'gs::time_ns t_start'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelState state'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelState state', 'bool paused'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'bool paused'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'bool paused', 'gs::time_ns t_start'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused'], features),
-			('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], features)
-		])
-
-		gen.bind_method_overloads(conv, 'LoadSoundData', [
-			('std::shared_ptr<gs::audio::Sound>', ['std::shared_ptr<gs::AudioData> data'], features),
-			('std::shared_ptr<gs::audio::Sound>', ['std::shared_ptr<gs::AudioData> data', 'const char *path'], features)
-		])
-
-		gen.bind_method(conv, 'LoadSound', 'std::shared_ptr<gs::audio::Sound>', ['const char *path'], features)
-		gen.bind_method(conv, 'FreeSound', 'void', ['gs::audio::Sound &sound'], features)
-
+	# gs::audio::Mixer
 	audio_mixer = gen.begin_class('gs::audio::Mixer', bound_name='Mixer_nobind', noncopyable=True, nobind=True)
 	gen.end_class(audio_mixer)
 
 	shared_audio_mixer = gen.begin_class('std::shared_ptr<gs::audio::Mixer>', bound_name='Mixer', features={'proxy': lib.stl.SharedPtrProxyFeature(audio_mixer)})
-	bind_mixer_api(shared_audio_mixer, ['proxy'])
+
+	gen.bind_static_members(shared_audio_mixer, [
+		'const gs::audio::MixerChannelState DefaultState', 'const gs::audio::MixerChannelState RepeatState', 'const gs::audio::MixerChannelLocation DefaultLocation',
+		'const gs::audio::MixerPriority DefaultPriority', 'const gs::audio::MixerChannel ChannelError'], ['proxy'])
+
+	gen.bind_method(shared_audio_mixer, 'Open', 'bool', [], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'Close', 'void', [], ['proxy'])
+
+	gen.bind_method(shared_audio_mixer, 'GetMasterVolume', 'float', [], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'SetMasterVolume', 'void', ['float volume'], ['proxy'])
+
+	gen.bind_method(shared_audio_mixer, 'EnableSpatialization', 'bool', ['bool enable'], ['proxy'])
+
+	gen.bind_method_overloads(shared_audio_mixer, 'Start', [
+		('gs::audio::MixerChannel', ['gs::audio::Sound &sound'], ['proxy']),
+		('gs::audio::MixerChannel', ['gs::audio::Sound &sound', 'gs::audio::MixerChannelState state'], ['proxy']),
+		('gs::audio::MixerChannel', ['gs::audio::Sound &sound', 'gs::audio::MixerChannelLocation location'], ['proxy']),
+		('gs::audio::MixerChannel', ['gs::audio::Sound &sound', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state'], ['proxy'])
+	])
+	gen.bind_method_overloads(shared_audio_mixer, 'StreamData', [
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'bool paused'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'bool paused', 'gs::time_ns t_start'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelState state'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelState state', 'bool paused'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'bool paused'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'bool paused', 'gs::time_ns t_start'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused'], ['proxy']),
+		('gs::audio::MixerChannel', ['std::shared_ptr<gs::AudioData> data', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], ['proxy'])
+	])
+
+	gen.bind_method(shared_audio_mixer, 'GetPlayState', 'gs::audio::MixerPlayState', ['gs::audio::MixerChannel channel'], ['proxy'])
+
+	gen.bind_method(shared_audio_mixer, 'GetChannelState', 'gs::audio::MixerChannelState', ['gs::audio::MixerChannel channel'], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'SetChannelState', 'void', ['gs::audio::MixerChannel channel', 'gs::audio::MixerChannelState state'], ['proxy'])
+
+	gen.bind_method(shared_audio_mixer, 'GetChannelLocation', 'gs::audio::MixerChannelLocation', ['gs::audio::MixerChannel channel'], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'SetChannelLocation', 'void', ['gs::audio::MixerChannel channel', 'gs::audio::MixerChannelLocation location'], ['proxy'])
+
+	gen.bind_method(shared_audio_mixer, 'GetChannelTimestamp', 'gs::time_ns', ['gs::audio::MixerChannel channel'], ['proxy'])
+
+	gen.bind_method(shared_audio_mixer, 'Stop', 'void', ['gs::audio::MixerChannel channel'], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'Pause', 'void', ['gs::audio::MixerChannel channel'], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'Resume', 'void', ['gs::audio::MixerChannel channel'], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'StopAll', 'void', [], ['proxy'])
+
+	gen.bind_method(shared_audio_mixer, 'SetStreamLoopPoint', 'void', ['gs::audio::MixerChannel channel', 'gs::time_ns t'], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'SeekStream', 'void', ['gs::audio::MixerChannel channel', 'gs::time_ns t'], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'GetStreamBufferingPercentage', 'int', ['gs::audio::MixerChannel channel'], ['proxy'])
+
+	gen.bind_method(shared_audio_mixer, 'SetChannelStreamDataTransform', 'void', ['gs::audio::MixerChannel channel', 'const gs::Matrix4 &transform'], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'FlushChannelBuffers', 'void', ['gs::audio::MixerChannel channel'], ['proxy'])
+
+	gen.bind_method(shared_audio_mixer, 'GetListener', 'gs::Matrix4', [], ['proxy'])
+	gen.bind_method(shared_audio_mixer, 'SetListener', 'void', ['const gs::Matrix4 &transform'], ['proxy'])
+
+	gen.bind_method_overloads(shared_audio_mixer, 'Stream', [
+		('gs::audio::MixerChannel', ['const char *path'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'bool paused'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'bool paused', 'gs::time_ns t_start'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelState state'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelState state', 'bool paused'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'bool paused'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'bool paused', 'gs::time_ns t_start'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused'], ['proxy']),
+		('gs::audio::MixerChannel', ['const char *path', 'gs::audio::MixerChannelLocation location', 'gs::audio::MixerChannelState state', 'bool paused', 'gs::time_ns t_start'], ['proxy'])
+	])
+
+	gen.bind_method_overloads(shared_audio_mixer, 'LoadSoundData', [
+		('std::shared_ptr<gs::audio::Sound>', ['std::shared_ptr<gs::AudioData> data'], {'proxy': None, 'check_rval': check_rval_lambda(gen, 'LoadSoundData failed')}),
+		('std::shared_ptr<gs::audio::Sound>', ['std::shared_ptr<gs::AudioData> data', 'const char *path'], {'proxy': None, 'check_rval': check_rval_lambda(gen, 'LoadSoundData failed')})
+	])
+
+	gen.bind_method(shared_audio_mixer, 'LoadSound', 'std::shared_ptr<gs::audio::Sound>', ['const char *path'], {'proxy': None, 'check_rval': check_rval_lambda(gen, 'LoadSound failed')})
+	gen.bind_method(shared_audio_mixer, 'FreeSound', 'void', ['gs::audio::Sound &sound'], ['proxy'])
+
 	gen.end_class(shared_audio_mixer)
 
 	gen.insert_binding_code('''static std::shared_ptr<gs::audio::Mixer> CreateMixer(const char *name) { return gs::core::g_mixer_factory.get().Instantiate(name); }
 static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixer_factory.get().Instantiate(); }
 	''', 'Mixer custom API')
 
-	gen.bind_function_overloads('CreateMixer', [('std::shared_ptr<gs::audio::Mixer>', [], []), ('std::shared_ptr<gs::audio::Mixer>', ['const char *name'], [])])
+	gen.bind_function_overloads('CreateMixer', [
+		('std::shared_ptr<gs::audio::Mixer>', [], {'check_rval': check_rval_lambda(gen, 'CreateMixer failed, was LoadPlugins called succesfully?')}),
+		('std::shared_ptr<gs::audio::Mixer>', ['const char *name'], {'check_rval': check_rval_lambda(gen, 'CreateMixer failed, was LoadPlugins called succesfully?')})
+	])
 
 	# gs::audio::MixerAsync
 	mixer_async = gen.begin_class('gs::audio::MixerAsync', bound_name='MixerAsync_nobind', noncopyable=True, nobind=True)
@@ -3185,22 +3228,200 @@ static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixe
 	gen.bind_method(shared_mixer_async, 'GetListener', 'std::future<gs::Matrix4>', [], ['proxy'])
 	gen.bind_method(shared_mixer_async, 'SetListener', 'void', ['const gs::Matrix4 &transform'], ['proxy'])
 
-	gen.bind_method(shared_mixer_async, 'LoadSound', 'std::shared_ptr<gs::audio::Sound>', ['const char *path'], ['proxy'])
+	gen.bind_method(shared_mixer_async, 'LoadSound', 'std::shared_ptr<gs::audio::Sound>', ['const char *path'], {'proxy': None, 'check_rval': check_rval_lambda(gen, 'LoadSound failed')})
 	gen.bind_method(shared_mixer_async, 'FreeSound', 'void', ['const std::shared_ptr<gs::audio::Sound> &sound'], ['proxy'])
 
 	gen.end_class(shared_mixer_async)
 
 
-def bind_gs(gen):
-	gen.start('gs')
+def bind_imgui(gen):
+	gen.add_include('engine/imgui.h')
 
-	lib.bind_all_defaults(gen)
+	imvec2 = gen.begin_class('ImVec2')
+	gen.bind_constructor_overloads(imvec2, [
+		([], []),
+		(['float x', 'float y'], [])
+	])
+	gen.bind_members(imvec2, ['float x', 'float y'])
+	gen.end_class(imvec2)
+
+	imvec4 = gen.begin_class('ImVec4')
+	gen.bind_constructor_overloads(imvec4, [
+		([], []),
+		(['float x', 'float y', 'float z', 'float w'], [])
+	])
+	gen.bind_members(imvec4, ['float x', 'float y', 'float z', 'float w'])
+	gen.end_class(imvec4)
+
+	gen.bind_named_enum('ImGuiWindowFlags', [
+		'ImGuiWindowFlags_NoTitleBar', 'ImGuiWindowFlags_NoResize', 'ImGuiWindowFlags_NoMove', 'ImGuiWindowFlags_NoScrollbar', 'ImGuiWindowFlags_NoScrollWithMouse',
+		'ImGuiWindowFlags_NoCollapse', 'ImGuiWindowFlags_AlwaysAutoResize', 'ImGuiWindowFlags_ShowBorders', 'ImGuiWindowFlags_NoSavedSettings', 'ImGuiWindowFlags_NoInputs',
+		'ImGuiWindowFlags_MenuBar', 'ImGuiWindowFlags_HorizontalScrollbar', 'ImGuiWindowFlags_NoFocusOnAppearing', 'ImGuiWindowFlags_NoBringToFrontOnFocus',
+		'ImGuiWindowFlags_AlwaysVerticalScrollbar', 'ImGuiWindowFlags_AlwaysHorizontalScrollbar', 'ImGuiWindowFlags_AlwaysUseWindowPadding'
+	], 'int', namespace='')
+
+	gen.bind_named_enum('ImGuiSetCond', ['ImGuiSetCond_Always', 'ImGuiSetCond_Once', 'ImGuiSetCond_FirstUseEver', 'ImGuiSetCond_Appearing'], 'int', namespace='')
+
+	#gen.bind_function('ImGui::GetIO', 'ImGuiIO &', [], bound_name='ImGuiGetIO')
+	#gen.bind_function('ImGui::GetStyle', 'ImGuiStyle &', [], bound_name='ImGuiGetStyle')
+
+	gen.bind_function('ImGui::NewFrame', 'void', [], bound_name='ImGuiNewFrame')
+	gen.bind_function('ImGui::Render', 'void', [], bound_name='ImGuiRender')
+	gen.bind_function('ImGui::Shutdown', 'void', [], bound_name='ImGuiShutdown')
+	gen.bind_function('ImGui::ShowUserGuide', 'void', [], bound_name='ImGuiShowUserGuide')
+
+	gen.bind_function_overloads('ImGui::Begin', [
+		('bool', ['const char *name', 'bool *open', 'ImGuiWindowFlags flags'], {'arg_out': ['open']}),
+		('bool', ['const char *name', 'bool *open', 'const ImVec2 &size_on_first_use', 'float background_alpha', 'ImGuiWindowFlags flags'], {'arg_out': ['open']})
+	], bound_name='ImGuiBegin')
+	gen.bind_function('ImGui::End', 'void', [], bound_name='ImGuiEnd')
+
+	gen.bind_function('ImGui::BeginChild', 'bool', ['const char *id', '?const ImVec2 &size', '?bool border', '?ImGuiWindowFlags extra_flags'], bound_name='ImGuiBeginChild')
+	gen.bind_function('ImGui::EndChild', 'void', [], bound_name='ImGuiEndChild')
+
+	gen.bind_function('ImGui::GetContentRegionMax', 'ImVec2', [], bound_name='ImGuiGetContentRegionMax')
+	gen.bind_function('ImGui::GetContentRegionAvail', 'ImVec2', [], bound_name='ImGuiGetContentRegionAvail')
+	gen.bind_function('ImGui::GetContentRegionAvailWidth', 'float', [], bound_name='ImGuiGetContentRegionAvailWidth')
+	gen.bind_function('ImGui::GetWindowContentRegionMin', 'ImVec2', [], bound_name='ImGuiGetWindowContentRegionMin')
+	gen.bind_function('ImGui::GetWindowContentRegionMax', 'ImVec2', [], bound_name='ImGuiGetWindowContentRegionMax')
+	gen.bind_function('ImGui::GetWindowContentRegionWidth', 'float', [], bound_name='ImGuiGetWindowContentRegionWidth')
+	#IMGUI_API ImDrawList*   GetWindowDrawList();                                                // get rendering command-list if you want to append your own draw primitives
+	gen.bind_function('ImGui::GetWindowPos', 'ImVec2', [], bound_name='ImGuiGetWindowPos')
+	gen.bind_function('ImGui::GetWindowSize', 'ImVec2', [], bound_name='ImGuiGetWindowSize')
+	gen.bind_function('ImGui::GetWindowWidth', 'float', [], bound_name='ImGuiGetWindowWidth')
+	gen.bind_function('ImGui::GetWindowHeight', 'float', [], bound_name='ImGuiGetWindowHeight')
+	gen.bind_function('ImGui::IsWindowCollapsed', 'bool', [], bound_name='ImGuiIsWindowCollapsed')
+	gen.bind_function('ImGui::SetWindowFontScale', 'void', ['float scale'], bound_name='ImGuiSetWindowFontScale')
+
+	gen.bind_function('ImGui::SetNextWindowPos', 'void', ['const ImVec2 &pos', '?ImGuiSetCond condition'], bound_name='ImGuiSetNextWindowPos')
+	gen.bind_function('ImGui::SetNextWindowPosCenter', 'void', ['?ImGuiSetCond condition'], bound_name='ImGuiSetNextWindowPosCenter')
+	gen.bind_function('ImGui::SetNextWindowSize', 'void', ['const ImVec2 &size', '?ImGuiSetCond condition'], bound_name='ImGuiSetNextWindowSize')
+	gen.bind_function('ImGui::SetNextWindowContentSize', 'void', ['const ImVec2 &size'], bound_name='ImGuiSetNextWindowContentSize')
+	gen.bind_function('ImGui::SetNextWindowContentWidth', 'void', ['float width'], bound_name='ImGuiSetNextWindowContentWidth')
+	gen.bind_function('ImGui::SetNextWindowCollapsed', 'void', ['bool collapsed', 'ImGuiSetCond condition'], bound_name='ImGuiSetNextWindowCollapsed')
+	gen.bind_function('ImGui::SetNextWindowFocus', 'void', [], bound_name='ImGuiSetNextWindowFocus')
+	gen.bind_function('ImGui::SetWindowPos', 'void', ['const ImVec2 &pos', '?ImGuiSetCond condition'], bound_name='ImGuiSetWindowPos')
+	gen.bind_function('ImGui::SetWindowSize', 'void', ['const ImVec2 &size', '?ImGuiSetCond condition'], bound_name='ImGuiSetWindowSize')
+	gen.bind_function('ImGui::SetWindowCollapsed', 'void', ['bool collapsed', '?ImGuiSetCond condition'], bound_name='ImGuiSetWindowCollapsed')
+	gen.bind_function('ImGui::SetWindowFocus', 'void', ['?const char *name'], bound_name='ImGuiSetWindowFocus')
+
+	gen.bind_function('ImGui::GetScrollX', 'float', [], bound_name='ImGuiGetScrollX')
+	gen.bind_function('ImGui::GetScrollY', 'float', [], bound_name='ImGuiGetScrollY')
+	gen.bind_function('ImGui::GetScrollMaxX', 'float', [], bound_name='ImGuiGetScrollMaxX')
+	gen.bind_function('ImGui::GetScrollMaxY', 'float', [], bound_name='ImGuiGetScrollMaxY')
+	gen.bind_function('ImGui::SetScrollX', 'void', ['float scroll_x'], bound_name='ImGuiSetScrollX')
+	gen.bind_function('ImGui::SetScrollY', 'void', ['float scroll_y'], bound_name='ImGuiSetScrollY')
+	gen.bind_function('ImGui::SetScrollHere', 'void', ['?float center_y_ratio'], bound_name='ImGuiSetScrollHere')
+	gen.bind_function('ImGui::SetScrollFromPosY', 'void', ['float pos_y', '?float center_y_ratio'], bound_name='ImGuiSetScrollFromPosY')
+	gen.bind_function('ImGui::SetKeyboardFocusHere', 'void', ['?int offset'], bound_name='ImGuiSetKeyboardFocusHere')
+
+	gen.bind_function('ImGui::PushItemWidth', 'void', ['float item_width'], bound_name='ImGuiPushItemWidth')
+	gen.bind_function('ImGui::PopItemWidth', 'void', [], bound_name='ImGuiPopItemWidth')
+	gen.bind_function('ImGui::CalcItemWidth', 'float', [], bound_name='ImGuiCalcItemWidth')
+	gen.bind_function('ImGui::PushTextWrapPos', 'void', ['?float wrap_pos_x'], bound_name='ImGuiPushTextWrapPos')
+	gen.bind_function('ImGui::PopTextWrapPos', 'void', [], bound_name='ImGuiPopTextWrapPos')
+	gen.bind_function('ImGui::PushAllowKeyboardFocus', 'void', ['bool v'], bound_name='ImGuiPushAllowKeyboardFocus')
+	gen.bind_function('ImGui::PopAllowKeyboardFocus', 'void', [], bound_name='ImGuiPopAllowKeyboardFocus')
+	gen.bind_function('ImGui::PushButtonRepeat', 'void', ['bool repeat'], bound_name='ImGuiPushButtonRepeat')
+	gen.bind_function('ImGui::PopButtonRepeat', 'void', [], bound_name='ImGuiPopButtonRepeat')
+
+	gen.bind_function('ImGui::Separator', 'void', [], bound_name='ImGuiSeparator')
+	gen.bind_function('ImGui::SameLine', 'void', ['?float pos_x', '?float spacing_w'], bound_name='ImGuiSameLine')
+	gen.bind_function('ImGui::NewLine', 'void', [], bound_name='ImGuiNewLine')
+	gen.bind_function('ImGui::Spacing', 'void', [], bound_name='ImGuiSpacing')
+	gen.bind_function('ImGui::Dummy', 'void', ['const ImVec2 &size'], bound_name='ImGuiDummy')
+	gen.bind_function('ImGui::Indent', 'void', ['?float width'], bound_name='ImGuiIndent')
+	gen.bind_function('ImGui::Unindent', 'void', ['?float width'], bound_name='ImGuiUnindent')
+	gen.bind_function('ImGui::BeginGroup', 'void', [], bound_name='ImGuiBeginGroup')
+	gen.bind_function('ImGui::EndGroup', 'void', [], bound_name='ImGuiEndGroup')
+	gen.bind_function('ImGui::GetCursorPos', 'ImVec2', [], bound_name='ImGuiGetCursorPos')
+	gen.bind_function('ImGui::GetCursorPosX', 'float', [], bound_name='ImGuiGetCursorPosX')
+	gen.bind_function('ImGui::GetCursorPosY', 'float', [], bound_name='ImGuiGetCursorPosY')
+	gen.bind_function('ImGui::SetCursorPos', 'void', ['const ImVec2 &local_pos'], bound_name='ImGuiSetCursorPos')
+	gen.bind_function('ImGui::SetCursorPosX', 'void', ['float x'], bound_name='ImGuiSetCursorPosX')
+	gen.bind_function('ImGui::SetCursorPosY', 'void', ['float y'], bound_name='ImGuiSetCursorPosY')
+	gen.bind_function('ImGui::GetCursorStartPos', 'ImVec2', [], bound_name='ImGuiGetCursorStartPos')
+	gen.bind_function('ImGui::GetCursorScreenPos', 'ImVec2', [], bound_name='ImGuiGetCursorScreenPos')
+	gen.bind_function('ImGui::SetCursorScreenPos', 'void', ['const ImVec2 &pos'], bound_name='ImGuiSetCursorScreenPos')
+	gen.bind_function('ImGui::AlignFirstTextHeightToWidgets', 'void', [], bound_name='ImGuiAlignFirstTextHeightToWidgets')
+	gen.bind_function('ImGui::GetTextLineHeight', 'float', [], bound_name='ImGuiGetTextLineHeight')
+	gen.bind_function('ImGui::GetTextLineHeightWithSpacing', 'float', [], bound_name='ImGuiGetTextLineHeightWithSpacing')
+	gen.bind_function('ImGui::GetItemsLineHeightWithSpacing', 'float', [], bound_name='ImGuiGetItemsLineHeightWithSpacing')
+
+	gen.bind_function('ImGui::Columns', 'void', ['?int count', '?const char *id', '?bool with_border'], bound_name='ImGuiColumns')
+	gen.bind_function('ImGui::NextColumn', 'void', [], bound_name='ImGuiNextColumn')
+	gen.bind_function('ImGui::GetColumnIndex', 'int', [], bound_name='ImGuiGetColumnIndex')
+	gen.bind_function('ImGui::GetColumnOffset', 'float', ['?int column_index'], bound_name='ImGuiGetColumnOffset')
+	gen.bind_function('ImGui::SetColumnOffset', 'void', ['int column_index', 'float offset_x'], bound_name='ImGuiSetColumnOffset')
+	gen.bind_function('ImGui::GetColumnWidth', 'float', ['?int column_index'], bound_name='ImGuiGetColumnWidth')
+	gen.bind_function('ImGui::GetColumnsCount', 'int', [], bound_name='ImGuiGetColumnsCount')
+
+	gen.typedef('ImGuiID', 'unsigned int')
+
+	gen.bind_function_overloads('ImGui::PushID', [
+		('void', ['const char *id'], []),
+		('void', ['int id'], [])
+	], bound_name='ImGuiPushID')
+	gen.bind_function('ImGui::PopID', 'void', [], bound_name='ImGuiPopID')
+	gen.bind_function('ImGui::GetID', 'ImGuiID', ['const char *id'], bound_name='ImGuiGetID')
+
+	gen.bind_function('ImGui::Text', 'void', ['const char *text'], bound_name='ImGuiText')
+	gen.bind_function('ImGui::TextV', 'void', ['const char *text'], bound_name='ImGuiTextV')
+	gen.bind_function('ImGui::TextColored', 'void', ['const ImVec4 &color', 'const char *text'], bound_name='ImGuiTextColored')
+	gen.bind_function('ImGui::TextColoredV', 'void', ['const ImVec4 &color', 'const char *text'], bound_name='ImGuiTextColoredV')
+	gen.bind_function('ImGui::TextDisabled', 'void', ['const char *text'], bound_name='ImGuiTextDisabled')
+	gen.bind_function('ImGui::TextDisabledV', 'void', ['const char *text'], bound_name='ImGuiTextDisabledV')
+	gen.bind_function('ImGui::TextWrapped', 'void', ['const char *text'], bound_name='ImGuiTextWrapped')
+	gen.bind_function('ImGui::TextWrappedV', 'void', ['const char *text'], bound_name='ImGuiTextWrappedV')
+	gen.bind_function('ImGui::TextUnformatted', 'void', ['const char *text'], bound_name='ImGuiTextUnformatted')
+	gen.bind_function('ImGui::LabelText', 'void', ['const char *label'], bound_name='ImGuiLabelText')
+	gen.bind_function('ImGui::LabelTextV', 'void', ['const char *label'], bound_name='ImGuiLabelTextV')
+	gen.bind_function('ImGui::Bullet', 'void', [], bound_name='ImGuiBullet')
+	gen.bind_function('ImGui::BulletText', 'void', ['const char *label'], bound_name='ImGuiBulletText')
+	gen.bind_function('ImGui::BulletTextV', 'void', ['const char *label'], bound_name='ImGuiBulletTextV')
+	gen.bind_function('ImGui::Button', 'bool', ['const char *label', '?const ImVec2 &size'], bound_name='ImGuiButton')
+	gen.bind_function('ImGui::SmallButton', 'bool', ['const char *label'], bound_name='ImGuiSmallButton')
+	gen.bind_function('ImGui::InvisibleButton', 'bool', ['const char *text', 'const ImVec2 &size'], bound_name='ImGuiInvisibleButton')
+	#IMGUI_API void          Image(ImTextureID user_texture_id, const ImVec2& size, const ImVec2& uv0 = ImVec2(0,0), const ImVec2& uv1 = ImVec2(1,1), const ImVec4& tint_col = ImVec4(1,1,1,1), const ImVec4& border_col = ImVec4(0,0,0,0));
+	#IMGUI_API bool          ImageButton(ImTextureID user_texture_id, const ImVec2& size, const ImVec2& uv0 = ImVec2(0,0),  const ImVec2& uv1 = ImVec2(1,1), int frame_padding = -1, const ImVec4& bg_col = ImVec4(0,0,0,0), const ImVec4& tint_col = ImVec4(1,1,1,1));    // <0 frame_padding uses default frame padding settings. 0 for no padding
+	gen.bind_function('ImGui::Checkbox', 'bool', ['const char *label'], bound_name='ImGuiCheckbox')
+	#IMGUI_API bool          CheckboxFlags(const char* label, unsigned int* flags, unsigned int flags_value);
+	gen.bind_function('ImGui::RadioButton', 'bool', ['const char *label', 'bool active'], bound_name='ImGuiRadioButton')
+	#IMGUI_API bool          RadioButton(const char* label, int* v, int v_button);
+	"""
+	IMGUI_API bool          Combo(const char* label, int* current_item, const char* const* items, int items_count, int height_in_items = -1);
+	IMGUI_API bool          Combo(const char* label, int* current_item, const char* items_separated_by_zeros, int height_in_items = -1);      // separate items with \0, end item-list with \0\0
+	IMGUI_API bool          Combo(const char* label, int* current_item, bool (*items_getter)(void* data, int idx, const char** out_text), void* data, int items_count, int height_in_items = -1);
+	IMGUI_API bool          ColorButton(const ImVec4& col, bool small_height = false, bool outline_border = true);
+	IMGUI_API bool          ColorEdit3(const char* label, float col[3]);                            // Hint: 'float col[3]' function argument is same as 'float* col'. You can pass address of first element out of a contiguous set, e.g. &myvector.x
+	IMGUI_API bool          ColorEdit4(const char* label, float col[4], bool show_alpha = true);    // "
+	IMGUI_API void          ColorEditMode(ImGuiColorEditMode mode);                                 // FIXME-OBSOLETE: This is inconsistent with most of the API and will be obsoleted/replaced.
+	IMGUI_API void          PlotLines(const char* label, const float* values, int values_count, int values_offset = 0, const char* overlay_text = NULL, float scale_min = FLT_MAX, float scale_max = FLT_MAX, ImVec2 graph_size = ImVec2(0,0), int stride = sizeof(float));
+	IMGUI_API void          PlotLines(const char* label, float (*values_getter)(void* data, int idx), void* data, int values_count, int values_offset = 0, const char* overlay_text = NULL, float scale_min = FLT_MAX, float scale_max = FLT_MAX, ImVec2 graph_size = ImVec2(0,0));
+	IMGUI_API void          PlotHistogram(const char* label, const float* values, int values_count, int values_offset = 0, const char* overlay_text = NULL, float scale_min = FLT_MAX, float scale_max = FLT_MAX, ImVec2 graph_size = ImVec2(0,0), int stride = sizeof(float));
+	IMGUI_API void          PlotHistogram(const char* label, float (*values_getter)(void* data, int idx), void* data, int values_count, int values_offset = 0, const char* overlay_text = NULL, float scale_min = FLT_MAX, float scale_max = FLT_MAX, ImVec2 graph_size = ImVec2(0,0));
+	IMGUI_API void          ProgressBar(float fraction, const ImVec2& size_arg = ImVec2(-1,0), const char* overlay = NULL);
+	"""
+
+
+def bind_extras(gen):
+	gen.add_include('thread', True)
+
+	gen.insert_code('static void SleepThisThread(gs::time_ns duration) { std::this_thread::sleep_for(gs::time_to_chrono(duration)); }\n\n')
+	gen.bind_function('SleepThisThread', 'void', ['gs::time_ns duration'], bound_name='Sleep')
+
+
+def bind_gs(gen):
+	gen.start('harfang')
+
+	lib.bind_defaults(gen)
 
 	gen.add_include('engine/engine.h')
 	gen.add_include('engine/engine_plugins.h')
 	gen.add_include('engine/engine_factories.h')
 
-	gen.insert_code('''
+	if gen.get_language() == 'CPython':
+		gen.insert_code('''
 // Add the Python interpreter module search paths to the engine default plugins search path
 void InitializePluginsDefaultSearchPath() {
 	if (PyObject *sys_path = PySys_GetObject("path")) {
@@ -3214,12 +3435,50 @@ void InitializePluginsDefaultSearchPath() {
 	}
 }
 \n''')
+	elif gen.get_language() == 'Lua':
+		gen.insert_code('''
+#include "foundation/string.h"
+
+// Add the Lua interpreter package.cpath to the engine default plugins search path
+void InitializePluginsDefaultSearchPath(lua_State *L) {
+	lua_getglobal(L, "package");
+	lua_getfield(L, -1, "cpath");
+	std::string package_cpath = lua_tostring(L, -1);
+	lua_pop(L, 2);
+
+	std::vector<std::string> paths = std::split(package_cpath, ";"), out;
+
+	for (size_t i = 0; i < paths.size(); ++i) {
+		std::string path = paths[i];
+		std::replace(path.begin(), path.end(), '\\\\', '/');
+
+		std::vector<std::string> elms = std::split(path, "/");
+		path = "";
+		for (auto &elm : elms)
+			if (elm.find('?') == std::string::npos)
+				path += elm + "/";
+
+		if (path == "./")
+			continue;
+		if (std::ends_with(path, "loadall.dll/"))
+			continue;
+
+		out.push_back(path);
+	}
+
+	for (auto &path : out)
+		gs::core::plugins_default_search_paths.push_back(path);
+}
+\n''')
+
+	init_plugins_parm = ''
+	if gen.get_language() == 'Lua':
+		init_plugins_parm = 'L'
 
 	gen.add_custom_init_code('''
 	gs::core::Init();
-
-	InitializePluginsDefaultSearchPath();
-''')
+	InitializePluginsDefaultSearchPath(%s);
+\n''' % init_plugins_parm)
 
 	float_ptr = gen.bind_ptr('float *', bound_name='FloatPointer')
 	void_ptr = gen.bind_ptr('void *', bound_name='VoidPointer')
@@ -3259,14 +3518,31 @@ void InitializePluginsDefaultSearchPath() {
 	bind_input(gen)
 	bind_plus(gen)
 	bind_mixer(gen)
+	bind_imgui(gen)
+	bind_extras(gen)
 
 	gen.finalize()
 	return gen.get_output()
 
 
-hdr, src = bind_gs(lang.cpython.CPythonGenerator())
+parser = argparse.ArgumentParser(description='Harfang API binding script')
+parser.add_argument('--lua', help='Bind to Lua 5.2+', action="store_true")
+parser.add_argument('--cpython', help='Bind to CPython', action="store_true")
+parser.add_argument('--out', help='Path to output generated files', required=True)
+args = parser.parse_args()
 
-with open('d:/gs-fabgen-test/bind_gs.h', mode='w', encoding='utf-8') as f:
-	f.write(hdr)
-with open('d:/gs-fabgen-test/bind_gs.cpp', mode='w', encoding='utf-8') as f:
-	f.write(src)
+
+def output_binding(gen):
+	hdr, src = bind_gs(gen)
+
+	with open('%s/bind_harfang_%s.h' % (args.out, gen.get_language()), mode='w', encoding='utf-8') as f:
+		f.write(hdr)
+	with open('%s/bind_harfang_%s.cpp' % (args.out, gen.get_language()), mode='w', encoding='utf-8') as f:
+		f.write(src)
+
+
+if args.cpython:
+	output_binding(lang.cpython.CPythonGenerator())
+
+if args.lua:
+	output_binding(lang.lua.LuaGenerator())

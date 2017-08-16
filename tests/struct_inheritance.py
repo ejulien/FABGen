@@ -4,7 +4,7 @@ import lib
 def bind_test(gen):
 	gen.start('my_test')
 
-	lib.bind_all_defaults(gen)
+	lib.bind_defaults(gen)
 
 	# inject test code in the wrapper
 	gen.insert_code('''\
@@ -89,4 +89,42 @@ expect_eq(base.override, 4)
 expect_eq(base.static_override, 1)
 expect_eq(derived.override, 12)  # member overshadowing
 expect_eq(derived.static_override, 42)  # static member overshadowing
+
+expect_eq(my_test.base_class.v, 7)
+expect_eq(my_test.derived_class.v, 7)
+expect_eq(my_test.base_class.static_override, 1)
+expect_eq(my_test.derived_class.static_override, 42)
+'''
+
+test_lua = '''\
+my_test = require "my_test"
+
+base = my_test.base_class()
+assert(base:base_method() == 4)
+assert(base:base_method_override() == 4)
+
+derived = my_test.derived_class()
+assert(derived:base_method() == 4)  -- can still access base class
+assert(derived:derived_method() == 8)  -- can access its own methods
+assert(derived:base_method_override() == 8)  -- properly overshadows redeclared base methods
+
+-- argument casting through inheritance tree
+assert(my_test.read_virtual_method_through_base_class(base) == 6)
+assert(my_test.read_virtual_method_through_base_class(derived) == 9)
+
+-- member access through inheritance tree
+assert(base.u == 6)
+assert(derived.u == 6)  -- can access base class member
+assert(base.v == 7)
+assert(derived.v == 7)  -- can access base class static member
+
+assert(base.override == 4)
+assert(base.static_override == 1)
+assert(derived.override == 12)  -- member overshadowing
+assert(derived.static_override == 42)  -- static member overshadowing
+
+assert(my_test.base_class.v == 7)
+assert(my_test.derived_class.v == 7)
+assert(my_test.base_class.static_override == 1)
+assert(my_test.derived_class.static_override == 42)
 '''

@@ -8,22 +8,24 @@ import sys
 import os
 
 import lang.cpython
+import lang.lua
 
 
 start_path = os.path.dirname(__file__)
 
-
 parser = argparse.ArgumentParser(description='Run generator unit tests.')
-parser.add_argument('--pybase', dest='python_base_path', help='Specify the base path of the Python interpreter location', required=True)
+parser.add_argument('--pybase', dest='python_base_path', help='Specify the base path of the Python interpreter location')
+parser.add_argument('--luabase', dest='lua_base_path', help='Specify the base path of the Lua interpreter location')
 parser.add_argument('--debug', dest='debug_test', help='Generate a working solution to debug a test')
 
 args = parser.parse_args()
 
 # -- interpreter settings
-python_include_dir = args.python_base_path + '/' + 'include'
-python_library = args.python_base_path + '/' + 'libs/python3.lib'
-python_site_package = args.python_base_path + '/' + 'Lib/site-packages'
-python_interpreter = args.python_base_path + '/' + 'python.exe'
+if args.python_base_path:
+	python_include_dir = args.python_base_path + '/' + 'include'
+	python_library = args.python_base_path + '/' + 'libs/python3.lib'
+	python_site_package = args.python_base_path + '/' + 'Lib/site-packages'
+	python_interpreter = args.python_base_path + '/' + 'python.exe'
 
 
 # --
@@ -81,9 +83,8 @@ def run_tests(gen, names, testbed):
 	print("Done with generator %s" % gen.get_language())
 
 
-# --
-# language CMake support
-def create_cmake_file(module, work_path, site_package, include_dir, python_lib):
+# CPython test bed
+def create_cpython_cmake_file(module, work_path, site_package, include_dir, python_lib):
 	cmake_path = os.path.join(work_path, 'CMakeLists.txt')
 
 	with open(cmake_path, 'w') as file:
@@ -102,7 +103,7 @@ target_link_libraries(my_test "%s")
 ''' % (module, site_package, site_package, include_dir, python_lib))
 
 
-def build_and_deploy_extension(work_path, build_path, python_interpreter):
+def build_and_deploy_cpython_extension(work_path, build_path, python_interpreter):
 	print("Generating build system...")
 	try:
 		subprocess.check_output('cmake .. -G "Visual Studio 15 2017')
@@ -133,29 +134,16 @@ def build_and_deploy_extension(work_path, build_path, python_interpreter):
 	return True
 
 
-def create_clang_format_file(work_path):
-	with open(os.path.join(work_path, '_clang-format'), 'w') as file:
-		file.write('''ColumnLimit: 0
-UseTab: Always
-TabWidth: 4
-IndentWidth: 4
-IndentCaseLabels: true
-AccessModifierOffset: -4
-AlignAfterOpenBracket: DontAlign
-AlwaysBreakTemplateDeclarations: false
-AlignTrailingComments: false''')
-
-
 class CPythonTestBed:
 	def build_and_test_extension(self, work_path, module):
-		create_cmake_file("test", work_path, python_site_package, python_include_dir, python_library)
+		create_cpython_cmake_file("test", work_path, python_site_package, python_include_dir, python_library)
 		create_clang_format_file(work_path)
 
 		build_path = os.path.join(work_path, 'build')
 		os.mkdir(build_path)
 		os.chdir(build_path)
 
-		if not build_and_deploy_extension(work_path, build_path, python_interpreter):
+		if not build_and_deploy_cpython_extension(work_path, build_path, python_interpreter):
 			return False
 
 		# run test to assert extension correctness
@@ -179,7 +167,108 @@ class CPythonTestBed:
 		return success
 
 
-# --
+# Lua test bed
+def create_lua_cmake_file(module, work_path, lua_path, lua_src):
+	cmake_path = os.path.join(work_path, 'CMakeLists.txt')
+
+	with open(cmake_path, 'w') as file:
+		file.write('''
+cmake_minimum_required(VERSION 3.1)
+
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/")
+
+project(%s)
+enable_language(C CXX)
+
+link_directories("%s/build")
+
+#add_definitions(-DLUA_USE_APICHECK)
+add_library(my_test SHARED test_module.cpp)
+set_target_properties(my_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG %s)
+target_include_directories(my_test PRIVATE %s)
+target_link_libraries(my_test lua)
+''' % (module, lua_path, work_path.replace('\\', '/'), lua_src))
+
+
+def build_and_deploy_lua_extension(work_path, build_path, lua_interpreter):
+	print("Generating build system...")
+	try:
+		subprocess.check_output('cmake .. -G "Visual Studio 15 2017')
+	except subprocess.CalledProcessError as e:
+		print(e.output.decode('utf-8'))
+		return False
+
+	if args.debug_test:
+		with open(os.path.join(build_path, 'my_test.vcxproj.user'), 'w') as file:
+			file.write('''\
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LocalDebuggerCommand>%s</LocalDebuggerCommand>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+    <LocalDebuggerCommandArguments>test.lua</LocalDebuggerCommandArguments>
+    <LocalDebuggerWorkingDirectory>%s</LocalDebuggerWorkingDirectory>
+  </PropertyGroup>
+</Project>''' % (lua_interpreter, work_path))
+
+	print("Building extension...")
+	try:
+		subprocess.check_output('cmake --build . --config Debug')
+	except subprocess.CalledProcessError as e:
+		print(e.output.decode('utf-8'))
+		return False
+
+	return True
+
+
+class LuaTestBed:
+	def build_and_test_extension(self, work_path, module):
+		create_lua_cmake_file("test", work_path, args.lua_base_path, args.lua_base_path + '/src')
+		create_clang_format_file(work_path)
+
+		build_path = os.path.join(work_path, 'build')
+		os.mkdir(build_path)
+		os.chdir(build_path)
+
+		lua_interpreter = args.lua_base_path + '/build/Debug/lua.exe'
+		if not build_and_deploy_lua_extension(work_path, build_path, lua_interpreter):
+			return False
+
+		# run test to assert extension correctness
+		test_path = os.path.join(work_path, 'test.lua')
+		with open(test_path, 'w') as file:
+			file.write(module.test_lua)
+
+		print("Executing Lua test...")
+		os.chdir(work_path)
+
+		success = True
+		try:
+			subprocess.check_output('%s/build/Debug/lua.exe test.lua' % args.lua_base_path, stderr=subprocess.STDOUT)
+		except subprocess.CalledProcessError as e:
+			print(e.output.decode('utf-8'))
+			success = False
+
+		print("Cleanup...")
+
+		return success
+
+
+# Clang format
+def create_clang_format_file(work_path):
+	with open(os.path.join(work_path, '_clang-format'), 'w') as file:
+		file.write('''ColumnLimit: 0
+UseTab: Always
+TabWidth: 4
+IndentWidth: 4
+IndentCaseLabels: true
+AccessModifierOffset: -4
+AlignAfterOpenBracket: DontAlign
+AlwaysBreakTemplateDeclarations: false
+AlignTrailingComments: false''')
+
+
+#
 sys.path.append(os.path.join(start_path, 'tests'))
 
 if args.debug_test:
@@ -187,8 +276,12 @@ if args.debug_test:
 else:
 	test_names = [file[:-3] for file in os.listdir('./tests') if file.endswith('.py')]
 
+if args.python_base_path:
+	gen = lang.cpython.CPythonGenerator()
+	gen.verbose = False
+	run_tests(gen, test_names, CPythonTestBed())
 
-gen = lang.cpython.CPythonGenerator()
-gen.verbose = False
-
-run_tests(gen, test_names, CPythonTestBed())
+if args.lua_base_path:
+	gen = lang.lua.LuaGenerator()
+	gen.verbose = False
+	run_tests(gen, test_names, LuaTestBed())

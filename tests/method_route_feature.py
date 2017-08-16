@@ -4,7 +4,7 @@ import lib
 def bind_test(gen):
 	gen.start('my_test')
 
-	lib.bind_all_defaults(gen)
+	lib.bind_defaults(gen)
 
 	gen.insert_code('''
 struct Object { int a{11}; };
@@ -32,4 +32,11 @@ from tests_api import expect_eq
 
 o = my_test.Object()
 expect_eq(o.Get(4), 15)
+'''
+
+test_lua = '''\
+my_test = require "my_test"
+
+o = my_test.Object()
+assert(o:Get(4) == 15)
 '''

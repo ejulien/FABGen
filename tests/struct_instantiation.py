@@ -4,7 +4,7 @@ import lib
 def bind_test(gen):
 	gen.start('my_test')
 
-	lib.bind_all_defaults(gen)
+	lib.bind_defaults(gen)
 
 	# inject test code in the wrapper
 	gen.insert_code('''\
@@ -37,4 +37,14 @@ t = my_test.simple_struct(4)
 
 expect_eq(s.v_, -8)
 expect_eq(t.v_, 4)
+'''
+
+test_lua = '''\
+my_test = require "my_test"
+
+s = my_test.simple_struct()
+t = my_test.simple_struct(4)
+
+assert(s.v_ == -8)
+assert(t.v_ == 4)
 '''
