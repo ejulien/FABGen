@@ -14,7 +14,7 @@ def bind_std(gen):
 
 	class PythonIntConverter(lang.cpython.PythonTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
-			return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.bound_name +\
+			return 'bool check_%s(PyObject *o) { return PyLong_CheckExact(o) ? true : false; }\n' % self.bound_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = (%s)PyLong_AsLong(o); }\n' % (self.bound_name, self.ctype, self.ctype) +\
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromLong(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
 
@@ -30,7 +30,7 @@ def bind_std(gen):
 
 	class PythonUnsignedIntConverter(lang.cpython.PythonTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
-			return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.bound_name +\
+			return 'bool check_%s(PyObject *o) { return PyLong_CheckExact(o) ? true : false; }\n' % self.bound_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = (%s)PyLong_AsUnsignedLong(o); }\n' % (self.bound_name, self.ctype, self.ctype) +\
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromUnsignedLong(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
 
@@ -44,7 +44,7 @@ def bind_std(gen):
 
 	class PythonInt64Converter(lang.cpython.PythonTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
-			return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.bound_name +\
+			return 'bool check_%s(PyObject *o) { return PyLong_CheckExact(o) ? true : false; }\n' % self.bound_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyLong_AsLongLong(o); }\n' % (self.bound_name, self.ctype) +\
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromLongLong(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
 
@@ -52,7 +52,7 @@ def bind_std(gen):
 
 	class PythonUnsignedInt64Converter(lang.cpython.PythonTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
-			return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.bound_name +\
+			return 'bool check_%s(PyObject *o) { return PyLong_CheckExact(o) ? true : false; }\n' % self.bound_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyLong_AsUnsignedLongLong(o); }\n' % (self.bound_name, self.ctype) +\
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromUnsignedLongLong(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
 
@@ -60,7 +60,7 @@ def bind_std(gen):
 
 	class PythonSize_tConverter(lang.cpython.PythonTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
-			return 'bool check_%s(PyObject *o) { return PyLong_Check(o) ? true : false; }\n' % self.bound_name +\
+			return 'bool check_%s(PyObject *o) { return PyLong_CheckExact(o) ? true : false; }\n' % self.bound_name +\
 			'void to_c_%s(PyObject *o, void *obj) { *((%s*)obj) = PyLong_AsSize_t(o); }\n' % (self.bound_name, self.ctype) +\
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyLong_FromSize_t(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
 

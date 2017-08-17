@@ -424,7 +424,7 @@ def bind_scene(gen):
 
 	#
 	def decl_get_set_method(conv, type, method_suffix, var_name, features=[]):
-		gen.bind_method(conv, 'Get' + method_suffix, 'const %s &' % type, [], features)
+		gen.bind_method(conv, 'Get' + method_suffix, 'const %s' % type, [], features)
 		gen.bind_method(conv, 'Set' + method_suffix, 'void', ['const %s &%s' % (type, var_name)], features)
 
 	def decl_comp_get_set_method(conv, comp_type, comp_var_name, type, method_suffix, var_name, features=[]):
@@ -1430,6 +1430,12 @@ static std::shared_ptr<gs::gpu::Renderer> CreateRenderer() { return gs::core::g_
 	])
 	gen.bind_method(shared_renderer_async, 'GetNativeTextureExt', 'const char *', [], ['proxy'])
 
+	gen.bind_method(shared_renderer_async, 'DrawFrame', 'void', [], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'ShowFrame', 'void', [], ['proxy'])
+
+	gen.bind_method(shared_renderer_async, 'Sync', 'bool', ['?int timeout_ms'], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'SetVSync', 'void', ['bool enabled'], ['proxy'])
+
 	gen.end_class(shared_renderer_async)
 
 
@@ -1740,14 +1746,28 @@ static void RenderSystemDrawSpriteAuto_wrapper(gs::render::RenderSystem *render_
 	gen.bind_method(simple_graphic_engine, 'SetDepthTest', 'void', ['bool enable'])
 	gen.bind_method(simple_graphic_engine, 'GetDepthTest', 'bool', [])
 
+	gen.insert_binding_code('''
+static void _Quad(gs::render::SimpleGraphicEngine *engine, float ax, float ay, float az, float bx, float by, float bz, float cx, float cy, float cz, float dx, float dy, float dz, const gs::Color &a_color, const gs::Color &b_color, const gs::Color &c_color, const gs::Color &d_color) {
+	engine->Quad(ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz, 0, 0, 0, 0, nullptr, a_color, b_color, c_color, d_color);
+}
+''')
+
 	gen.bind_method(simple_graphic_engine, 'Line', 'void', ['float sx', 'float sy', 'float sz', 'float ex', 'float ey', 'float ez', 'const gs::Color &start_color', 'const gs::Color &end_color'])
 	gen.bind_method(simple_graphic_engine, 'Triangle', 'void', ['float ax', 'float ay', 'float az', 'float bx', 'float by', 'float bz', 'float cx', 'float cy', 'float cz', 'const gs::Color &a_color', 'const gs::Color &b_color', 'const gs::Color &c_color'])
 	gen.bind_method_overloads(simple_graphic_engine, 'Text', [
 		('void', ['float x', 'float y', 'float z', 'const char *text', 'const gs::Color &color', 'std::shared_ptr<gs::render::RasterFont> font', 'float scale'], []),
 		('void', ['const gs::Matrix4 &mat', 'const char *text', 'const gs::Color &color', 'std::shared_ptr<gs::render::RasterFont> font', 'float scale'], [])
 	])
-	gen.bind_method(simple_graphic_engine, 'Quad', 'void', ['float ax', 'float ay', 'float az', 'float bx', 'float by', 'float bz', 'float cx', 'float cy', 'float cz', 'float dx', 'float dy', 'float dz', 'float uv_sx', 'float uv_sy', 'float uv_ex', 'float uv_ey', 'std::shared_ptr<gs::gpu::Texture> texture', 'const gs::Color &a_color', 'const gs::Color &b_color', 'const gs::Color &c_color', 'const gs::Color &d_color'])
+	gen.bind_method_overloads(simple_graphic_engine, 'Quad', [
+		('void', ['float ax', 'float ay', 'float az', 'float bx', 'float by', 'float bz', 'float cx', 'float cy', 'float cz', 'float dx', 'float dy', 'float dz', 'const gs::Color &a_color', 'const gs::Color &b_color', 'const gs::Color &c_color', 'const gs::Color &d_color'], {'route': lambda args: '_Quad(%s);' % ', '.join(args)}),
+		('void', ['float ax', 'float ay', 'float az', 'float bx', 'float by', 'float bz', 'float cx', 'float cy', 'float cz', 'float dx', 'float dy', 'float dz', 'float uv_sx', 'float uv_sy', 'float uv_ex', 'float uv_ey', 'std::shared_ptr<gs::gpu::Texture> texture', 'const gs::Color &a_color', 'const gs::Color &b_color', 'const gs::Color &c_color', 'const gs::Color &d_color'], [])
+	])
 	gen.bind_method(simple_graphic_engine, 'Geometry', 'void', ['float x', 'float y', 'float z', 'float ex', 'float ey', 'float ez', 'float sx', 'float sy', 'float sz', 'std::shared_ptr<gs::render::Geometry> geometry'])
+
+	gen.bind_method(simple_graphic_engine, 'Draw', 'void', ['gs::render::RenderSystem &render_system'])
+	gen.bind_method(simple_graphic_engine, 'Clear', 'void', ['gs::render::RenderSystem &render_system'])
+
+	gen.bind_method(simple_graphic_engine, 'Flush', 'void', ['gs::render::RenderSystem &render_system'])
 
 	gen.end_class(simple_graphic_engine)
 
@@ -3262,17 +3282,32 @@ def bind_imgui(gen):
 
 	gen.bind_named_enum('ImGuiSetCond', ['ImGuiSetCond_Always', 'ImGuiSetCond_Once', 'ImGuiSetCond_FirstUseEver', 'ImGuiSetCond_Appearing'], 'int', namespace='')
 
+	gen.bind_named_enum('ImGuiInputTextFlags', [
+		'ImGuiInputTextFlags_CharsDecimal', 'ImGuiInputTextFlags_CharsHexadecimal', 'ImGuiInputTextFlags_CharsUppercase', 'ImGuiInputTextFlags_CharsNoBlank',
+		'ImGuiInputTextFlags_AutoSelectAll', 'ImGuiInputTextFlags_EnterReturnsTrue', 'ImGuiInputTextFlags_CallbackCompletion', 'ImGuiInputTextFlags_CallbackHistory',
+		'ImGuiInputTextFlags_CallbackAlways', 'ImGuiInputTextFlags_CallbackCharFilter', 'ImGuiInputTextFlags_AllowTabInput', 'ImGuiInputTextFlags_CtrlEnterForNewLine',
+		'ImGuiInputTextFlags_NoHorizontalScroll', 'ImGuiInputTextFlags_AlwaysInsertMode', 'ImGuiInputTextFlags_ReadOnly', 'ImGuiInputTextFlags_Password'
+	], 'int', namespace='')
+
+	gen.bind_named_enum('ImGuiTreeNodeFlags', [
+		'ImGuiTreeNodeFlags_Selected', 'ImGuiTreeNodeFlags_Framed', 'ImGuiTreeNodeFlags_AllowOverlapMode', 'ImGuiTreeNodeFlags_NoTreePushOnOpen',
+		'ImGuiTreeNodeFlags_NoAutoOpenOnLog', 'ImGuiTreeNodeFlags_DefaultOpen', 'ImGuiTreeNodeFlags_OpenOnDoubleClick', 'ImGuiTreeNodeFlags_OpenOnArrow',
+		'ImGuiTreeNodeFlags_Leaf', 'ImGuiTreeNodeFlags_Bullet', 'ImGuiTreeNodeFlags_CollapsingHeader'
+	], 'int', namespace='')
+
+	gen.bind_named_enum('ImGuiSelectableFlags', ['ImGuiSelectableFlags_DontClosePopups', 'ImGuiSelectableFlags_SpanAllColumns', 'ImGuiSelectableFlags_AllowDoubleClick'], 'int', namespace='')
+
 	#gen.bind_function('ImGui::GetIO', 'ImGuiIO &', [], bound_name='ImGuiGetIO')
 	#gen.bind_function('ImGui::GetStyle', 'ImGuiStyle &', [], bound_name='ImGuiGetStyle')
 
 	gen.bind_function('ImGui::NewFrame', 'void', [], bound_name='ImGuiNewFrame')
 	gen.bind_function('ImGui::Render', 'void', [], bound_name='ImGuiRender')
 	gen.bind_function('ImGui::Shutdown', 'void', [], bound_name='ImGuiShutdown')
-	gen.bind_function('ImGui::ShowUserGuide', 'void', [], bound_name='ImGuiShowUserGuide')
 
 	gen.bind_function_overloads('ImGui::Begin', [
-		('bool', ['const char *name', 'bool *open', 'ImGuiWindowFlags flags'], {'arg_out': ['open']}),
-		('bool', ['const char *name', 'bool *open', 'const ImVec2 &size_on_first_use', 'float background_alpha', 'ImGuiWindowFlags flags'], {'arg_out': ['open']})
+		('bool', ['const char *name'], []),
+		('bool', ['const char *name', 'bool *open', 'ImGuiWindowFlags flags'], {'arg_in_out': ['open']}),
+		('bool', ['const char *name', 'bool *open', 'const ImVec2 &size_on_first_use', 'float background_alpha', 'ImGuiWindowFlags flags'], {'arg_in_out': ['open']})
 	], bound_name='ImGuiBegin')
 	gen.bind_function('ImGui::End', 'void', [], bound_name='ImGuiEnd')
 
@@ -3389,24 +3424,238 @@ def bind_imgui(gen):
 		('void', ['gs::gpu::Texture *texture', 'const ImVec2 &size', 'const ImVec2 &uv0', 'const ImVec2 &uv1', 'int frame_padding', 'const ImVec4 &bg_col', 'const ImVec4 &tint_col'], [])
 	], bound_name='ImGuiImageButton')
 
-	gen.bind_function('ImGui::Checkbox', 'bool', ['const char *label'], bound_name='ImGuiCheckbox')
+	gen.bind_function('ImGui::Checkbox', 'bool', ['const char *label', 'bool *value'], {'arg_in_out': ['value']}, 'ImGuiCheckbox')
 	#IMGUI_API bool          CheckboxFlags(const char* label, unsigned int* flags, unsigned int flags_value);
 	gen.bind_function('ImGui::RadioButton', 'bool', ['const char *label', 'bool active'], bound_name='ImGuiRadioButton')
-	#IMGUI_API bool          RadioButton(const char* label, int* v, int v_button);
-	"""
-	IMGUI_API bool          Combo(const char* label, int* current_item, const char* const* items, int items_count, int height_in_items = -1);
-	IMGUI_API bool          Combo(const char* label, int* current_item, const char* items_separated_by_zeros, int height_in_items = -1);      // separate items with \0, end item-list with \0\0
-	IMGUI_API bool          Combo(const char* label, int* current_item, bool (*items_getter)(void* data, int idx, const char** out_text), void* data, int items_count, int height_in_items = -1);
-	IMGUI_API bool          ColorButton(const ImVec4& col, bool small_height = false, bool outline_border = true);
-	IMGUI_API bool          ColorEdit3(const char* label, float col[3]);                            // Hint: 'float col[3]' function argument is same as 'float* col'. You can pass address of first element out of a contiguous set, e.g. &myvector.x
-	IMGUI_API bool          ColorEdit4(const char* label, float col[4], bool show_alpha = true);    // "
-	IMGUI_API void          ColorEditMode(ImGuiColorEditMode mode);                                 // FIXME-OBSOLETE: This is inconsistent with most of the API and will be obsoleted/replaced.
-	IMGUI_API void          PlotLines(const char* label, const float* values, int values_count, int values_offset = 0, const char* overlay_text = NULL, float scale_min = FLT_MAX, float scale_max = FLT_MAX, ImVec2 graph_size = ImVec2(0,0), int stride = sizeof(float));
-	IMGUI_API void          PlotLines(const char* label, float (*values_getter)(void* data, int idx), void* data, int values_count, int values_offset = 0, const char* overlay_text = NULL, float scale_min = FLT_MAX, float scale_max = FLT_MAX, ImVec2 graph_size = ImVec2(0,0));
-	IMGUI_API void          PlotHistogram(const char* label, const float* values, int values_count, int values_offset = 0, const char* overlay_text = NULL, float scale_min = FLT_MAX, float scale_max = FLT_MAX, ImVec2 graph_size = ImVec2(0,0), int stride = sizeof(float));
-	IMGUI_API void          PlotHistogram(const char* label, float (*values_getter)(void* data, int idx), void* data, int values_count, int values_offset = 0, const char* overlay_text = NULL, float scale_min = FLT_MAX, float scale_max = FLT_MAX, ImVec2 graph_size = ImVec2(0,0));
-	IMGUI_API void          ProgressBar(float fraction, const ImVec2& size_arg = ImVec2(-1,0), const char* overlay = NULL);
-	"""
+
+	gen.insert_binding_code('''\
+static bool _ImGuiCombo(const char *label, int *current_item, const std::vector<std::string> &items, int height_in_items = -1) {
+	auto item_cb = [](void *data, int idx, const char **out_text) -> bool {
+		auto &items = *(const std::vector<std::string> *)data;
+		if (size_t(idx) >= items.size())
+			return false;
+		*out_text = items[idx].c_str();
+		return true;
+	};
+	return ImGui::Combo(label, current_item, item_cb, (void *)&items, items.size(), height_in_items);
+}
+
+static bool _ImGuiColorButton(gs::Color &color, bool small_height = false, bool outline_border = true) { return ImGui::ColorButton(*(ImVec4 *)&color, small_height, outline_border); }
+static bool _ImGuiColorEdit(const char *label, gs::Color &color, bool show_alpha = true) { return ImGui::ColorEdit4(label, &color.r, show_alpha); }
+static void _ImGuiProgressBar(float fraction, const gs::tVector2<float> &size = gs::tVector2<float>(-1, 0), const char *overlay = nullptr) { ImGui::ProgressBar(fraction, size, overlay); }
+''')
+
+	imgui_combo_protos = [('bool', ['const char *label', 'int *current_item', 'const std::vector<std::string> &items', '?int height_in_items'], {'arg_in_out': ['current_item']})]
+	if gen.get_language() == "CPython":
+		imgui_combo_protos += [('bool', ['const char *label', 'int *current_item', 'PySequenceOfString items', '?int height_in_items'], {'arg_in_out': ['current_item']})]
+	gen.bind_function_overloads('_ImGuiCombo', imgui_combo_protos, bound_name='ImGuiCombo')
+
+	gen.bind_function('_ImGuiColorButton', 'bool', ['gs::Color &color', '?bool small_height', '?bool outline_border'], {'arg_in_out': ['color']}, bound_name='ImGuiColorButton')
+	gen.bind_function('_ImGuiColorEdit', 'bool', ['const char *label', 'gs::Color &color', '?bool show_alpha'], {'arg_in_out': ['color']}, bound_name='ImGuiColorEdit')
+	gen.bind_function('_ImGuiProgressBar', 'void', ['float fraction', '?const gs::tVector2<float> &size', '?const char *overlay'], bound_name='ImGuiProgressBar')
+
+	gen.insert_binding_code('''\
+static bool _ImGuiDragiVector2(const char *label, gs::tVector2<int> &v, float v_speed = 1.f, int v_min = 0, int v_max = 0) { return ImGui::DragInt2(label, &v.x, v_speed, v_min, v_max); }
+
+static bool _ImGuiDragVector2(const char *label, gs::tVector2<float> &v, float v_speed = 1.f, float v_min = 0.f, float v_max = 0.f) { return ImGui::DragFloat2(label, &v.x, v_speed, v_min, v_max); }
+static bool _ImGuiDragVector3(const char *label, gs::Vector3 &v, float v_speed = 1.f, float v_min = 0.f, float v_max = 0.f) { return ImGui::DragFloat3(label, &v.x, v_speed, v_min, v_max); }
+static bool _ImGuiDragVector4(const char *label, gs::Vector4 &v, float v_speed = 1.f, float v_min = 0.f, float v_max = 0.f) { return ImGui::DragFloat4(label, &v.x, v_speed, v_min, v_max); }
+''')
+
+	gen.bind_function_overloads('ImGui::DragFloat', [
+		('bool', ['const char *label', 'float *v'], {'arg_in_out': ['v']}),
+		('bool', ['const char *label', 'float *v', 'float v_speed'], {'arg_in_out': ['v']}),
+		('bool', ['const char *label', 'float *v', 'float v_speed', 'float v_min', 'float v_max'], {'arg_in_out': ['v']})
+	], bound_name='ImGuiDragFloat')
+	gen.bind_function_overloads('_ImGuiDragVector2', [
+		('bool', ['const char *label', 'gs::tVector2<float> &v'], {'arg_in_out': ['v']}),
+		('bool', ['const char *label', 'gs::tVector2<float> &v', 'float v_speed'], {'arg_in_out': ['v']}),
+		('bool', ['const char *label', 'gs::tVector2<float> &v', 'float v_speed', 'float v_min', 'float v_max'], {'arg_in_out': ['v']})
+	], bound_name='ImGuiDragVector2')
+	gen.bind_function_overloads('_ImGuiDragVector3', [
+		('bool', ['const char *label', 'gs::Vector3 &v'], {'arg_in_out': ['v']}),
+		('bool', ['const char *label', 'gs::Vector3 &v', 'float v_speed'], {'arg_in_out': ['v']}),
+		('bool', ['const char *label', 'gs::Vector3 &v', 'float v_speed', 'float v_min', 'float v_max'], {'arg_in_out': ['v']})
+	], bound_name='ImGuiDragVector3')
+	gen.bind_function_overloads('_ImGuiDragVector4', [
+		('bool', ['const char *label', 'gs::Vector4 &v'], {'arg_in_out': ['v']}),
+		('bool', ['const char *label', 'gs::Vector4 &v', 'float v_speed'], {'arg_in_out': ['v']}),
+		('bool', ['const char *label', 'gs::Vector4 &v', 'float v_speed', 'float v_min', 'float v_max'], {'arg_in_out': ['v']})
+	], bound_name='ImGuiDragVector4')
+
+	gen.bind_function_overloads('_ImGuiDragiVector2', [
+		('bool', ['const char *label', 'gs::tVector2<int> &v'], {'arg_in_out': ['v']}),
+		('bool', ['const char *label', 'gs::tVector2<int> &v', 'float v_speed'], {'arg_in_out': ['v']}),
+		('bool', ['const char *label', 'gs::tVector2<int> &v', 'float v_speed', 'int v_min', 'int v_max'], {'arg_in_out': ['v']})
+	], bound_name='ImGuiDragIntVector2')
+
+	#IMGUI_API bool InputText(const char* label, char* buf, size_t buf_size, ImGuiInputTextFlags flags = 0, ImGuiTextEditCallback callback = NULL, void* user_data = NULL);
+	#IMGUI_API bool InputTextMultiline(const char* label, char* buf, size_t buf_size, const ImVec2& size = ImVec2(0,0), ImGuiInputTextFlags flags = 0, ImGuiTextEditCallback callback = NULL, void* user_data = NULL);
+
+	gen.insert_binding_code('''\
+static bool _ImGuiInputiVector2(const char *label, gs::tVector2<int> &v, ImGuiInputTextFlags extra_flags = 0) { return ImGui::InputInt2(label, &v.x, extra_flags); }
+
+static bool _ImGuiInputVector2(const char *label, gs::tVector2<float> &v, int decimal_precision = -1, ImGuiInputTextFlags extra_flags = 0) { return ImGui::InputFloat2(label, &v.x, decimal_precision, extra_flags); }
+static bool _ImGuiInputVector3(const char *label, gs::Vector3 &v, int decimal_precision = -1, ImGuiInputTextFlags extra_flags = 0) { return ImGui::InputFloat3(label, &v.x, decimal_precision, extra_flags); }
+static bool _ImGuiInputVector4(const char *label, gs::Vector4 &v, int decimal_precision = -1, ImGuiInputTextFlags extra_flags = 0) { return ImGui::InputFloat4(label, &v.x, decimal_precision, extra_flags); }
+''')
+
+	gen.bind_function_overloads('ImGui::InputFloat', [
+		('bool', ['const char *label', 'float *v'], {'arg_in_out': ['v']}),
+		('bool', ['const char *label', 'float *v', 'float step', 'float step_fast'], {'arg_in_out': ['v']}),
+		('bool', ['const char *label', 'float *v', 'float step', 'float step_fast', 'int decimal_precision'], {'arg_in_out': ['v']}),
+		('bool', ['const char *label', 'float *v', 'float step', 'float step_fast', 'int decimal_precision', 'ImGuiInputTextFlags extra_flags'], {'arg_in_out': ['v']})
+	], bound_name='ImGuiInputFloat')
+	gen.bind_function_overloads('_ImGuiInputVector2', [
+		('bool', ['const char *label', 'gs::tVector2<float> &v'], {'arg_in_out': ['v']}),
+		('bool', ['const char *label', 'gs::tVector2<float> &v', 'int decimal_precision'], {'arg_in_out': ['v']}),
+		('bool', ['const char *label', 'gs::tVector2<float> &v', 'int decimal_precision', 'ImGuiInputTextFlags extra_flags'], {'arg_in_out': ['v']})
+	], bound_name='ImGuiInputVector2')
+	gen.bind_function_overloads('_ImGuiInputVector3', [
+		('bool', ['const char *label', 'gs::Vector3 &v'], {'arg_in_out': ['v']}),
+		('bool', ['const char *label', 'gs::Vector3 &v', 'int decimal_precision'], {'arg_in_out': ['v']}),
+		('bool', ['const char *label', 'gs::Vector3 &v', 'int decimal_precision', 'ImGuiInputTextFlags extra_flags'], {'arg_in_out': ['v']})
+	], bound_name='ImGuiInputVector3')
+	gen.bind_function_overloads('_ImGuiInputVector4', [
+		('bool', ['const char *label', 'gs::Vector4 &v'], {'arg_in_out': ['v']}),
+		('bool', ['const char *label', 'gs::Vector4 &v', 'int decimal_precision'], {'arg_in_out': ['v']}),
+		('bool', ['const char *label', 'gs::Vector4 &v', 'int decimal_precision', 'ImGuiInputTextFlags extra_flags'], {'arg_in_out': ['v']})
+	], bound_name='ImGuiInputVector4')
+
+	gen.insert_binding_code('''\
+static bool _ImGuiSlideriVector2(const char *label, gs::tVector2<int> &v, int v_min, int v_max) { return ImGui::SliderInt2(label, &v.x, v_min, v_max); }
+
+static bool _ImGuiSliderVector2(const char *label, gs::tVector2<float> &v, float v_min, float v_max) { return ImGui::SliderFloat2(label, &v.x, v_min, v_max); }
+static bool _ImGuiSliderVector3(const char *label, gs::Vector3 &v, float v_min, float v_max) { return ImGui::SliderFloat3(label, &v.x, v_min, v_max); }
+static bool _ImGuiSliderVector4(const char *label, gs::Vector4 &v, float v_min, float v_max) { return ImGui::SliderFloat4(label, &v.x, v_min, v_max); }
+''')
+
+	gen.bind_function('_ImGuiSlideriVector2', 'bool', ['const char *label', 'gs::tVector2<int> &v', 'int v_min', 'int v_max'], {'arg_in_out': ['v']}, 'ImGuiSliderIntVector2')
+
+	gen.bind_function('_ImGuiSliderVector2', 'bool', ['const char *label', 'gs::tVector2<float> &v', 'float v_min', 'float v_max'], {'arg_in_out': ['v']}, 'ImGuiSliderVector2')
+	gen.bind_function('_ImGuiSliderVector3', 'bool', ['const char *label', 'gs::Vector3 &v', 'float v_min', 'float v_max'], {'arg_in_out': ['v']}, 'ImGuiSliderVector3')
+	gen.bind_function('_ImGuiSliderVector4', 'bool', ['const char *label', 'gs::Vector4 &v', 'float v_min', 'float v_max'], {'arg_in_out': ['v']}, 'ImGuiSliderVector4')
+
+	gen.bind_function('ImGui::TreeNode', 'bool', ['const char *label'], bound_name='ImGuiTreeNode')
+	gen.bind_function('ImGui::TreeNodeEx', 'bool', ['const char *label', 'ImGuiTreeNodeFlags flags'], bound_name='ImGuiTreeNodeEx')
+	gen.bind_function('ImGui::TreePush', 'void', ['const char *id'], bound_name='ImGuiTreePush')
+	gen.bind_function('ImGui::TreePop', 'void', [], bound_name='ImGuiTreePop')
+	gen.bind_function('ImGui::TreeAdvanceToLabelPos', 'void', [], bound_name='ImGuiTreeAdvanceToLabelPos')
+	gen.bind_function('ImGui::GetTreeNodeToLabelSpacing', 'float', [], bound_name='ImGuiGetTreeNodeToLabelSpacing')
+	gen.bind_function('ImGui::SetNextTreeNodeOpen', 'void', ['bool is_open', '?ImGuiSetCond condition'], bound_name='ImGuiSetNextTreeNodeOpen')
+	gen.bind_function_overloads('ImGui::CollapsingHeader', [
+		('bool', ['const char *label', '?ImGuiTreeNodeFlags flags'], []),
+		('bool', ['const char *label', 'bool *p_open', '?ImGuiTreeNodeFlags flags'], {'arg_in_out': ['p_open']})
+	], bound_name='ImGuiCollapsingHeader')
+
+	gen.insert_binding_code('''\
+static bool _ImGuiSelectable(const char *label, bool selected = false, ImGuiSelectableFlags flags = 0, const gs::tVector2<float> &size = gs::tVector2<float>(0.f, 0.f)) { return ImGui::Selectable(label, selected, flags, ImVec2(size)); }
+
+static bool _ImGuiListBox(const char *label, int *current_item, const std::vector<std::string> &items, int height_in_items = -1) {
+	auto cb = [](void *data, int idx, const char **out) -> bool {
+		auto &items = *(const std::vector<std::string> *)data;
+		if (size_t(idx) >= items.size())
+			return false;
+		*out = items[idx].c_str();
+		return true;
+	};
+	return ImGui::ListBox(label, current_item, cb, (void *)&items, items.size(), height_in_items);
+}
+''')
+
+	gen.bind_function('_ImGuiSelectable', 'bool', ['const char *label', '?bool selected', '?ImGuiSelectableFlags flags', '?const gs::tVector2<float> &size'], bound_name='ImGuiSelectable')
+	gen.bind_function('_ImGuiListBox', 'bool', ['const char *label', 'int *current_item', 'const std::vector<std::string> &items', '?int height_in_items'], bound_name='ImGuiListBox')
+
+	gen.bind_function('ImGui::SetTooltip', 'void', ['const char *text'], bound_name='ImGuiSetTooltip')
+	gen.bind_function('ImGui::BeginTooltip', 'void', [], bound_name='ImGuiBeginTooltip')
+	gen.bind_function('ImGui::EndTooltip', 'void', [], bound_name='ImGuiEndTooltip')
+
+	gen.bind_function('ImGui::BeginMainMenuBar', 'bool', [], bound_name='ImGuiBeginMainMenuBar')
+	gen.bind_function('ImGui::EndMainMenuBar', 'void', [], bound_name='ImGuiEndMainMenuBar')
+	gen.bind_function('ImGui::BeginMenuBar', 'bool', [], bound_name='ImGuiBeginMenuBar')
+	gen.bind_function('ImGui::EndMenuBar', 'void', [], bound_name='ImGuiEndMenuBar')
+	gen.bind_function('ImGui::BeginMenu', 'bool', ['const char *label', '?bool enabled'], bound_name='ImGuiBeginMenu')
+	gen.bind_function('ImGui::EndMenu', 'void', [], bound_name='ImGuiEndMenu')
+	gen.bind_function('ImGui::MenuItem', 'bool', ['const char *label', '?const char *shortcut', '?bool selected', '?bool enabled'], bound_name='ImGuiMenuItem')
+
+	gen.bind_function('ImGui::OpenPopup', 'void', ['const char *id'], bound_name='ImGuiOpenPopup')
+	gen.bind_function('ImGui::BeginPopup', 'bool', ['const char *id'], bound_name='ImGuiBeginPopup')
+	gen.bind_function('ImGui::BeginPopupModal', 'bool', ['const char *name', '?bool *open', '?ImGuiWindowFlags extra_flags'], bound_name='ImGuiBeginPopupModal')
+	gen.bind_function('ImGui::BeginPopupContextItem', 'bool', ['const char *id', '?int mouse_button'], bound_name='ImGuiBeginPopupContextItem')
+	gen.bind_function('ImGui::BeginPopupContextWindow', 'bool', ['?bool also_over_items', '?const char *id', '?int mouse_button'], bound_name='ImGuiBeginPopupContextWindow')
+	gen.bind_function('ImGui::BeginPopupContextVoid', 'bool', ['?const char *id', '?int mouse_button'], bound_name='ImGuiBeginPopupContextVoid')
+	gen.bind_function('ImGui::EndPopup', 'void', [], bound_name='ImGuiEndPopup')
+	gen.bind_function('ImGui::CloseCurrentPopup', 'void', [], bound_name='ImGuiCloseCurrentPopup')
+
+	gen.insert_binding_code('''\
+static void _ImGuiPushClipRect(const gs::tVector2<float> &clip_rect_min, const gs::tVector2<float> &clip_rect_max, bool intersect_with_current_clip_rect) {
+	ImGui::PushClipRect(ImVec2(clip_rect_min), ImVec2(clip_rect_max), intersect_with_current_clip_rect);
+}
+
+static gs::tVector2<float> _ImGuiGetItemRectMin() { return gs::tVector2<float>(ImGui::GetItemRectMin()); }
+static gs::tVector2<float> _ImGuiGetItemRectMax() { return gs::tVector2<float>(ImGui::GetItemRectMax()); }
+static gs::tVector2<float> _ImGuiGetItemRectSize() { return gs::tVector2<float>(ImGui::GetItemRectSize()); }
+
+static bool _ImGuiIsRectVisible(const gs::tVector2<float> &size) { return ImGui::IsRectVisible(size); }
+static bool _ImGuiIsRectVisible(const gs::tVector2<float> &min, const gs::tVector2<float> &max) { return ImGui::IsRectVisible(min, max); }
+static bool _ImGuiIsPosHoveringAnyWindow(const gs::tVector2<float> &pos) { return ImGui::IsPosHoveringAnyWindow(pos); }
+
+static gs::Vector2 _ImGuiCalcItemRectClosestPoint(const gs::Vector2 &pos, bool on_edge = false, float outward = 0.f) { return ImGui::CalcItemRectClosestPoint(pos, on_edge, outward); }
+static gs::Vector2 _ImGuiCalcTextSize(const char *text, bool hide_text_after_double_dash = false, float wrap_width = -1.f) { return ImGui::CalcTextSize(text, NULL, hide_text_after_double_dash, wrap_width); }
+''')
+	gen.bind_function('_ImGuiPushClipRect', 'void', ['const gs::tVector2<float> &clip_rect_min', 'const gs::tVector2<float> &clip_rect_max', 'bool intersect_with_current_clip_rect'], bound_name='ImGuiPushClipRect')
+	gen.bind_function('ImGui::PopClipRect', 'void', [], bound_name='ImGuiPopClipRect')
+
+	gen.bind_function('ImGui::IsItemHovered', 'bool', [], bound_name='ImGuiIsItemHovered')
+	gen.bind_function('ImGui::IsItemHoveredRect', 'bool', [], bound_name='ImGuiIsItemHoveredRect')
+	gen.bind_function('ImGui::IsItemActive', 'bool', [], bound_name='ImGuiIsItemActive')
+	gen.bind_function('ImGui::IsItemClicked', 'bool', ['?int mouse_button'], bound_name='ImGuiIsItemClicked')
+	gen.bind_function('ImGui::IsItemVisible', 'bool', [], bound_name='ImGuiIsItemVisible')
+	gen.bind_function('ImGui::IsAnyItemHovered', 'bool', [], bound_name='ImGuiIsAnyItemHovered')
+	gen.bind_function('ImGui::IsAnyItemActive', 'bool', [], bound_name='ImGuiIsAnyItemActive')
+	gen.bind_function('_ImGuiGetItemRectMin', 'gs::tVector2<float>', [], bound_name='ImGuiGetItemRectMin')
+	gen.bind_function('_ImGuiGetItemRectMax', 'gs::tVector2<float>', [], bound_name='ImGuiGetItemRectMax')
+	gen.bind_function('_ImGuiGetItemRectSize', 'gs::tVector2<float>', [], bound_name='ImGuiGetItemRectSize')
+	gen.bind_function('ImGui::SetItemAllowOverlap', 'void', [], bound_name='ImGuiSetItemAllowOverlap')
+	gen.bind_function('ImGui::IsWindowHovered', 'bool', [], bound_name='ImGuiIsWindowHovered')
+	gen.bind_function('ImGui::IsWindowFocused', 'bool', [], bound_name='ImGuiIsWindowFocused')
+	gen.bind_function('ImGui::IsRootWindowFocused', 'bool', [], bound_name='ImGuiIsRootWindowFocused')
+	gen.bind_function('ImGui::IsRootWindowOrAnyChildFocused', 'bool', [], bound_name='ImGuiIsRootWindowOrAnyChildFocused')
+	gen.bind_function('ImGui::IsRootWindowOrAnyChildHovered', 'bool', [], bound_name='ImGuiIsRootWindowOrAnyChildHovered')
+	gen.bind_function_overloads('ImGui::IsRectVisible', [
+		('bool', ['const gs::tVector2<float> &size'], []),
+		('bool', ['const gs::tVector2<float> &rect_min', 'const gs::tVector2<float> &rect_max'], [])
+	], bound_name='ImGuiIsRectVisible')
+	gen.bind_function('ImGui::IsPosHoveringAnyWindow', 'bool', ['const gs::tVector2<float> &pos'], bound_name='ImGuiIsPosHoveringAnyWindow')
+	gen.bind_function('ImGui::GetTime', 'float', [], bound_name='ImGuiGetTime')
+	gen.bind_function('ImGui::GetFrameCount', 'int', [], bound_name='ImGuiGetFrameCount')
+	#IMGUI_API const char*   GetStyleColName(ImGuiCol idx);
+	gen.bind_function('_ImGuiCalcItemRectClosestPoint', 'gs::tVector2<float>', ['const gs::tVector2<float> &pos', '?bool on_edge', '?float outward'], bound_name='ImGuiCalcItemRectClosestPoint')
+	gen.bind_function('_ImGuiCalcTextSize', 'gs::tVector2<float>', ['const char *text', '?bool hide_text_after_double_dash', '?float wrap_width'], bound_name='ImGuiCalcTextSize')
+
+	#IMGUI_API bool          BeginChildFrame(ImGuiID id, const ImVec2& size, ImGuiWindowFlags extra_flags = 0);	// helper to create a child window / scrolling region that looks like a normal widget frame
+	#IMGUI_API void          EndChildFrame();
+
+	#gen.bind_function('ImGui::GetKeyIndex', 'int', [], bound_name='ImGuiGetKeyIndex')
+	gen.bind_function('ImGui::IsKeyDown', 'bool', ['int key_index'], bound_name='ImGuiIsKeyDown')
+	gen.bind_function('ImGui::IsKeyPressed', 'bool', ['int key_index', '?bool repeat'], bound_name='ImGuiIsKeyPressed')
+	gen.bind_function('ImGui::IsKeyReleased', 'bool', ['int key_index'], bound_name='ImGuiIsKeyReleased')
+	gen.bind_function('ImGui::IsMouseDown', 'bool', ['int button'], bound_name='ImGuiIsMouseDown')
+	gen.bind_function('ImGui::IsMouseClicked', 'bool', ['int button', '?bool repeat'], bound_name='ImGuiIsMouseClicked')
+	gen.bind_function('ImGui::IsMouseDoubleClicked', 'bool', ['int button'], bound_name='ImGuiIsMouseDoubleClicked')
+	gen.bind_function('ImGui::IsMouseReleased', 'bool', ['int button'], bound_name='ImGuiIsMouseReleased')
+	gen.bind_function('ImGui::IsMouseHoveringWindow', 'bool', [], bound_name='ImGuiIsMouseHoveringWindow')
+	gen.bind_function('ImGui::IsMouseHoveringAnyWindow', 'bool', [], bound_name='ImGuiIsMouseHoveringAnyWindow')
+	gen.bind_function('ImGui::IsMouseHoveringRect', 'bool', ['const gs::tVector2<float> &rect_min', 'const gs::tVector2<float> &rect_max', '?bool clip'], bound_name='ImGuiIsMouseHoveringRect')
+	gen.bind_function('ImGui::IsMouseDragging', 'bool', ['?int button', '?float lock_threshold'], bound_name='ImGuiIsMouseDragging')
+	gen.bind_function('ImGui::GetMousePos', 'gs::tVector2<float>', [], bound_name='ImGuiGetMousePos')
+	gen.bind_function('ImGui::GetMousePosOnOpeningCurrentPopup', 'gs::tVector2<float>', [], bound_name='ImGuiGetMousePosOnOpeningCurrentPopup')
+	gen.bind_function('ImGui::GetMouseDragDelta', 'gs::tVector2<float>', ['?int button', '?float lock_threshold'], bound_name='ImGuiGetMouseDragDelta')
+	gen.bind_function('ImGui::ResetMouseDragDelta', 'void', ['?int button'], bound_name='ImGuiResetMouseDragDelta')
+	#IMGUI_API ImGuiMouseCursor GetMouseCursor();                                                // get desired cursor type, reset in ImGui::NewFrame(), this updated during the frame. valid before Render(). If you use software rendering by setting io.MouseDrawCursor ImGui will render those for you
+	#IMGUI_API void          SetMouseCursor(ImGuiMouseCursor type);                              // set desired cursor type
+	gen.bind_function('ImGui::CaptureKeyboardFromApp', 'void', ['bool capture'], bound_name='ImGuiCaptureKeyboardFromApp')
+	gen.bind_function('ImGui::CaptureMouseFromApp', 'void', ['bool capture'], bound_name='ImGuiCaptureMouseFromApp')
 
 
 def bind_extras(gen):

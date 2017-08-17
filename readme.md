@@ -99,7 +99,14 @@ It can be used to extend classes with additional methods while not modifying the
 Dictionary of argument names to consider as output to the bound function.
 Output arguments do not take part in overload resolution and are not provided by the function caller.
 
-Argout arguments are appended to the function return value.
+Output arguments are appended to the function return value.
+
+- 'arg_in_out': []
+
+Dictionary of argument names to consider as input-output to the bound function.
+Input-output arguments take part in overload resolution and are provided by the function caller.
+
+Input-output arguments are appended to the function return value.
 
 - 'proxy': None
 
