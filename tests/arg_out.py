@@ -6,6 +6,16 @@ def bind_test(gen):
 
 	lib.bind_defaults(gen)
 
+	gen.insert_code('''
+struct A { int v{2}; };
+void modify_in_out_struct(A *a) { a->v = 3; }
+''')
+	A = gen.begin_class('A')
+	gen.bind_constructor(A, [])
+	gen.bind_member(A, 'int v')
+	gen.end_class(A)
+	gen.bind_function('modify_in_out_struct', 'void', ['A *a'], {'arg_in_out': ['a']})
+
 	gen.insert_code('void out_values_function_call(int &a, int d, int *b, float k) { a = 8 * d; *b = 14 * k; }\n\n')
 	gen.bind_function('out_values_function_call', 'void', ['int &a', 'int d', 'int *b', 'float k'], {'arg_out': ['a', 'b']})
 
@@ -26,6 +36,10 @@ test_python = '''\
 import my_test
 
 from tests_api import expect_eq
+
+a = my_test.A()
+a = my_test.modify_in_out_struct(a)
+expect_eq(a.v, 3)
 
 a, b = my_test.out_values_function_call(2, 3)
 expect_eq(a, 16)
@@ -48,6 +62,10 @@ expect_eq(v, 20)
 
 test_lua = '''\
 my_test = require "my_test"
+
+a = my_test.A()
+a = my_test.modify_in_out_struct(a)
+assert(a.v == 3)
 
 a, b = my_test.out_values_function_call(2, 3)
 assert(a == 16)
