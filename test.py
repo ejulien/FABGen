@@ -295,6 +295,9 @@ def bind_window_system(gen):
 
 	gen.bind_function('gs::IsWindowOpen', 'bool', ['const gs::Window &window'])
 
+	lib.stl.bind_future_T(gen, 'gs::Window', 'FutureWindow')
+	lib.stl.bind_future_T(gen, 'gs::Surface', 'FutureSurface')
+
 
 def bind_core(gen):
 	# gs::core::Material
@@ -1430,6 +1433,54 @@ static std::shared_ptr<gs::gpu::Renderer> CreateRenderer() { return gs::core::g_
 	])
 	gen.bind_method(shared_renderer_async, 'GetNativeTextureExt', 'const char *', [], ['proxy'])
 
+	#
+	gen.bind_method(shared_renderer_async, 'NewWindow', 'std::future<gs::Window>', ['int w', 'int h', 'int bpp', 'gs::Window::Visibility visibility'], ['proxy'])
+
+	gen.bind_method(shared_renderer_async, 'NewOutputSurface', 'std::future<gs::Surface>', ['const gs::Window &window'], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'NewOffscreenOutputSurface', 'std::future<gs::Surface>', ['int width', 'int height'], ['proxy'])
+
+	gen.bind_method(shared_renderer_async, 'SetOutputSurface', 'void', ['const gs::Surface &surface'], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'DestroyOutputSurface', 'void', ['gs::Surface &surface'], ['proxy'])
+
+	gen.bind_method(shared_renderer_async, 'GetOutputSurface', 'std::future<gs::Surface>', [], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'GetOutputSurfaceSize', 'std::future<gs::tVector2<int>>', [], ['proxy'])
+
+	gen.bind_method(shared_renderer_async, 'FitViewportToOutputSurface', 'void', [], ['proxy'])
+
+	gen.bind_method(shared_renderer_async, 'UpdateWindow', 'void', ['const gs::Window &window'], ['proxy'])
+
+	gen.bind_method(shared_renderer_async, 'Open', 'std::future<bool>', ['?bool debug'], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'Close', 'std::future<void>', [], ['proxy'])
+
+	gen.bind_method(shared_renderer_async, 'GetInverseViewMatrix', 'std::future<gs::Matrix4>', [], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'GetInverseWorldMatrix', 'std::future<gs::Matrix4>', [], ['proxy'])
+
+	gen.bind_method(shared_renderer_async, 'SetViewMatrix', 'void', ['const gs::Matrix4 &view'], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'GetViewMatrix', 'std::future<gs::Matrix4>', [], ['proxy'])
+
+	gen.bind_method(shared_renderer_async, 'SetProjectionMatrix', 'void', ['const gs::Matrix44 &projection'], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'GetProjectionMatrix', 'std::future<gs::Matrix44>', [], ['proxy'])
+
+	gen.bind_method(shared_renderer_async, 'SetWorldMatrix', 'void', ['const gs::Matrix4 &world'], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'GetWorldMatrix', 'std::future<gs::Matrix4>', [], ['proxy'])
+
+	gen.bind_method(shared_renderer_async, 'SetIdentityMatrices', 'void', [], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'Set2DMatrices', 'void', ['?bool reverse_y'], ['proxy'])
+
+	gen.bind_method(shared_renderer_async, 'ClearClippingPlane', 'void', [], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'SetClippingPlane', 'void', ['const gs::Vector3 &p', 'const gs::Vector3 &n'], ['proxy'])
+
+	#
+	gen.bind_method(shared_renderer_async, 'ClearClippingRect', 'void', [], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'SetClippingRect', 'void', ['const gs::Rect<float> &clip_rect'], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'GetClippingRect', 'std::future<gs::Rect<float>>', [], ['proxy'])
+
+	gen.bind_method(shared_renderer_async, 'SetViewport', 'void', ['const gs::Rect<float> &rect'], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'GetViewport', 'std::future<gs::Rect<float>>', [], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'GetAspectRatio', 'std::future<gs::tVector2<float>>', [], ['proxy'])
+
+	gen.bind_method(shared_renderer_async, 'Clear', 'void', ['gs::Color color', '?float z', '?gs::gpu::Renderer::ClearFunction clear_mask'], ['proxy'])
+
 	gen.bind_method(shared_renderer_async, 'DrawFrame', 'void', [], ['proxy'])
 	gen.bind_method(shared_renderer_async, 'ShowFrame', 'void', [], ['proxy'])
 
@@ -1695,6 +1746,7 @@ static void RenderSystemDrawSpriteAuto_wrapper(gs::render::RenderSystem *render_
 	gen.end_class(render_system_async)
 
 	shared_render_system_async = gen.begin_class('std::shared_ptr<gs::render::RenderSystemAsync>', bound_name='RenderSystemAsync', features={'proxy': lib.stl.SharedPtrProxyFeature(render_system_async)})
+	gen.bind_constructor(shared_render_system_async, ['std::shared_ptr<gs::render::RenderSystem> render_system'], ['proxy'])
 	gen.end_class(shared_render_system_async)
 
 	# gs::render::RasterFont
@@ -2953,6 +3005,9 @@ def bind_math(gen):
 	lib.stl.bind_future_T(gen, 'gs::Vector4', 'FutureVector4')
 	lib.stl.bind_future_T(gen, 'gs::Matrix3', 'FutureMatrix3')
 	lib.stl.bind_future_T(gen, 'gs::Matrix4', 'FutureMatrix4')
+	lib.stl.bind_future_T(gen, 'gs::Matrix44', 'FutureMatrix44')
+	lib.stl.bind_future_T(gen, 'gs::Rect<float>', 'FutureFloatRect')
+	lib.stl.bind_future_T(gen, 'gs::Rect<int>', 'FutureIntRect')
 
 	# math std::vector
 	bind_std_vector(gen, vector2)
@@ -2961,6 +3016,7 @@ def bind_math(gen):
 	bind_std_vector(gen, vector4)
 	bind_std_vector(gen, matrix3)
 	bind_std_vector(gen, matrix4)
+	bind_std_vector(gen, matrix44)
 
 	# globals
 	gen.bind_function_overloads('gs::Dist', [
