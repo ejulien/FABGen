@@ -723,9 +723,15 @@ class FABGen:
 
 		# process arg_out
 		if arg_out is not None:
+			arg_in_out = features['arg_in_out'] if 'arg_in_out' in features else []
+
 			for idx, arg in enumerate(args):
 				if arg['carg'].name in arg_out:
-					rvals_prepare_args.append((arg['conv'], arg['conv'].ctype, 'arg%d' % idx))
+					if arg['carg'].name in arg_in_out:  # is arg_in_out
+						arg_ctype = arg['conv'].arg_storage_ctype
+					else:
+						arg['conv'].ctype
+					rvals_prepare_args.append((arg['conv'], arg_ctype, 'arg%d' % idx))
 					rvals.append('arg%d' % idx)
 
 		# check return values
