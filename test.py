@@ -1546,6 +1546,7 @@ def bind_render(gen):
 
 	# gs::render::RenderSystem
 	gen.bind_named_enum('gs::render::RenderSystem::RenderTechnique', ['TechniqueForward', 'TechniqueDeferred'], prefix='Render')
+	lib.stl.bind_future_T(gen, 'gs::render::RenderSystem::RenderTechnique', 'FutureRenderTechnique')
 
 	render_system = gen.begin_class('gs::render::RenderSystem', bound_name='RenderSystem_nobind', noncopyable=True, nobind=True)
 	gen.end_class(render_system)
@@ -1747,6 +1748,62 @@ static void RenderSystemDrawSpriteAuto_wrapper(gs::render::RenderSystem *render_
 
 	shared_render_system_async = gen.begin_class('std::shared_ptr<gs::render::RenderSystemAsync>', bound_name='RenderSystemAsync', features={'proxy': lib.stl.SharedPtrProxyFeature(render_system_async)})
 	gen.bind_constructor(shared_render_system_async, ['std::shared_ptr<gs::render::RenderSystem> render_system'], ['proxy'])
+
+	gen.bind_method(shared_render_system, 'GetRenderSystem', 'const std::shared_ptr<gs::render::RenderSystem> &', [], ['proxy'])
+
+	gen.bind_method(shared_render_system, 'GetRenderTechnique', 'std::future<gs::render::RenderSystem::RenderTechnique>', [], ['proxy'])
+	gen.bind_method(shared_render_system, 'SetRenderTechnique', 'void', ['gs::render::RenderSystem::RenderTechnique technique'], ['proxy'])
+
+	gen.bind_method(shared_render_system, 'GetInternalResolution', 'std::future<gs::tVector2<int>>', [], ['proxy'])
+	gen.bind_method(shared_render_system, 'SetInternalResolution', 'void', ['const gs::tVector2<int> &resolution'], ['proxy'])
+
+	gen.bind_method(shared_render_system, 'GetViewportToInternalResolutionRatio', 'std::future<gs::tVector2<float>>', [], ['proxy'])
+
+	gen.bind_method(shared_render_system, 'SetAA', 'void', ['uint sample_count'], ['proxy'])
+
+	gen.bind_method(shared_render_system, 'SetView', 'void', ['const gs::Matrix4 &view', 'const gs::Matrix44 &projection'], ['proxy'])
+
+	gen.bind_method(shared_render_system, 'PurgeCache', 'std::future<uint>', [], ['proxy'])
+	gen.bind_method(shared_render_system, 'RefreshCacheEntry', 'void', ['const char *name'], ['proxy'])
+
+	gen.bind_method(shared_render_system, 'DrawRasterFontBatch', 'void', [], ['proxy'])
+
+	gen.bind_method(shared_render_system, 'HasMaterial', 'std::shared_ptr<gs::render::Material>', ['const char *name'], ['proxy'])
+	gen.bind_method_overloads(shared_render_system, 'LoadMaterial', [
+		('std::shared_ptr<gs::render::Material>', ['const char *name', '?bool use_cache'], ['proxy']),
+		('std::shared_ptr<gs::render::Material>', ['const char *name', 'const char *source', '?gs::DocumentFormat format', '?bool use_cache'], ['proxy'])
+	])
+	gen.bind_method(shared_render_system, 'CreateMaterial', 'std::shared_ptr<gs::render::Material>', ['const std::shared_ptr<gs::core::Material> &material', '?bool use_cache'], ['proxy'])
+
+	gen.bind_method(shared_render_system, 'HasGeometry', 'std::shared_ptr<gs::render::Geometry>', ['const char *name'], ['proxy'])
+	gen.bind_method_overloads(shared_render_system, 'LoadGeometry', [
+		('std::shared_ptr<gs::render::Geometry>', ['const char *name', '?bool use_cache'], ['proxy']),
+		('std::shared_ptr<gs::render::Geometry>', ['const char *name', 'const char *source', '?gs::DocumentFormat format', '?bool use_cache'], ['proxy'])
+	])
+	gen.bind_method(shared_render_system, 'CreateGeometry', 'std::shared_ptr<gs::render::Geometry>', ['const std::shared_ptr<gs::core::Geometry> &geometry', '?bool use_cache'], ['proxy'])
+
+	gen.bind_method(shared_render_system, 'HasSurfaceShader', 'std::shared_ptr<gs::render::SurfaceShader>', ['const char *name'], ['proxy'])
+	gen.bind_method_overloads(shared_render_system, 'LoadSurfaceShader', 'std::shared_ptr<gs::render::SurfaceShader>', ['const char *name', '?bool use_cache'], ['proxy'])
+
+	"""
+	void DrawLine(uint count, const std::vector<Vector3> &vtx, const std::vector<Color> *color = nullptr, const std::vector<Vector2> *uv = nullptr) {
+	void DrawTriangle(uint count, const std::vector<Vector3> &vtx, const std::vector<Color> *color = nullptr, const std::vector<Vector2> *uv = nullptr) {
+	void DrawSprite(uint count, const std::vector<Vector3> &vtx, const std::vector<Color> *color = nullptr, const std::vector<float> *size = nullptr, float global_size = 1.f) {
+	void DrawLineAuto(uint count, const std::vector<Vector3> &vtx, const std::vector<Color> *color = nullptr, const std::vector<Vector2> *uv = nullptr, gpu::sTexture texture = nullptr) {
+	void DrawTriangleAuto(uint count, const std::vector<Vector3> &vtx, const std::vector<Color> *color = nullptr, const std::vector<Vector2> *uv = nullptr, gpu::sTexture texture = nullptr) {
+	void DrawSpriteAuto(uint count, const std::vector<Vector3> &vtx, const std::vector<Color> *color = nullptr, const std::vector<float> *size = nullptr, gpu::sTexture texture = nullptr, float global_size = 1.f) {
+	"""
+
+	gen.bind_method(shared_render_system, 'BeginDrawFrame', 'void', [], ['proxy'])
+	gen.bind_method(shared_render_system, 'EndDrawFrame', 'void', [], ['proxy'])
+
+	#gen.bind_method(shared_render_system, 'DrawRenderablesPicking', 'std::future<bool>', [], ['proxy'])
+
+	gen.bind_method(shared_render_system, 'Initialize', 'std::future<bool>', ['std::shared_ptr<gs::gpu::Renderer> renderer', '?bool support_3d'], ['proxy'])
+	gen.bind_method(shared_render_system, 'Free', 'std::future<void>', [], ['proxy'])
+
+	gen.bind_method(shared_render_system, 'SetShaderEngineValues', 'void', [], ['proxy'])
+
 	gen.end_class(shared_render_system_async)
 
 	# gs::render::RasterFont
