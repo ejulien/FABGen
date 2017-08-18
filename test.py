@@ -262,6 +262,13 @@ def bind_window_system(gen):
 	surface = gen.begin_class('gs::Surface')
 	gen.end_class(surface)
 
+	# gs::Monitor
+	monitor = gen.begin_class('gs::Monitor')
+	gen.end_class(monitor)
+	bind_std_vector(gen, monitor)
+
+	gen.bind_function('gs::GetMonitors', 'std::vector<gs::Monitor>', [])
+
 	# gs::Window
 	gen.bind_named_enum('gs::Window::Visibility', ['Windowed', 'Undecorated', 'Fullscreen', 'Hidden', 'FullscreenMonitor1', 'FullscreenMonitor2', 'FullscreenMonitor3'])
 
@@ -287,8 +294,6 @@ def bind_window_system(gen):
 
 	gen.bind_function('gs::WindowHasFocus', 'bool', ['const gs::Window &window'])
 	gen.bind_function('gs::GetWindowInFocus', 'gs::Window', [])
-
-	#std::vector<Monitor> GetMonitors();
 
 	gen.bind_function('gs::GetWindowPos', 'gs::tVector2<int>', ['const gs::Window &window'])
 	gen.bind_function('gs::SetWindowPos', 'bool', ['const gs::Window &window', 'const gs::tVector2<int> position'])
