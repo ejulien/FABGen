@@ -730,7 +730,7 @@ class FABGen:
 					if arg['carg'].name in arg_in_out:  # is arg_in_out
 						arg_ctype = arg['conv'].arg_storage_ctype
 					else:
-						arg['conv'].ctype
+						arg_ctype = arg['conv'].ctype
 					rvals_prepare_args.append((arg['conv'], arg_ctype, 'arg%d' % idx))
 					rvals.append('arg%d' % idx)
 
@@ -1084,11 +1084,12 @@ void *_type_tag_cast(void *in_ptr, const char *in_type_tag, const char *out_type
 
 		return out
 
-	def __print_stats(self):
-		print('Done. Output statistics:')
-		print(' - %d types' % len(self.__type_convs))
-		print(' - %d functions' % len(self._bound_functions))
-		print(' - %d enums' % len(self._enums))
+	def __get_stats(self):
+		out = 'Module statistics:\n'
+
+		out += ' - %d types\n' % len(self.__type_convs)
+		out += ' - %d functions\n' % len(self._bound_functions)
+		out += ' - %d enums\n' % len(self._enums)
 
 		method_count, static_method_count, member_count, static_member_count = 0, 0, 0, 0
 
@@ -1098,10 +1099,15 @@ void *_type_tag_cast(void *in_ptr, const char *in_type_tag, const char *out_type
 			member_count += len(conv.members)
 			static_member_count += len(conv.static_members)
 
-		print(' - %d methods' % method_count)
-		print(' - %d static methods' % static_method_count)
-		print(' - %d member' % member_count)
-		print(' - %d static member' % static_member_count)
+		out += ' - %d methods\n' % method_count
+		out += ' - %d static methods\n' % static_method_count
+		out += ' - %d member\n' % member_count
+		out += ' - %d static member\n' % static_member_count
+
+		return out
+
+	def __print_stats(self):
+		print(self.__get_stats())
 
 	def finalize(self):
 		# insert includes
