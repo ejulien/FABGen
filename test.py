@@ -53,27 +53,51 @@ def bind_binary_blob(gen):
 	gen.bind_method(binary_blob, 'Grow', 'void', ['size_t size'])
 	gen.bind_method(binary_blob, 'Skip', 'void', ['size_t size'])
 
-	gen.bind_method(binary_blob, 'Write<int8_t>', 'void', ['const int8_t &v'], bound_name='WriteInt8')
-	gen.bind_method(binary_blob, 'Write<int16_t>', 'void', ['const int16_t &v'], bound_name='WriteInt16')
-	gen.bind_method(binary_blob, 'Write<int32_t>', 'void', ['const int32_t &v'], bound_name='WriteInt32')
-	gen.bind_method(binary_blob, 'Write<int64_t>', 'void', ['const int64_t &v'], bound_name='WriteInt64')
-	gen.bind_method(binary_blob, 'Write<uint8_t>', 'void', ['const uint8_t &v'], bound_name='WriteUInt8')
-	gen.bind_method(binary_blob, 'Write<uint16_t>', 'void', ['const uint16_t &v'], bound_name='WriteUInt16')
-	gen.bind_method(binary_blob, 'Write<uint32_t>', 'void', ['const uint32_t &v'], bound_name='WriteUInt32')
-	gen.bind_method(binary_blob, 'Write<uint64_t>', 'void', ['const uint64_t &v'], bound_name='WriteUInt64')
-	gen.bind_method(binary_blob, 'Write<float>', 'void', ['const float &v'], bound_name='WriteFloat')
-	gen.bind_method(binary_blob, 'Write<double>', 'void', ['const double &v'], bound_name='WriteDouble')
+	def bind_write(type, alias):
+		# unit write
+		gen.bind_method(binary_blob, 'Write<%s>' % type, 'void', ['const %s &v' % type], bound_name='Write%s' % alias)
 
-	gen.bind_method(binary_blob, 'WriteAt<int8_t>', 'void', ['const int8_t &v', 'size_t position'], bound_name='WriteInt8At')
-	gen.bind_method(binary_blob, 'WriteAt<int16_t>', 'void', ['const int16_t &v', 'size_t position'], bound_name='WriteInt16At')
-	gen.bind_method(binary_blob, 'WriteAt<int32_t>', 'void', ['const int32_t &v', 'size_t position'], bound_name='WriteInt32At')
-	gen.bind_method(binary_blob, 'WriteAt<int64_t>', 'void', ['const int64_t &v', 'size_t position'], bound_name='WriteInt64At')
-	gen.bind_method(binary_blob, 'WriteAt<uint8_t>', 'void', ['const uint8_t &v', 'size_t position'], bound_name='WriteUInt8At')
-	gen.bind_method(binary_blob, 'WriteAt<uint16_t>', 'void', ['const uint16_t &v', 'size_t position'], bound_name='WriteUInt16At')
-	gen.bind_method(binary_blob, 'WriteAt<uint32_t>', 'void', ['const uint32_t &v', 'size_t position'], bound_name='WriteUInt32At')
-	gen.bind_method(binary_blob, 'WriteAt<uint64_t>', 'void', ['const uint64_t &v', 'size_t position'], bound_name='WriteUInt64At')
-	gen.bind_method(binary_blob, 'WriteAt<float>', 'void', ['const float &v', 'size_t position'], bound_name='WriteFloatAt')
-	gen.bind_method(binary_blob, 'WriteAt<double>', 'void', ['const double &v', 'size_t position'], bound_name='WriteDoubleAt')
+		# batch write
+		gen.insert_binding_code('''
+static void _BinaryData_Write%ss(gs::BinaryBlob *blob, const std::vector<%s> &vs) {
+	for (auto &v : vs)
+		blob->Write<%s>(v);
+}
+''' % (alias, type, type))
+
+		features = {'route': lambda args: '_BinaryData_Write%ss(%s);' % (alias, ', '.join(args))}
+
+		protos = []
+		protos += [('void', ['const std::vector<%s> &vs' % type], features)]
+		if gen.get_language() == 'CPython':
+			protos += [('void', ['PySequenceOf%s seq' % gen.get_conv(type).bound_name.title()], features)]
+
+		gen.bind_method_overloads(binary_blob, 'Write%ss' % alias, protos)
+
+	bind_write('int8_t', 'Int8')
+	bind_write('int16_t', 'Int16')
+	bind_write('int32_t', 'Int32')
+	bind_write('int64_t', 'Int64')
+	bind_write('uint8_t', 'UInt8')
+	bind_write('uint16_t', 'UInt16')
+	bind_write('uint32_t', 'UInt32')
+	bind_write('uint64_t', 'UInt64')
+	bind_write('float', 'Float')
+	bind_write('double', 'Double')
+
+	def bind_write_at(type, alias):
+		gen.bind_method(binary_blob, 'WriteAt<%s>' % type, 'void', ['const %s &v' % type, 'size_t position'], bound_name='Write%sAt' % alias)
+
+	bind_write_at('int8_t', 'Int8')
+	bind_write_at('int16_t', 'Int16')
+	bind_write_at('int32_t', 'Int32')
+	bind_write_at('int64_t', 'Int64')
+	bind_write_at('uint8_t', 'UInt8')
+	bind_write_at('uint16_t', 'UInt16')
+	bind_write_at('uint32_t', 'UInt32')
+	bind_write_at('uint64_t', 'UInt64')
+	bind_write_at('float', 'Float')
+	bind_write_at('double', 'Double')
 
 	# TODO Read<T> requires tuple return value
 
@@ -305,14 +329,57 @@ def bind_window_system(gen):
 
 
 def bind_core(gen):
+	# gs::core::Shader
+	gen.add_include('engine/shader.h')
+
+	gen.bind_named_enum('gs::core::ShaderType', ['ShaderNoType', 'ShaderInt', 'ShaderUInt', 'ShaderFloat', 'ShaderVector2', 'ShaderVector3', 'ShaderVector4', 'ShaderMatrix3', 'ShaderMatrix4', 'ShaderTexture2D', 'ShaderTexture3D', 'ShaderTextureCube', 'ShaderTextureShadow', 'ShaderTextureExternal'], storage_type='uint8_t')
+	gen.bind_named_enum('gs::core::ShaderTypePrecision', ['ShaderDefaultPrecision', 'ShaderLowPrecision', 'ShaderMediumPrecision', 'ShaderHighPrecision'], storage_type='uint8_t')
+
+	gen.bind_named_enum('gs::core::VertexAttribute::Semantic', ['Position', 'Normal', 'UV0', 'UV1', 'UV2', 'UV3', 'Color0', 'Color1', 'Color2', 'Color3', 'Tangent', 'Bitangent', 'BoneIndex', 'BoneWeight', 'InstanceModelMatrix', 'InstancePreviousModelMatrix', 'InstancePickingId'], storage_type='uint8_t', prefix='Vertex', bound_name='VertexSemantic')
+
+	gen.bind_named_enum('gs::core::TextureUV', ['TextureUVClamp', 'TextureUVRepeat', 'TextureUVMirror', 'TextureUVCount'], storage_type='uint8_t')
+	gen.bind_named_enum('gs::core::TextureFilter', ['TextureFilterNearest', 'TextureFilterLinear', 'TextureFilterTrilinear', 'TextureFilterAnisotropic', 'TextureFilterCount'], storage_type='uint8_t')
+
+	shader = gen.begin_class('gs::core::Shader', bound_name='Shader_nobind', noncopyable=True, nobind=True)
+	gen.end_class(shader)
+
+	shared_shader = gen.begin_class('std::shared_ptr<gs::core::Shader>', bound_name='Shader', features={'proxy': lib.stl.SharedPtrProxyFeature(shader)})
+	gen.bind_members(shared_shader, ['std::string name', 'uint8_t surface_attributes', 'uint8_t surface_draw_state', 'uint8_t alpha_threshold'], ['proxy'])
+	gen.end_class(shared_shader)
+
+	gen.bind_named_enum('gs::core::ShaderVariable::Semantic', [
+		'Clock', 'Viewport', 'TechniqueIsForward', 'FxScale', 'InverseInternalResolution', 'InverseViewportSize', 'AmbientColor', 'FogColor', 'FogState', 'DepthBuffer', 'FrameBuffer', 'GBuffer0', 'GBuffer1', 'GBuffer2', 'GBuffer3',
+		'ViewVector', 'ViewPosition', 'ViewState',
+		'ModelMatrix', 'InverseModelMatrix', 'NormalMatrix', 'PreviousModelMatrix', 'ViewMatrix', 'InverseViewMatrix', 'ModelViewMatrix', 'NormalViewMatrix', 'ProjectionMatrix', 'ViewProjectionMatrix', 'ModelViewProjectionMatrix', 'InverseViewProjectionMatrix', 'InverseViewProjectionMatrixAtOrigin',
+		'LightState', 'LightDiffuseColor', 'LightSpecularColor', 'LightShadowColor', 'LightViewPosition', 'LightViewDirection', 'LightShadowMatrix', 'InverseShadowMapSize', 'LightShadowMap', 'LightPSSMSliceDistance', 'ViewToLightMatrix', 'LightProjectionMap',
+		'BoneMatrix', 'PreviousBoneMatrix',
+		'PickingId',
+		'TerrainHeightmap', 'TerrainHeightmapSize', 'TerrainSize', 'TerrainPatchOrigin', 'TerrainPatchSize'
+	], storage_type='uint8_t', prefix='Shader', bound_name='ShaderSemantic')
+
+	shader_variable = gen.begin_class('gs::core::ShaderVariable')
+	gen.bind_members(shader_variable, ['std::string name', 'std::string hint', 'gs::core::ShaderType type', 'gs::core::ShaderTypePrecision precision', 'uint8_t array_size'])
+	gen.end_class(shader_variable)
+
+	shader_value = gen.begin_class('gs::core::ShaderValue')
+	gen.end_class(shader_value)
+
 	# gs::core::Material
 	gen.add_include('engine/material.h')
 
 	material = gen.begin_class('gs::core::Material', bound_name='Material_nobind', noncopyable=True, nobind=True)
 	gen.end_class(material)
 
+	gen.insert_binding_code('''
+static void _Material_SetName(gs::core::Material *m, const char *name) { m->name = name; }
+static void _Material_SetShader(gs::core::Material *m, const char *shader) { m->shader = shader; }
+''')
+
 	shared_material = gen.begin_class('std::shared_ptr<gs::core::Material>', bound_name='Material', features={'proxy': lib.stl.SharedPtrProxyFeature(material)})
-	gen.bind_members(shared_material, ['std::string name', 'std::string shader'], ['proxy'])
+	gen.bind_constructor(shared_material, [], ['proxy'])
+	gen.bind_method(shared_material, 'AddValue', 'void', ['const char *name', 'gs::core::ShaderType type'], ['proxy'])
+	gen.bind_method(shared_material, 'SetName', 'void', ['const char *name'], {'proxy': None, 'route': lambda args: '_Material_SetName(%s);' % ', '.join(args)})
+	gen.bind_method(shared_material, 'SetShader', 'void', ['const char *shader'], {'proxy': None, 'route': lambda args: '_Material_SetShader(%s);' % ', '.join(args)})
 	gen.end_class(shared_material)
 
 	# gs::core::Geometry
@@ -322,16 +389,78 @@ def bind_core(gen):
 	gen.end_class(geometry)
 
 	shared_geometry = gen.begin_class('std::shared_ptr<gs::core::Geometry>', bound_name='Geometry', features={'proxy': lib.stl.SharedPtrProxyFeature(geometry)})
+	gen.bind_constructor(shared_geometry, [], ['proxy'])
+
+	#gen.bind_members(shared_geometry, ['std::string name', 'std::string lod_proxy', 'float lod_distance', 'std::string shadow_proxy'])
+
+	gen.bind_method(shared_geometry, 'SetName', 'bool', ['const char *name'], ['proxy'])
+
+	gen.bind_method(shared_geometry, 'GetTriangleCount', 'gs::uint', [], ['proxy'])
+
+	gen.bind_method(shared_geometry, 'ComputeLocalMinMax', 'gs::MinMax', [], ['proxy'])
+	#gen.bind_method(shared_geometry, 'ComputeLocalBoneMinMax', 'bool', [''], ['proxy'])
+
+	gen.bind_method(shared_geometry, 'AllocateVertex', 'void', ['gs::uint count'], ['proxy'])
+	gen.bind_method(shared_geometry, 'AllocatePolygon', 'void', ['gs::uint count'], ['proxy'])
+
+	gen.bind_method(shared_geometry, 'AllocatePolygonBinding', 'bool', [], ['proxy'])
+	gen.bind_method(shared_geometry, 'ComputePolygonBindingCount', 'gs::uint', [], ['proxy'])
+
+	gen.bind_method(shared_geometry, 'AllocateVertexNormal', 'void', ['gs::uint count'], ['proxy'])
+	gen.bind_method(shared_geometry, 'AllocateVertexTangent', 'void', ['gs::uint count'], ['proxy'])
+	gen.bind_method(shared_geometry, 'AllocateRgb', 'void', ['gs::uint count'], ['proxy'])
+	gen.bind_method(shared_geometry, 'AllocateMaterialTable', 'void', ['gs::uint count'], ['proxy'])
+	gen.bind_method(shared_geometry, 'AllocateUVChannels', 'bool', ['gs::uint channel_count', 'gs::uint uv_per_channel'], ['proxy'])
+
+	gen.bind_method(shared_geometry, 'GetVertexCount', 'int', [], ['proxy'])
+	gen.bind_method(shared_geometry, 'GetPolygonCount', 'int', [], ['proxy'])
+	gen.bind_method(shared_geometry, 'GetVertexNormalCount', 'int', [], ['proxy'])
+	gen.bind_method(shared_geometry, 'GetVertexTangentCount', 'int', [], ['proxy'])
+	gen.bind_method(shared_geometry, 'GetRgbCount', 'int', [], ['proxy'])
+	gen.bind_method(shared_geometry, 'GetUVCount', 'int', [], ['proxy'])
+
+	gen.bind_method(shared_geometry, 'GetVertex', 'gs::Vector3', ['gs::uint index'], ['proxy'])
+	gen.bind_method(shared_geometry, 'SetVertex', 'bool', ['gs::uint index', 'const gs::Vector3 &vertex'], ['proxy'])
+	gen.bind_method(shared_geometry, 'GetVertexNormal', 'gs::Vector3', ['gs::uint index'], ['proxy'])
+	gen.bind_method(shared_geometry, 'SetVertexNormal', 'bool', ['gs::uint index', 'const gs::Vector3 &vertex'], ['proxy'])
+
+	gen.bind_method(shared_geometry, 'GetRgb', 'gs::Color', ['gs::uint index'], ['proxy'])
+	protos = [('bool', ['gs::uint poly_index', 'const std::vector<gs::Color> &colors'], ['proxy'])]
+	if gen.get_language() == 'CPython':
+		protos += [('bool', ['gs::uint poly_index', 'PySequenceOfColor colors'], ['proxy'])]
+	gen.bind_method_overloads(shared_geometry, 'SetRgb', protos)
+
+	gen.bind_method(shared_geometry, 'GetUV', 'gs::tVector2<float>', ['gs::uint channel', 'gs::uint index'], ['proxy'])
+	protos = [('bool', ['gs::uint channel', 'gs::uint poly_index', 'const std::vector<gs::tVector2<float>> &uvs'], ['proxy'])]
+	if gen.get_language() == 'CPython':
+		protos += [('bool', ['gs::uint channel', 'gs::uint poly_index', 'PySequenceOfVector2 uvs'], ['proxy'])]
+	gen.bind_method_overloads(shared_geometry, 'SetUV', protos)
+
+	gen.bind_method(shared_geometry, 'SetPolygonVertexCount', 'bool', ['gs::uint index', 'uint8_t vtx_count'], ['proxy'])
+	gen.bind_method(shared_geometry, 'SetPolygonMaterialIndex', 'bool', ['gs::uint index', 'uint8_t material'], ['proxy'])
+	gen.bind_method(shared_geometry, 'SetPolygon', 'bool', ['gs::uint index', 'uint8_t vtx_count', 'uint8_t material'], ['proxy'])
+	gen.bind_method(shared_geometry, 'GetPolygonVertexCount', 'int', ['gs::uint index'], ['proxy'])
+	gen.bind_method(shared_geometry, 'GetPolygonMaterialIndex', 'int', ['gs::uint index'], ['proxy'])
+
+	protos = [('bool', ['gs::uint index', 'const std::vector<int> &idx'], ['proxy'])]
+	if gen.get_language() == 'CPython':
+		protos += [('bool', ['gs::uint index', 'PySequenceOfInt idx'], ['proxy'])]
+	gen.bind_method_overloads(shared_geometry, 'SetPolygonBinding', protos)
+
+	gen.bind_method(shared_geometry, 'ComputePolygonArea', 'float', ['gs::uint index'], ['proxy'])
+	gen.bind_method(shared_geometry, 'Validate', 'bool', [], ['proxy'])
+
+	gen.bind_method(shared_geometry, 'ComputePolygonNormal', 'bool', ['?bool force'], ['proxy'])
+	gen.bind_method(shared_geometry, 'ComputePolygonTangent', 'bool', ['?gs::uint uv_index', '?bool force'], ['proxy'])
+
+	gen.bind_method(shared_geometry, 'ComputeVertexNormal', 'bool', ['?float max_smoothing_angle', '?bool force'], ['proxy'])
+	gen.bind_method(shared_geometry, 'ComputeVertexTangent', 'bool', ['?bool reverse_T', '?bool reverse_B', '?bool force'], ['proxy'])
+
+	gen.bind_method(shared_geometry, 'ReverseTangentFrame', 'void', ['bool reverse_T', 'bool reverse_B'], ['proxy'])
+	gen.bind_method(shared_geometry, 'SmoothRGB', 'void', ['gs::uint pass_count', 'float max_smoothing_angle'], ['proxy'])
+
+	gen.bind_method(shared_geometry, 'MergeDuplicateMaterials', 'gs::uint', [], ['proxy'])
 	gen.end_class(shared_geometry)
-
-	# gs::core::Shader
-	gen.add_include('engine/shader.h')
-
-	gen.bind_named_enum('gs::core::ShaderType', ['ShaderNoType', 'ShaderInt', 'ShaderUInt', 'ShaderFloat', 'ShaderVector2', 'ShaderVector3', 'ShaderVector4', 'ShaderMatrix3', 'ShaderMatrix4', 'ShaderTexture2D', 'ShaderTexture3D', 'ShaderTextureCube', 'ShaderTextureShadow', 'ShaderTextureExternal'], storage_type='uint8_t')
-	gen.bind_named_enum('gs::core::VertexAttribute::Semantic', ['Position', 'Normal', 'UV0', 'UV1', 'UV2', 'UV3', 'Color0', 'Color1', 'Color2', 'Color3', 'Tangent', 'Bitangent', 'BoneIndex', 'BoneWeight', 'InstanceModelMatrix', 'InstancePreviousModelMatrix', 'InstancePickingId'], storage_type='uint8_t')
-
-	gen.bind_named_enum('gs::core::TextureUV', ['TextureUVClamp', 'TextureUVRepeat', 'TextureUVMirror', 'TextureUVCount'], storage_type='uint8_t')
-	gen.bind_named_enum('gs::core::TextureFilter', ['TextureFilterNearest', 'TextureFilterLinear', 'TextureFilterTrilinear', 'TextureFilterAnisotropic', 'TextureFilterCount'], storage_type='uint8_t')
 
 	# gs::core::TextureUnitConfig
 	tex_unit_cfg = gen.begin_class('gs::core::TextureUnitConfig')
@@ -350,8 +479,9 @@ def bind_core(gen):
 	gen.bind_named_enum('gs::core::VertexType', ['VertexByte', 'VertexUByte', 'VertexShort', 'VertexUShort', 'VertexInt', 'VertexUInt', 'VertexFloat', 'VertexHalfFloat'], storage_type='uint8_t')
 
 	vtx_layout = gen.begin_class('gs::core::VertexLayout')
+	gen.bind_constructor(vtx_layout, [])
 	gen.bind_method(vtx_layout, 'Clear', 'void', [])
-	gen.bind_method(vtx_layout, 'AddAttribute', 'bool', ['gs::core::VertexAttribute::Semantic semantic', 'uint8_t count', 'gs::core::VertexType type', 'bool is_normalized'])
+	gen.bind_method(vtx_layout, 'AddAttribute', 'bool', ['gs::core::VertexAttribute::Semantic semantic', 'uint8_t count', 'gs::core::VertexType type', '?bool is_normalized'])
 	gen.bind_method(vtx_layout, 'End', 'void', [])
 	gen.end_class(vtx_layout)
 
@@ -1084,7 +1214,7 @@ def bind_gpu(gen):
 	# gs::gpu::Texture
 	gen.add_include('engine/texture.h')
 
-	gen.bind_named_enum('gs::gpu::TextureUsage::Type', ['IsRenderTarget', 'IsShaderResource'], prefix='Texture', bound_name='TextureUsageFlags', namespace='gs::gpu::TextureUsage')
+	gen.bind_named_enum('gs::gpu::TextureUsage::Type', ['IsRenderTarget', 'IsShaderResource', 'Default'], prefix='Texture', bound_name='TextureUsageFlags', namespace='gs::gpu::TextureUsage')
 	gen.bind_named_enum('gs::gpu::Texture::Format', ['RGBA8', 'BGRA8', 'RGBA16', 'RGBAF', 'Depth', 'DepthF', 'R8', 'R16', 'InvalidFormat'], 'uint8_t', 'TextureFormat', 'Texture')
 	gen.bind_named_enum('gs::gpu::Texture::AA', ['NoAA', 'MSAA2x', 'MSAA4x', 'MSAA8x', 'MSAA16x', 'AALast'], 'uint8_t', 'TextureAA', 'Texture')
 
@@ -1112,6 +1242,22 @@ def bind_gpu(gen):
 	gen.bind_members(hw_info, ['std::string name', 'std::string vendor'])
 	gen.end_class(hw_info)
 
+	# gs::gpu::Shader
+	gen.add_include('engine/gpu_shader.h')
+
+	shader = gen.begin_class('gs::gpu::Shader', bound_name='GpuShader_nobind', noncopyable=True, nobind=True)
+	gen.end_class(shader)
+
+	shared_shader = gen.begin_class('std::shared_ptr<gs::gpu::Shader>', bound_name='GpuShader', features={'proxy': lib.stl.SharedPtrProxyFeature(shader)})
+	gen.end_class(shared_shader)
+
+	shader_value = gen.begin_class('gs::gpu::ShaderValue', bound_name='GpuShaderValue')
+	gen.bind_members(shader_value, ['std::shared_ptr<gs::gpu::Texture> texture', 'gs::core::TextureUnitConfig tex_unit_cfg'])
+	gen.end_class(shader_value)
+
+	shader_variable = gen.begin_class('gs::gpu::ShaderVariable', bound_name='GpuShaderVariable')
+	gen.end_class(shader_variable)
+
 	# gs::TCache<T>
 	gen.add_include("engine/resource_cache.h")
 
@@ -1129,6 +1275,7 @@ def bind_gpu(gen):
 		gen.end_class(tcache)
 
 	bind_tcache_T('gs::gpu::Texture', 'TextureCache')
+	bind_tcache_T('gs::gpu::Shader', 'ShaderCache')
 
 	# gs::gpu::Renderer
 	gen.add_include('engine/renderer.h')
@@ -1157,7 +1304,7 @@ def bind_gpu(gen):
 	gen.bind_method(shared_renderer, 'IsCooked', 'bool', ['const char *name'], ['proxy'])
 
 	gen.bind_method(shared_renderer, 'GetTextureCache', 'const gs::TCache<gs::gpu::Texture> &', [], ['proxy'])
-	#gen.bind_method(shared_renderer, 'GetShaderCache', 'const gs::TCache<gs::gpu::Shader> &', [], ['proxy'])
+	gen.bind_method(shared_renderer, 'GetShaderCache', 'const gs::TCache<gs::gpu::Shader> &', [], ['proxy'])
 
 	"""
 	Signal<void(Renderer &)> open_signal, close_signal;
@@ -1200,6 +1347,13 @@ def bind_gpu(gen):
 	#std::future<bool> UpdateBuffer(sBuffer buf, const void *p, size_t start = 0, size_t size = 0) {
 	#std::future<bool> CreateBuffer(sBuffer buf, const void *data, size_t size, Buffer::Type type, Buffer::Usage usage = Buffer::Static) {
 	#std::future<bool> CreateBuffer(sBuffer buf, const BinaryBlob &data, Buffer::Type type, Buffer::Usage usage = Buffer::Static) {
+
+	gen.insert_binding_code('''\
+static bool _CreateBuffer(gs::gpu::Renderer *renderer, gs::gpu::Buffer &buffer, gs::BinaryBlob &data, gs::gpu::Buffer::Type type, gs::gpu::Buffer::Usage usage = gs::gpu::Buffer::Static) {
+	return renderer->CreateBuffer(buffer, data.GetData(), data.GetDataSize(), type, usage);
+}
+''')
+	gen.bind_method(shared_renderer, 'CreateBuffer', 'void', ['gs::gpu::Buffer &buffer', 'gs::BinaryBlob &data', 'gs::gpu::Buffer::Type type', '?gs::gpu::Buffer::Usage usage'], {'proxy': None, 'route': lambda args: '_CreateBuffer(%s);' % ', '.join(args)})
 	gen.bind_method(shared_renderer, 'FreeBuffer', 'void', ['gs::gpu::Buffer &buffer'], ['proxy'])
 
 	gen.bind_method_overloads(shared_renderer, 'NewTexture', [
@@ -1222,13 +1376,8 @@ def bind_gpu(gen):
 		('std::shared_ptr<gs::gpu::Texture>', ['const char *name'], ['proxy'])
 	])
 	gen.bind_method_overloads(shared_renderer, 'CreateTexture', [
-		('bool', ['gs::gpu::Texture &texture', 'const void *data', 'size_t data_size', 'int width', 'int height'], ['proxy']),
-		('bool', ['gs::gpu::Texture &texture', 'const void *data', 'size_t data_size', 'int width', 'int height', 'gs::gpu::Texture::Format format', 'gs::gpu::Texture::AA aa'], ['proxy']),
-		('bool', ['gs::gpu::Texture &texture', 'const void *data', 'size_t data_size', 'int width', 'int height', 'gs::gpu::Texture::Format format', 'gs::gpu::Texture::AA aa', 'gs::gpu::TextureUsage::Type usage'], ['proxy']),
-		('bool', ['gs::gpu::Texture &texture', 'const void *data', 'size_t data_size', 'int width', 'int height', 'gs::gpu::Texture::Format format', 'gs::gpu::Texture::AA aa', 'gs::gpu::TextureUsage::Type usage', 'bool mipmapped'], ['proxy']),
-		('bool', ['gs::gpu::Texture &texture', 'const gs::Picture &picture'], ['proxy']),
-		('bool', ['gs::gpu::Texture &texture', 'const gs::Picture &picture', 'gs::gpu::TextureUsage::Type usage'], ['proxy']),
-		('bool', ['gs::gpu::Texture &texture', 'const gs::Picture &picture', 'gs::gpu::TextureUsage::Type usage', 'bool mipmapped'], ['proxy'])
+		('bool', ['gs::gpu::Texture &texture', 'int width', 'int height', '?gs::gpu::Texture::Format format', '?gs::gpu::Texture::AA aa', '?gs::gpu::TextureUsage::Type usage', '?bool mipmapped'], ['proxy']),
+		('bool', ['gs::gpu::Texture &texture', 'const gs::Picture &picture', '?gs::gpu::TextureUsage::Type usage', '?bool mipmapped'], ['proxy'])
 	])
 	gen.bind_method(shared_renderer, 'FreeTexture', 'void', ['gs::gpu::Texture &texture'], ['proxy'])
 
@@ -1246,10 +1395,58 @@ static void RendererBlitTexture_wrapper(gs::gpu::Renderer *renderer, gs::gpu::Te
 	])
 	gen.bind_method(shared_renderer, 'ResizeTexture', 'void', ['gs::gpu::Texture &texture', 'gs::uint width', 'gs::uint height'], ['proxy'])
 
-	#
-	# ...
-	#
+	gen.bind_method(shared_renderer, 'CaptureTexture', 'bool', ['const gs::gpu::Texture &texture', 'gs::Picture &picture'], ['proxy'])
 
+	gen.bind_method(shared_renderer, 'GenerateTextureMipmap', 'void', ['gs::gpu::Texture &texture'], ['proxy'])
+
+	gen.bind_method(shared_renderer, 'HasTexture', 'std::shared_ptr<gs::gpu::Texture>', ['const char *path'], ['proxy'])
+	gen.bind_method(shared_renderer, 'LoadTexture', 'std::shared_ptr<gs::gpu::Texture>', ['const char *path', '?bool use_cache'], ['proxy'])
+
+	#
+	gen.bind_method(shared_renderer, 'NewShader', 'std::shared_ptr<gs::gpu::Shader>', ['?const char *name'], ['proxy'])
+
+	gen.bind_method(shared_renderer, 'HasShader', 'std::shared_ptr<gs::gpu::Shader>', ['const char *name'], ['proxy'])
+	gen.bind_method_overloads(shared_renderer, 'LoadShader', [
+		('std::shared_ptr<gs::gpu::Shader>', ['const char *name', '?bool use_cache'], ['proxy']),
+		('std::shared_ptr<gs::gpu::Shader>', ['const char *name', 'const char *source', '?bool use_cache'], ['proxy'])
+	])
+
+	gen.bind_method(shared_renderer, 'CreateShader', 'void', ['const std::shared_ptr<gs::gpu::Shader> &shader', 'const std::shared_ptr<gs::core::Shader> &core_shader'], ['proxy'])
+	gen.bind_method(shared_renderer, 'FreeShader', 'void', ['gs::gpu::Shader &shader'], ['proxy'])
+
+	gen.bind_method(shared_renderer, 'GetShaderVariable', 'gs::gpu::ShaderVariable', ['const char *name'], ['proxy'])
+	gen.bind_method(shared_renderer, 'GetShaderBuiltin', 'gs::gpu::ShaderVariable', ['gs::core::ShaderVariable::Semantic semantic'], ['proxy'])
+
+	"""
+	virtual void SetShaderInt(const ShaderVariable &var, const int *v, uint count = 1) = 0;
+	virtual void SetShaderInt2(const ShaderVariable &var, const int *vec2, uint count = 1) = 0;
+	virtual void SetShaderInt3(const ShaderVariable &var, const int *vec3, uint count = 1) = 0;
+	virtual void SetShaderInt4(const ShaderVariable &var, const int *vec4, uint count = 1) = 0;
+	virtual void SetShaderUnsigned(const ShaderVariable &var, const uint *v, uint count = 1) = 0;
+	virtual void SetShaderUnsigned2(const ShaderVariable &var, const uint *vec2, uint count = 1) = 0;
+	virtual void SetShaderUnsigned3(const ShaderVariable &var, const uint *vec3, uint count = 1) = 0;
+	virtual void SetShaderUnsigned4(const ShaderVariable &var, const uint *vec4, uint count = 1) = 0;
+	virtual void SetShaderFloat(const ShaderVariable &var, const float *v, uint count = 1) = 0;
+	virtual void SetShaderFloat2(const ShaderVariable &var, const float *vec2, uint count = 1) = 0;
+	virtual void SetShaderFloat3(const ShaderVariable &var, const float *vec3, uint count = 1) = 0;
+	virtual void SetShaderFloat4(const ShaderVariable &var, const float *vec4, uint count = 1) = 0;
+	virtual void SetShaderMatrix3(const ShaderVariable &var, const Matrix3 *m, uint count = 1) = 0;
+	virtual void SetShaderMatrix4(const ShaderVariable &var, const Matrix4 *m, uint count = 1) = 0;
+	virtual void SetShaderMatrix44(const ShaderVariable &var, const Matrix44 *m, uint count = 1) = 0;
+	virtual void SetShaderTexture(const ShaderVariable &var, const Texture &t) = 0;
+	"""
+
+	"""
+	gen.bind_method(shared_renderer, 'SetShaderSystemBuiltins', 'void', ['float clock', 'const gs::tVector2<int> &internal_resolution', 'gs::uint fx_scale', 'const gs::Color &ambient_color', 'bool is_forward', 'bool fog_enabled', 'const gs::Color &fog_color', 'float fog_near', 'float fog_far', 'gs::gpu::Texture &depth_map'])
+	gen.bind_method(shared_renderer, 'SetShaderCameraBuiltins', 'void', ['const gs::Matrix4 &view_world', 'float z_near', 'float z_far', 'float zoom_factor', 'float eye'])
+	gen.bind_method(shared_renderer, 'SetShaderTransformationBuiltins', 'void', ['const gs::Matrix44 &view_pm', 'const gs::Matrix4 &view_m', 'const gs::Matrix4 &view_im', 'const gs::Matrix4 *node_m', 'const gs::Matrix4 *node_im', 'const gs::Matrix44 &prv_view_pm', 'const gs::Matrix4 &prv_view_im', 'const gs::Matrix4 *i_m', 'uint count'])
+	gen.bind_method(shared_renderer, 'SetShaderLightBuiltins', 'void', ['const gs::Matrix4 &light_world', 'const gs::Color &light_diffuse', 'const gs::Color &light_specular', 'float range', 'float clip_dist', 'float cone_angle', 'float edge_angle', 'gs::gpu::Texture *projection_map', 'const gs::Matrix4 &view_world', 'gs::gpu::Texture *shadow_map', 'float shadow_bias', 'float inv_shadow_map_size', 'const gs::Color &shadow_color', 'gs::uint shadow_data_count', 'const gs::Matrix4 *shadow_data_inv_world', 'const gs::Matrix44 *shadow_data_projection_to_map', 'const float *shadow_data_slice_distance'])
+	gen.bind_method(shared_renderer, 'SetShaderSkeletonValues', 'void', ['gs::uint skin_bone_count', 'const gs::Matrix4 *skin_bone_matrices', 'const gs::Matrix4 *skin_bone_previous_matrices', 'const uint16_t *skin_bone_idx'])
+	gen.bind_method(shared_renderer, 'SetShaderPickingBuiltins', 'void', ['gs::uint uid'])
+	gen.bind_method(shared_renderer, 'SetShaderValues', 'void', ['const ShaderValues &shader_values', '?const ShaderValues *material_values'])
+	"""
+
+	#
 	gen.bind_method(shared_renderer, 'SetFillMode', 'void', ['gs::gpu::Renderer::FillMode mode'], ['proxy'])
 
 	gen.bind_method(shared_renderer, 'SetCullFunc', 'void', ['gs::gpu::Renderer::CullFunc func'], ['proxy'])
@@ -1502,6 +1699,10 @@ def bind_render(gen):
 	gen.bind_named_enum('gs::render::CullMode', ['CullBack', 'CullFront', 'CullNever'])
 	gen.bind_named_enum('gs::render::BlendMode', ['BlendOpaque', 'BlendAlpha', 'BlendAdditive'])
 
+	render_system = gen.begin_class('gs::render::RenderSystem', bound_name='RenderSystem_nobind', noncopyable=True, nobind=True)
+	gen.end_class(render_system)
+	shared_render_system = gen.begin_class('std::shared_ptr<gs::render::RenderSystem>', bound_name='RenderSystem', features={'proxy': lib.stl.SharedPtrProxyFeature(render_system)})
+
 	# gs::render::SurfaceShader
 	gen.add_include('engine/surface_shader.h')
 
@@ -1522,6 +1723,86 @@ def bind_render(gen):
 	gen.end_class(material)
 
 	shared_material = gen.begin_class('std::shared_ptr<gs::render::Material>', bound_name='RenderMaterial', features={'proxy': lib.stl.SharedPtrProxyFeature(material)})
+	gen.bind_method(shared_material, 'Create', 'bool', ['gs::render::RenderSystem &render_system', 'std::shared_ptr<gs::core::Material> material'], ['proxy'])
+	gen.bind_method(shared_material, 'Free', 'void', [], ['proxy'])
+
+	gen.bind_method(shared_material, 'Clone', 'std::shared_ptr<gs::render::Material>', [], ['proxy'])
+	gen.bind_method(shared_material, 'IsReadyOrFailed', 'bool', [], ['proxy'])
+
+	gen.bind_method(shared_material, 'GetSurfaceShader', 'const std::shared_ptr<gs::render::SurfaceShader> &', [], ['proxy'])
+	gen.bind_method(shared_material, 'SetSurfaceShader', 'void', ['std::shared_ptr<gs::render::SurfaceShader> surface_shader'], ['proxy'])
+
+	gen.insert_binding_code('''
+static bool _RenderMaterial_GetFloat(gs::render::Material *m, const char *name, float &o0) { if (auto v = m->GetValue(name)) { o0 = v->fv[0]; return true; } return false; }
+static bool _RenderMaterial_GetFloat2(gs::render::Material *m, const char *name, float &o0, float &o1) { if (auto v = m->GetValue(name)) { o0 = v->fv[0]; o1 = v->fv[1]; return true; } return false; }
+static bool _RenderMaterial_GetFloat3(gs::render::Material *m, const char *name, float &o0, float &o1, float &o2) { if (auto v = m->GetValue(name)) { o0 = v->fv[0]; o1 = v->fv[1]; o2 = v->fv[2]; return true; } return false; }
+static bool _RenderMaterial_GetFloat4(gs::render::Material *m, const char *name, float &o0, float &o1, float &o2, float &o3) { if (auto v = m->GetValue(name)) { o0 = v->fv[0]; o1 = v->fv[1]; o2 = v->fv[2]; o3 = v->fv[3]; return true; } return false; }
+
+static bool _RenderMaterial_GetInt(gs::render::Material *m, const char *name, int &o0) { if (auto v = m->GetValue(name)) { o0 = v->iv[0]; return true; } return false; }
+static bool _RenderMaterial_GetInt2(gs::render::Material *m, const char *name, int &o0, int &o1) { if (auto v = m->GetValue(name)) { o0 = v->iv[0]; o1 = v->iv[1]; return true; } return false; }
+static bool _RenderMaterial_GetInt3(gs::render::Material *m, const char *name, int &o0, int &o1, int &o2) { if (auto v = m->GetValue(name)) { o0 = v->iv[0]; o1 = v->iv[1]; o2 = v->iv[2]; return true; } return false; }
+static bool _RenderMaterial_GetInt4(gs::render::Material *m, const char *name, int &o0, int &o1, int &o2, int &o3) { if (auto v = m->GetValue(name)) { o0 = v->iv[0]; o1 = v->iv[1]; o2 = v->iv[2]; o3 = v->iv[3]; return true; } return false; }
+
+static bool _RenderMaterial_GetUnsigned(gs::render::Material *m, const char *name, unsigned int &o0) { if (auto v = m->GetValue(name)) { o0 = v->uv[0]; return true; } return false; }
+static bool _RenderMaterial_GetUnsigned2(gs::render::Material *m, const char *name, unsigned int &o0, unsigned int &o1) { if (auto v = m->GetValue(name)) { o0 = v->uv[0]; o1 = v->uv[1]; return true; } return false; }
+static bool _RenderMaterial_GetUnsigned3(gs::render::Material *m, const char *name, unsigned int &o0, unsigned int &o1, unsigned int &o2) { if (auto v = m->GetValue(name)) { o0 = v->uv[0]; o1 = v->uv[1]; o2 = v->uv[2]; return true; } return false; }
+static bool _RenderMaterial_GetUnsigned4(gs::render::Material *m, const char *name, unsigned int &o0, unsigned int &o1, unsigned int &o2, unsigned int &o3) { if (auto v = m->GetValue(name)) { o0 = v->uv[0]; o1 = v->uv[1]; o2 = v->uv[2]; o3 = v->uv[3]; return true; } return false; }
+
+static bool _RenderMaterial_GetTexture(gs::render::Material *m, const char *name, std::shared_ptr<gs::gpu::Texture> &o) { if (auto v = m->GetValue(name)) { o = v->texture; return true; } return false; }
+
+static bool _RenderMaterial_SetFloat(gs::render::Material *m, const char *name, float o0) { if (auto v = m->GetValue(name)) { v->fv[0] = o0; return true; } return false; }
+static bool _RenderMaterial_SetFloat2(gs::render::Material *m, const char *name, float o0, float o1) { if (auto v = m->GetValue(name)) { v->fv[0] = o0; v->fv[1] = o1; return true; } return false; }
+static bool _RenderMaterial_SetFloat3(gs::render::Material *m, const char *name, float o0, float o1, float o2) { if (auto v = m->GetValue(name)) { v->fv[0] = o0; v->fv[1] = o1; v->fv[2] = o2; return true; } return false; }
+static bool _RenderMaterial_SetFloat4(gs::render::Material *m, const char *name, float o0, float o1, float o2, float o3) { if (auto v = m->GetValue(name)) { v->fv[0] = o0; v->fv[1] = o1; v->fv[2] = o2; v->fv[3] = o3; return true; } return false; }
+
+static bool _RenderMaterial_SetInt(gs::render::Material *m, const char *name, int o0) { if (auto v = m->GetValue(name)) { v->iv[0] = o0; return true; } return false; }
+static bool _RenderMaterial_SetInt2(gs::render::Material *m, const char *name, int o0, int o1) { if (auto v = m->GetValue(name)) { v->iv[0] = o0; v->iv[1] = o1; return true; } return false; }
+static bool _RenderMaterial_SetInt3(gs::render::Material *m, const char *name, int o0, int o1, int o2) { if (auto v = m->GetValue(name)) { v->iv[0] = o0; v->iv[1] = o1; v->iv[2] = o2; return true; } return false; }
+static bool _RenderMaterial_SetInt4(gs::render::Material *m, const char *name, int o0, int o1, int o2, int o3) { if (auto v = m->GetValue(name)) { v->iv[0] = o0; v->iv[1] = o1; v->iv[2] = o2; v->iv[3] = o3; return true; } return false; }
+
+static bool _RenderMaterial_SetUnsigned(gs::render::Material *m, const char *name, unsigned int o0) { if (auto v = m->GetValue(name)) { v->uv[0] = o0; return true; } return false; }
+static bool _RenderMaterial_SetUnsigned2(gs::render::Material *m, const char *name, unsigned int o0, unsigned int o1) { if (auto v = m->GetValue(name)) { v->uv[0] = o0; v->uv[1] = o1; return true; } return false; }
+static bool _RenderMaterial_SetUnsigned3(gs::render::Material *m, const char *name, unsigned int o0, unsigned int o1, unsigned int o2) { if (auto v = m->GetValue(name)) { v->uv[0] = o0; v->uv[1] = o1; v->uv[2] = o2; return true; } return false; }
+static bool _RenderMaterial_SetUnsigned4(gs::render::Material *m, const char *name, int o0, unsigned int o1, unsigned int o2, unsigned int o3) { if (auto v = m->GetValue(name)) { v->uv[0] = o0; v->uv[1] = o1; v->uv[2] = o2; v->uv[3] = o3; return true; } return false; }
+
+static bool _RenderMaterial_SetTexture(gs::render::Material *m, const char *name, std::shared_ptr<gs::gpu::Texture> &o) { if (auto v = m->GetValue(name)) { v->texture = o; return true; } return false; }
+''')
+
+	# 
+	gen.bind_method(shared_material, 'GetFloat', 'bool', ['const char *name', 'float &o0'], {'proxy': None, 'arg_out': ['o0'], 'route': lambda args: '_RenderMaterial_GetFloat(%s);' % (', '.join(args))})
+	gen.bind_method(shared_material, 'GetFloat2', 'bool', ['const char *name', 'float &o0', 'float &o1'], {'proxy': None, 'arg_out': ['o0', 'o1'], 'route': lambda args: '_RenderMaterial_GetFloat2(%s);' % (', '.join(args))})
+	gen.bind_method(shared_material, 'GetFloat3', 'bool', ['const char *name', 'float &o0', 'float &o1', 'float &o2'], {'proxy': None, 'arg_out': ['o0', 'o1', 'o2'], 'route': lambda args: '_RenderMaterial_GetFloat3(%s);' % (', '.join(args))})
+	gen.bind_method(shared_material, 'GetFloat4', 'bool', ['const char *name', 'float &o0', 'float &o1', 'float &o2', 'float &o3'], {'proxy': None, 'arg_out': ['o0', 'o1', 'o2', 'o3'], 'route': lambda args: '_RenderMaterial_GetFloat4(%s);' % (', '.join(args))})
+
+	gen.bind_method(shared_material, 'GetInt', 'bool', ['const char *name', 'int &o0'], {'proxy': None, 'arg_out': ['o0'], 'route': lambda args: '_RenderMaterial_GetInt(%s);' % (', '.join(args))})
+	gen.bind_method(shared_material, 'GetInt2', 'bool', ['const char *name', 'int &o0', 'int &o1'], {'proxy': None, 'arg_out': ['o0', 'o1'], 'route': lambda args: '_RenderMaterial_GetInt2(%s);' % (', '.join(args))})
+	gen.bind_method(shared_material, 'GetInt3', 'bool', ['const char *name', 'int &o0', 'int &o1', 'int &o2'], {'proxy': None, 'arg_out': ['o0', 'o1', 'o2'], 'route': lambda args: '_RenderMaterial_GetInt3(%s);' % (', '.join(args))})
+	gen.bind_method(shared_material, 'GetInt4', 'bool', ['const char *name', 'int &o0', 'int &o1', 'int &o2', 'int &o3'], {'proxy': None, 'arg_out': ['o0', 'o1', 'o2', 'o3'], 'route': lambda args: '_RenderMaterial_GetInt4(%s);' % (', '.join(args))})
+
+	gen.bind_method(shared_material, 'GetUnsigned', 'bool', ['const char *name', 'unsigned int &o0'], {'proxy': None, 'arg_out': ['o0'], 'route': lambda args: '_RenderMaterial_GetUnsigned(%s);' % (', '.join(args))})
+	gen.bind_method(shared_material, 'GetUnsigned2', 'bool', ['const char *name', 'unsigned int &o0', 'unsigned int &o1'], {'proxy': None, 'arg_out': ['o0', 'o1'], 'route': lambda args: '_RenderMaterial_GetUnsigned2(%s);' % (', '.join(args))})
+	gen.bind_method(shared_material, 'GetUnsigned3', 'bool', ['const char *name', 'unsigned int &o0', 'unsigned int &o1', 'unsigned int &o2'], {'proxy': None, 'arg_out': ['o0', 'o1', 'o2'], 'route': lambda args: '_RenderMaterial_GetUnsigned3(%s);' % (', '.join(args))})
+	gen.bind_method(shared_material, 'GetUnsigned4', 'bool', ['const char *name', 'unsigned int &o0', 'unsigned int &o1', 'unsigned int &o2', 'unsigned int &o3'], {'proxy': None, 'arg_out': ['o0', 'o1', 'o2', 'o3'], 'route': lambda args: '_RenderMaterial_GetUnsigned4(%s);' % (', '.join(args))})
+
+	gen.bind_method(shared_material, 'GetTexture', 'bool', ['const char *name', 'std::shared_ptr<gs::gpu::Texture> &o'], {'proxy': None, 'arg_out': ['o'], 'route': lambda args: '_RenderMaterial_GetTexture(%s);' % (', '.join(args))})
+
+	gen.bind_method(shared_material, 'SetFloat', 'bool', ['const char *name', 'float o0'], {'proxy': None, 'route': lambda args: '_RenderMaterial_SetFloat(%s);' % (', '.join(args))})
+	gen.bind_method(shared_material, 'SetFloat2', 'bool', ['const char *name', 'float o0', 'float o1'], {'proxy': None, 'route': lambda args: '_RenderMaterial_SetFloat2(%s);' % (', '.join(args))})
+	gen.bind_method(shared_material, 'SetFloat3', 'bool', ['const char *name', 'float o0', 'float o1', 'float o2'], {'proxy': None, 'route': lambda args: '_RenderMaterial_SetFloat3(%s);' % (', '.join(args))})
+	gen.bind_method(shared_material, 'SetFloat4', 'bool', ['const char *name', 'float o0', 'float o1', 'float o2', 'float o3'], {'proxy': None, 'route': lambda args: '_RenderMaterial_SetFloat4(%s);' % (', '.join(args))})
+
+	gen.bind_method(shared_material, 'SetInt', 'bool', ['const char *name', 'int o0'], {'proxy': None, 'route': lambda args: '_RenderMaterial_SetInt(%s);' % (', '.join(args))})
+	gen.bind_method(shared_material, 'SetInt2', 'bool', ['const char *name', 'int o0', 'int o1'], {'proxy': None, 'route': lambda args: '_RenderMaterial_SetInt2(%s);' % (', '.join(args))})
+	gen.bind_method(shared_material, 'SetInt3', 'bool', ['const char *name', 'int o0', 'int o1', 'int o2'], {'proxy': None, 'route': lambda args: '_RenderMaterial_SetInt3(%s);' % (', '.join(args))})
+	gen.bind_method(shared_material, 'SetInt4', 'bool', ['const char *name', 'int o0', 'int o1', 'int o2', 'int o3'], {'proxy': None, 'route': lambda args: '_RenderMaterial_SetInt4(%s);' % (', '.join(args))})
+
+	gen.bind_method(shared_material, 'SetUnsigned', 'bool', ['const char *name', 'unsigned int o0'], {'proxy': None, 'route': lambda args: '_RenderMaterial_SetUnsigned(%s);' % (', '.join(args))})
+	gen.bind_method(shared_material, 'SetUnsigned2', 'bool', ['const char *name', 'unsigned int o0', 'unsigned int o1'], {'proxy': None, 'route': lambda args: '_RenderMaterial_SetUnsigned2(%s);' % (', '.join(args))})
+	gen.bind_method(shared_material, 'SetUnsigned3', 'bool', ['const char *name', 'unsigned int o0', 'unsigned int o1', 'unsigned int o2'], {'proxy': None, 'route': lambda args: '_RenderMaterial_SetUnsigned3(%s);' % (', '.join(args))})
+	gen.bind_method(shared_material, 'SetUnsigned4', 'bool', ['const char *name', 'unsigned int o0', 'unsigned int o1', 'unsigned int o2', 'unsigned int o3'], {'proxy': None, 'route': lambda args: '_RenderMaterial_SetUnsigned4(%s);' % (', '.join(args))})
+
+	gen.bind_method(shared_material, 'SetTexture', 'bool', ['const char *name', 'std::shared_ptr<gs::gpu::Texture> &o'], {'proxy': None, 'route': lambda args: '_RenderMaterial_SetTexture(%s);' % (', '.join(args))})
+
 	gen.end_class(shared_material)
 
 	# gs::render::Geometry
@@ -1535,6 +1816,8 @@ def bind_render(gen):
 		([], ['proxy']),
 		(['const char *name'], ['proxy']),
 	])
+	gen.bind_method(shared_geometry, 'SetMaterial', 'bool', ['gs::uint index', 'std::shared_ptr<gs::render::Material> material'], ['proxy'])
+
 	gen.end_class(shared_geometry)
 
 	# gs::render::Statistics
@@ -1552,11 +1835,6 @@ def bind_render(gen):
 	# gs::render::RenderSystem
 	gen.bind_named_enum('gs::render::RenderSystem::RenderTechnique', ['TechniqueForward', 'TechniqueDeferred'], prefix='Render')
 	lib.stl.bind_future_T(gen, 'gs::render::RenderSystem::RenderTechnique', 'FutureRenderTechnique')
-
-	render_system = gen.begin_class('gs::render::RenderSystem', bound_name='RenderSystem_nobind', noncopyable=True, nobind=True)
-	gen.end_class(render_system)
-
-	shared_render_system = gen.begin_class('std::shared_ptr<gs::render::RenderSystem>', bound_name='RenderSystem', features={'proxy': lib.stl.SharedPtrProxyFeature(render_system)})
 
 	gen.bind_constructor(shared_render_system, [], ['proxy'])
 
@@ -1754,41 +2032,41 @@ static void RenderSystemDrawSpriteAuto_wrapper(gs::render::RenderSystem *render_
 	shared_render_system_async = gen.begin_class('std::shared_ptr<gs::render::RenderSystemAsync>', bound_name='RenderSystemAsync', features={'proxy': lib.stl.SharedPtrProxyFeature(render_system_async)})
 	gen.bind_constructor(shared_render_system_async, ['std::shared_ptr<gs::render::RenderSystem> render_system'], ['proxy'])
 
-	gen.bind_method(shared_render_system, 'GetRenderSystem', 'const std::shared_ptr<gs::render::RenderSystem> &', [], ['proxy'])
+	gen.bind_method(shared_render_system_async, 'GetRenderSystem', 'const std::shared_ptr<gs::render::RenderSystem> &', [], ['proxy'])
 
-	gen.bind_method(shared_render_system, 'GetRenderTechnique', 'std::future<gs::render::RenderSystem::RenderTechnique>', [], ['proxy'])
-	gen.bind_method(shared_render_system, 'SetRenderTechnique', 'void', ['gs::render::RenderSystem::RenderTechnique technique'], ['proxy'])
+	gen.bind_method(shared_render_system_async, 'GetRenderTechnique', 'std::future<gs::render::RenderSystem::RenderTechnique>', [], ['proxy'])
+	gen.bind_method(shared_render_system_async, 'SetRenderTechnique', 'void', ['gs::render::RenderSystem::RenderTechnique technique'], ['proxy'])
 
-	gen.bind_method(shared_render_system, 'GetInternalResolution', 'std::future<gs::tVector2<int>>', [], ['proxy'])
-	gen.bind_method(shared_render_system, 'SetInternalResolution', 'void', ['const gs::tVector2<int> &resolution'], ['proxy'])
+	gen.bind_method(shared_render_system_async, 'GetInternalResolution', 'std::future<gs::tVector2<int>>', [], ['proxy'])
+	gen.bind_method(shared_render_system_async, 'SetInternalResolution', 'void', ['const gs::tVector2<int> &resolution'], ['proxy'])
 
-	gen.bind_method(shared_render_system, 'GetViewportToInternalResolutionRatio', 'std::future<gs::tVector2<float>>', [], ['proxy'])
+	gen.bind_method(shared_render_system_async, 'GetViewportToInternalResolutionRatio', 'std::future<gs::tVector2<float>>', [], ['proxy'])
 
-	gen.bind_method(shared_render_system, 'SetAA', 'void', ['uint sample_count'], ['proxy'])
+	gen.bind_method(shared_render_system_async, 'SetAA', 'void', ['gs::uint sample_count'], ['proxy'])
 
-	gen.bind_method(shared_render_system, 'SetView', 'void', ['const gs::Matrix4 &view', 'const gs::Matrix44 &projection'], ['proxy'])
+	gen.bind_method(shared_render_system_async, 'SetView', 'void', ['const gs::Matrix4 &view', 'const gs::Matrix44 &projection'], ['proxy'])
 
-	gen.bind_method(shared_render_system, 'PurgeCache', 'std::future<uint>', [], ['proxy'])
-	gen.bind_method(shared_render_system, 'RefreshCacheEntry', 'void', ['const char *name'], ['proxy'])
+	gen.bind_method(shared_render_system_async, 'PurgeCache', 'std::future<gs::uint>', [], ['proxy'])
+	gen.bind_method(shared_render_system_async, 'RefreshCacheEntry', 'void', ['const char *name'], ['proxy'])
 
-	gen.bind_method(shared_render_system, 'DrawRasterFontBatch', 'void', [], ['proxy'])
+	gen.bind_method(shared_render_system_async, 'DrawRasterFontBatch', 'void', [], ['proxy'])
 
-	gen.bind_method(shared_render_system, 'HasMaterial', 'std::shared_ptr<gs::render::Material>', ['const char *name'], ['proxy'])
-	gen.bind_method_overloads(shared_render_system, 'LoadMaterial', [
+	gen.bind_method(shared_render_system_async, 'HasMaterial', 'std::shared_ptr<gs::render::Material>', ['const char *name'], ['proxy'])
+	gen.bind_method_overloads(shared_render_system_async, 'LoadMaterial', [
 		('std::shared_ptr<gs::render::Material>', ['const char *name', '?bool use_cache'], ['proxy']),
 		('std::shared_ptr<gs::render::Material>', ['const char *name', 'const char *source', '?gs::DocumentFormat format', '?bool use_cache'], ['proxy'])
 	])
-	gen.bind_method(shared_render_system, 'CreateMaterial', 'std::shared_ptr<gs::render::Material>', ['const std::shared_ptr<gs::core::Material> &material', '?bool use_cache'], ['proxy'])
+	gen.bind_method(shared_render_system_async, 'CreateMaterial', 'std::shared_ptr<gs::render::Material>', ['const std::shared_ptr<gs::core::Material> &material', '?bool use_cache'], ['proxy'])
 
-	gen.bind_method(shared_render_system, 'HasGeometry', 'std::shared_ptr<gs::render::Geometry>', ['const char *name'], ['proxy'])
-	gen.bind_method_overloads(shared_render_system, 'LoadGeometry', [
+	gen.bind_method(shared_render_system_async, 'HasGeometry', 'std::shared_ptr<gs::render::Geometry>', ['const char *name'], ['proxy'])
+	gen.bind_method_overloads(shared_render_system_async, 'LoadGeometry', [
 		('std::shared_ptr<gs::render::Geometry>', ['const char *name', '?bool use_cache'], ['proxy']),
 		('std::shared_ptr<gs::render::Geometry>', ['const char *name', 'const char *source', '?gs::DocumentFormat format', '?bool use_cache'], ['proxy'])
 	])
-	gen.bind_method(shared_render_system, 'CreateGeometry', 'std::shared_ptr<gs::render::Geometry>', ['const std::shared_ptr<gs::core::Geometry> &geometry', '?bool use_cache'], ['proxy'])
+	gen.bind_method(shared_render_system_async, 'CreateGeometry', 'std::shared_ptr<gs::render::Geometry>', ['const std::shared_ptr<gs::core::Geometry> &geometry', '?bool use_cache'], ['proxy'])
 
-	gen.bind_method(shared_render_system, 'HasSurfaceShader', 'std::shared_ptr<gs::render::SurfaceShader>', ['const char *name'], ['proxy'])
-	gen.bind_method_overloads(shared_render_system, 'LoadSurfaceShader', 'std::shared_ptr<gs::render::SurfaceShader>', ['const char *name', '?bool use_cache'], ['proxy'])
+	gen.bind_method(shared_render_system_async, 'HasSurfaceShader', 'std::shared_ptr<gs::render::SurfaceShader>', ['const char *name'], ['proxy'])
+	gen.bind_method(shared_render_system_async, 'LoadSurfaceShader', 'std::shared_ptr<gs::render::SurfaceShader>', ['const char *name', '?bool use_cache'], ['proxy'])
 
 	"""
 	void DrawLine(uint count, const std::vector<Vector3> &vtx, const std::vector<Color> *color = nullptr, const std::vector<Vector2> *uv = nullptr) {
@@ -1799,15 +2077,15 @@ static void RenderSystemDrawSpriteAuto_wrapper(gs::render::RenderSystem *render_
 	void DrawSpriteAuto(uint count, const std::vector<Vector3> &vtx, const std::vector<Color> *color = nullptr, const std::vector<float> *size = nullptr, gpu::sTexture texture = nullptr, float global_size = 1.f) {
 	"""
 
-	gen.bind_method(shared_render_system, 'BeginDrawFrame', 'void', [], ['proxy'])
-	gen.bind_method(shared_render_system, 'EndDrawFrame', 'void', [], ['proxy'])
+	gen.bind_method(shared_render_system_async, 'BeginDrawFrame', 'void', [], ['proxy'])
+	gen.bind_method(shared_render_system_async, 'EndDrawFrame', 'void', [], ['proxy'])
 
-	#gen.bind_method(shared_render_system, 'DrawRenderablesPicking', 'std::future<bool>', [], ['proxy'])
+	#gen.bind_method(shared_render_system_async, 'DrawRenderablesPicking', 'std::future<bool>', [], ['proxy'])
 
-	gen.bind_method(shared_render_system, 'Initialize', 'std::future<bool>', ['std::shared_ptr<gs::gpu::Renderer> renderer', '?bool support_3d'], ['proxy'])
-	gen.bind_method(shared_render_system, 'Free', 'std::future<void>', [], ['proxy'])
+	gen.bind_method(shared_render_system_async, 'Initialize', 'std::future<bool>', ['std::shared_ptr<gs::gpu::Renderer> renderer', '?bool support_3d'], ['proxy'])
+	gen.bind_method(shared_render_system_async, 'Free', 'std::future<void>', [], ['proxy'])
 
-	gen.bind_method(shared_render_system, 'SetShaderEngineValues', 'void', [], ['proxy'])
+	gen.bind_method(shared_render_system_async, 'SetShaderEngineValues', 'void', [], ['proxy'])
 
 	gen.end_class(shared_render_system_async)
 
@@ -2628,6 +2906,70 @@ def bind_picture(gen):
 	])
 
 	gen.end_class(shared_picture)
+
+
+def bind_document(gen):
+	gen.add_include('foundation/document.h')
+
+	gen.bind_named_enum('gs::DocumentFormat', ['DocumentFormatUnknown', 'DocumentFormatXML', 'DocumentFormatJSON', 'DocumentFormatBinary'])
+
+	doc_reader = gen.begin_class('gs::IDocumentReader', noncopyable=True)
+	gen.bind_method(doc_reader, 'GetScopeName', 'std::string', [])
+	gen.bind_method(doc_reader, 'GetChildCount', 'gs::uint', ['?const char *name'])
+
+	gen.bind_method(doc_reader, 'EnterScope', 'bool', ['const char *name'])
+	gen.bind_method(doc_reader, 'EnterScopeMultiple', 'bool', ['const char *name'])
+	gen.bind_method(doc_reader, 'ExitScopeMultiple', 'bool', ['gs::uint count'])
+
+	gen.bind_method(doc_reader, 'EnterFirstChild', 'bool', [])
+	gen.bind_method(doc_reader, 'EnterSibling', 'bool', [])
+	gen.bind_method(doc_reader, 'ExitScope', 'bool', [])
+
+	gen.bind_method(doc_reader, 'Read', 'bool', ['const char *name', 'bool &v'], {'arg_out': ['v']}, 'ReadBool')
+	gen.bind_method(doc_reader, 'Read', 'bool', ['const char *name', 'char &v'], {'arg_out': ['v']}, 'ReadInt8')
+	gen.bind_method(doc_reader, 'Read', 'bool', ['const char *name', 'uint8_t &v'], {'arg_out': ['v']}, 'ReadUInt8')
+	gen.bind_method(doc_reader, 'Read', 'bool', ['const char *name', 'short &v'], {'arg_out': ['v']}, 'ReadInt16')
+	gen.bind_method(doc_reader, 'Read', 'bool', ['const char *name', 'uint16_t &v'], {'arg_out': ['v']}, 'ReadUInt16')
+	gen.bind_method(doc_reader, 'Read', 'bool', ['const char *name', 'int32_t &v'], {'arg_out': ['v']}, 'ReadInt32')
+	gen.bind_method(doc_reader, 'Read', 'bool', ['const char *name', 'uint32_t &v'], {'arg_out': ['v']}, 'ReadUInt32')
+	gen.bind_method(doc_reader, 'Read', 'bool', ['const char *name', 'float &v'], {'arg_out': ['v']}, 'ReadFloat')
+	gen.bind_method(doc_reader, 'Read', 'bool', ['const char *name', 'std::string &v'], {'arg_out': ['v']}, 'ReadString')
+
+	gen.bind_method(doc_reader, 'HasBinarySupport', 'bool', [])
+	#virtual bool Read(const char *, BinaryBlob &) { return false; }
+
+	gen.bind_method(doc_reader, 'Load', 'bool', ['const char *path'])
+	gen.end_class(doc_reader)
+
+	#
+	doc_writer = gen.begin_class('gs::IDocumentWriter', noncopyable=True)
+
+	gen.bind_method(doc_writer, 'EnterScope', 'bool', ['const char *name'])
+	gen.bind_method(doc_writer, 'EnterScopeMultiple', 'bool', ['const char *name'])
+	gen.bind_method(doc_writer, 'ExitScopeMultiple', 'bool', ['gs::uint count'])
+	gen.bind_method(doc_writer, 'ExitScope', 'bool', [])
+
+	gen.bind_method(doc_writer, 'Write', 'bool', ['const char *name', 'bool v'], [], 'WriteBool')
+	gen.bind_method(doc_writer, 'Write', 'bool', ['const char *name', 'char v'], [], 'WriteInt8')
+	gen.bind_method(doc_writer, 'Write', 'bool', ['const char *name', 'uint8_t v'], [], 'WriteUInt8')
+	gen.bind_method(doc_writer, 'Write', 'bool', ['const char *name', 'short v'], [], 'WriteInt16')
+	gen.bind_method(doc_writer, 'Write', 'bool', ['const char *name', 'uint16_t v'], [], 'WriteUInt16')
+	gen.bind_method(doc_writer, 'Write', 'bool', ['const char *name', 'int32_t v'], [], 'WriteInt32')
+	gen.bind_method(doc_writer, 'Write', 'bool', ['const char *name', 'uint32_t v'], [], 'WriteUInt32')
+	gen.bind_method(doc_writer, 'Write', 'bool', ['const char *name', 'float v'], [], 'WriteFloat')
+	gen.bind_method(doc_writer, 'Write', 'bool', ['const char *name', 'const char *v'], [], 'WriteString')
+
+	gen.bind_method(doc_writer, 'HasBinarySupport', 'bool', [])
+	#virtual bool Write(const char *, const BinaryBlob &) { return false; }
+
+	gen.bind_method(doc_writer, 'Save', 'bool', ['const char *path'])
+	gen.end_class(doc_writer)
+
+	#
+	gen.bind_function('gs::GetDocumentReadFormat', 'gs::DocumentFormat', ['const char *path'])
+	gen.bind_function('gs::GetDocumentWriteFormat', 'gs::DocumentFormat', ['const char *path'])
+
+	gen.bind_function('gs::GetDocumentFormatFromString', 'gs::DocumentFormat', ['const std::string &document'])
 
 
 def bind_math(gen):
@@ -3866,7 +4208,19 @@ void InitializePluginsDefaultSearchPath(lua_State *L) {
 	lib.stl.bind_future_T(gen, 'size_t', 'FutureSize')
 
 	bind_std_vector(gen, gen.get_conv('int'))
+	bind_std_vector(gen, gen.get_conv('gs::uint'))
+
+	bind_std_vector(gen, gen.get_conv('int8_t'))
+	bind_std_vector(gen, gen.get_conv('int16_t'))
+	bind_std_vector(gen, gen.get_conv('int32_t'))
+	bind_std_vector(gen, gen.get_conv('int64_t'))
+	bind_std_vector(gen, gen.get_conv('uint8_t'))
+	bind_std_vector(gen, gen.get_conv('uint16_t'))
+	bind_std_vector(gen, gen.get_conv('uint32_t'))
+	bind_std_vector(gen, gen.get_conv('uint64_t'))
 	bind_std_vector(gen, gen.get_conv('float'))
+	bind_std_vector(gen, gen.get_conv('double'))
+
 	bind_std_vector(gen, gen.get_conv('std::string'))
 
 	bind_binary_blob(gen)
@@ -3878,6 +4232,7 @@ void InitializePluginsDefaultSearchPath(lua_State *L) {
 	bind_color(gen)
 	bind_font_engine(gen)
 	bind_picture(gen)
+	bind_document(gen)
 	bind_engine(gen)
 	bind_plugins(gen)
 	bind_filesystem(gen)
