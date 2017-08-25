@@ -333,6 +333,90 @@ def bind_window_system(gen):
 	lib.stl.bind_future_T(gen, 'gs::Surface', 'FutureSurface')
 
 
+def bind_type_value(gen):
+	gen.add_include('foundation/reflection.h')
+	gen.add_include('foundation/base_type_reflection.h')
+
+	if gen.get_language() == 'CPython':
+		class PythonTypeValueConverter(lang.cpython.PythonTypeConverterCommon):
+			def get_type_glue(self, gen, module_name):
+				check = '''\
+bool check_TypeValue(PyObject *o) {
+	using namespace gs;
+	return true;
+}
+'''
+				to_c = '''\
+void to_c_TypeValue(PyObject *o, void *obj) {
+	using namespace gs;
+
+	TypeValue &value = *(TypeValue *)obj;
+
+	if (check_bool(o)) {
+		bool v;
+		to_c_bool(o, &v);
+		value = MakeTypeValue(v);
+	} else if (check_int(o)) {
+		int v;
+		to_c_int(o, &v);
+		value = MakeTypeValue(v);
+	} else if (check_float(o)) {
+		float v;
+		to_c_float(o, &v);
+		value = MakeTypeValue(v);
+	} else if (check_string(o)) {
+		std::string v;
+		to_c_string(o, &v);
+		value = MakeTypeValue(v);
+	} else if (wrapped_Object *w = cast_to_wrapped_Object_safe(o)) {
+		//gs::Type *type = type_tag_to_reflection_type(w->type_tag); // TODO
+		//value.Set(type, w->obj);
+	}
+}
+'''
+				from_c = '''\
+PyObject *from_c_TypeValue(void *obj, OwnershipPolicy policy) {
+	using namespace gs;
+
+	TypeValue &value = *(TypeValue *)obj;
+
+	static Type *bool_type = g_type_registry.get().GetType("bool");
+	static Type *int_type = g_type_registry.get().GetType("int");
+	static Type *float_type = g_type_registry.get().GetType("float");
+	static Type *string_type = g_type_registry.get().GetType("string");
+
+	const Type *type = value.GetType();
+
+	if (type == bool_type) {
+		return from_c_bool(value.GetData(), policy);
+	} else if (type == int_type) {
+		return from_c_int(value.GetData(), policy);
+	} else if (type == float_type) {
+		return from_c_float(value.GetData(), policy);
+	} else if (type == string_type) {
+		return from_c_string(value.GetData(), policy);
+	}
+
+//	type_tag_info *info = get_type_tag_info(type_tag); // TODO
+
+//	if (!info) {
+	PyErr_SetString(PyExc_RuntimeError, "unsupported TypeValue conversion");
+	return NULL;
+//	}
+//	return (*info->from_c)(obj, policy);
+//	return NULL;
+}
+'''
+				return check + to_c + from_c
+
+		type_value = gen.bind_type(PythonTypeValueConverter('gs::TypeValue'))
+	else:
+		type_value = gen.begin_class('gs::TypeValue')
+		gen.end_class(type_value)
+
+	bind_std_vector(gen, type_value)
+
+
 def bind_core(gen):
 	# gs::core::Shader
 	gen.add_include('engine/shader.h')
@@ -884,6 +968,41 @@ static void _SimpleGraphicSceneOverlay_Quad(gs::core::SimpleGraphicSceneOverlay 
 	decl_get_set_method(shared_terrain, 'bool', 'Wireframe', 'wireframe', ['proxy'])
 
 	gen.end_class(shared_terrain)
+
+	# gs::core::Script
+	script = gen.begin_class('gs::core::Script', bound_name='Script_nobind', noncopyable=True, nobind=True)
+	gen.end_class(script)
+
+	shared_script = gen.begin_class('std::shared_ptr<gs::core::Script>', bound_name='Script', features={'proxy': lib.stl.SharedPtrProxyFeature(script)})
+	gen.add_base(shared_script, shared_component)
+
+	gen.bind_method(shared_script, 'BlockingGet', 'gs::TypeValue', ['const char *name'], ['proxy'])
+
+	gen.bind_method(shared_script, 'Get', 'gs::TypeValue', ['const char *name'], ['proxy'])
+	gen.bind_method(shared_script, 'Set', 'void', ['const char *name', 'const gs::TypeValue &value'], ['proxy'])
+
+	gen.bind_method(shared_script, 'Expose', 'void', ['const char *name', 'const gs::TypeValue &value'], ['proxy'])
+	gen.bind_method(shared_script, 'Call', 'void', ['const char *name', 'const std::vector<gs::TypeValue> &parms'], ['proxy'])
+
+	gen.end_class(shared_script)
+
+	# gs::core::RenderScript
+	render_script = gen.begin_class('gs::core::RenderScript', bound_name='RenderScript_nobind', noncopyable=True, nobind=True)
+	gen.end_class(render_script)
+
+	shared_render_script = gen.begin_class('std::shared_ptr<gs::core::RenderScript>', bound_name='RenderScript', features={'proxy': lib.stl.SharedPtrProxyFeature(render_script)})
+	gen.add_base(shared_render_script, shared_script)
+	gen.bind_constructor(shared_render_script, ['?const char *path'], ['proxy'])
+	gen.end_class(shared_render_script)
+
+	# gs::core::LogicScript
+	logic_script = gen.begin_class('gs::core::LogicScript', bound_name='LogicScript_nobind', noncopyable=True, nobind=True)
+	gen.end_class(logic_script)
+
+	shared_logic_script = gen.begin_class('std::shared_ptr<gs::core::LogicScript>', bound_name='LogicScript', features={'proxy': lib.stl.SharedPtrProxyFeature(logic_script)})
+	gen.add_base(shared_logic_script, shared_script)
+	gen.bind_constructor(shared_logic_script, ['?const char *path'], ['proxy'])
+	gen.end_class(shared_logic_script)
 
 	# gs::core::Node
 	gen.bind_constructor_overloads(shared_node, [
@@ -4203,7 +4322,7 @@ static gs::Vector2 _ImGuiCalcTextSize(const char *text, bool hide_text_after_dou
 def bind_extras(gen):
 	gen.add_include('thread', True)
 
-	gen.insert_code('static void SleepThisThread(gs::time_ns duration) { std::this_thread::sleep_for(gs::time_to_chrono(duration)); }\n\n')
+	gen.insert_binding_code('static void SleepThisThread(gs::time_ns duration) { std::this_thread::sleep_for(gs::time_to_chrono(duration)); }\n\n')
 	gen.bind_function('SleepThisThread', 'void', ['gs::time_ns duration'], bound_name='Sleep')
 
 
@@ -4217,7 +4336,7 @@ def bind_gs(gen):
 	gen.add_include('engine/engine_factories.h')
 
 	if gen.get_language() == 'CPython':
-		gen.insert_code('''
+		gen.insert_binding_code('''
 // Add the Python interpreter module search paths to the engine default plugins search path
 void InitializePluginsDefaultSearchPath() {
 	if (PyObject *sys_path = PySys_GetObject("path")) {
@@ -4318,6 +4437,7 @@ void InitializePluginsDefaultSearchPath(lua_State *L) {
 	bind_engine(gen)
 	bind_plugins(gen)
 	bind_filesystem(gen)
+	bind_type_value(gen)
 	bind_core(gen)
 	bind_create_geometry(gen)
 	bind_gpu(gen)

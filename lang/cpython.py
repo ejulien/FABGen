@@ -145,7 +145,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		out += 'static PyObject *%s_tp_richcompare(PyObject *o1, PyObject *o2, int op) {\n' % self.bound_name
 		for i, ops in enumerate(self.comparison_ops):
 			out += "	if (op == %s) return %s(o1, o2);\n" % (op_to_py_op[ops['op']], ops['proxy_name'])
-		out += '	return Py_NotImplemented;\n'
+		out += '	Py_RETURN_NOTIMPLEMENTED;\n'
 		out += '}\n\n'
 
 		# slots
@@ -304,6 +304,19 @@ class CPythonGenerator(gen.FABGen):
 
 	def start(self, module_name):
 		super().start(module_name)
+
+		self._source += '''\
+struct type_tag_info {
+	const char *type_tag;
+	const char *c_type;
+
+	bool (*check)(PyObject *o);
+	void (*to_c)(PyObject *o, void *obj);
+	PyObject *(*from_c)(void *obj, OwnershipPolicy);
+};
+\n'''
+
+		self._source += 'static type_tag_info *get_type_tag_info(const char *type_tag);\n\n'
 
 		self._source += '''\
 typedef struct {
@@ -508,6 +521,24 @@ static inline bool CheckArgsTuple(PyObject *args) {
 		methods_table = self.output_module_functions_table()
 		module_def = self.output_module_definition(methods_table)
 
+		# typetag info structure
+		self._source += 'static type_tag_info type_tag_infos[] = {\n'
+		entries = []
+		for type in self._bound_types:
+			entries.append('	{%s, "%s", check_%s, to_c_%s, from_c_%s}' % (type.type_tag, str(type.ctype), type.bound_name, type.bound_name, type.bound_name))
+		entries.append('	{nullptr, nullptr, nullptr, nullptr, nullptr}')
+		self._source += ',\n'.join(entries) + '\n'
+		self._source += '};\n\n'
+
+		self._source += '''
+static type_tag_info *get_type_tag_info(const char *type_tag) {
+	for (type_tag_info *info = type_tag_infos; info->type_tag != nullptr; ++info)
+		if (info->type_tag == type_tag)
+			return info;
+	return NULL;
+}\n\n'''
+
+		# generic finalization
 		super().finalize()
 
 		self.output_module_init_function(module_def)
