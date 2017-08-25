@@ -627,6 +627,20 @@ def bind_create_geometry(gen):
 	])
 
 
+def bind_frame_renderer(gen):
+	frame_renderer = gen.begin_class('gs::core::IFrameRenderer', bound_name='FrameRenderer_nobind', noncopyable=True, nobind=True)
+	gen.end_class(frame_renderer)
+
+	shared_frame_renderer = gen.begin_class('std::shared_ptr<gs::core::IFrameRenderer>', bound_name='FrameRenderer', features={'proxy': lib.stl.SharedPtrProxyFeature(frame_renderer)})
+	gen.end_class(shared_frame_renderer)
+
+	gen.insert_binding_code('''static std::shared_ptr<gs::core::IFrameRenderer> CreateFrameRenderer(const char *name) { return gs::core::g_frame_renderer_factory.get().Instantiate(name); }
+static std::shared_ptr<gs::core::IFrameRenderer> CreateFrameRenderer() { return gs::core::g_frame_renderer_factory.get().Instantiate(); }
+	''', 'Frame renderer custom API')
+
+	gen.bind_function('CreateFrameRenderer', 'std::shared_ptr<gs::core::IFrameRenderer>', ['?const char *name'], {'check_rval': check_rval_lambda(gen, 'CreateFrameRenderer failed')}, 'GetFrameRenderer')
+
+
 def bind_scene(gen):
 	gen.add_include('engine/scene.h')
 	gen.add_include('engine/node.h')
@@ -1428,6 +1442,8 @@ def bind_gpu(gen):
 	gen.add_base(shared_shader, shared_resource)
 	gen.end_class(shared_shader)
 
+	lib.stl.bind_future_T(gen, 'std::shared_ptr<gs::gpu::Shader>', 'FutureGpuShader')
+
 	shader_value = gen.begin_class('gs::gpu::ShaderValue', bound_name='GpuShaderValue')
 	gen.bind_members(shader_value, ['std::shared_ptr<gs::gpu::Texture> texture', 'gs::core::TextureUnitConfig tex_unit_cfg'])
 	gen.end_class(shader_value)
@@ -1801,6 +1817,27 @@ static std::shared_ptr<gs::gpu::Renderer> CreateRenderer() { return gs::core::g_
 		('std::shared_ptr<gs::gpu::Texture>', ['const char *path', 'bool use_cache'], ['proxy'])
 	])
 	gen.bind_method(shared_renderer_async, 'GetNativeTextureExt', 'const char *', [], ['proxy'])
+
+	#
+	gen.bind_method(shared_renderer_async, 'SetFillMode', 'void', ['gs::gpu::Renderer::FillMode fill_mode'], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'SetCullFunc', 'void', ['gs::gpu::Renderer::CullFunc cull_mode'], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'EnableCulling', 'void', ['bool enable'], ['proxy'])
+
+	gen.bind_method(shared_renderer_async, 'SetDepthFunc', 'void', ['gs::gpu::Renderer::DepthFunc depth_func'], ['proxy'])
+
+	gen.bind_method(shared_renderer_async, 'EnableDepthTest', 'void', ['bool enable'], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'EnableDepthWrite', 'void', ['bool enable'], ['proxy'])
+
+	gen.bind_method(shared_renderer_async, 'SetBlendFunc', 'void', ['gs::gpu::Renderer::BlendFunc src_blend', 'gs::gpu::Renderer::BlendFunc dst_blend'], ['proxy'])
+
+	gen.bind_method(shared_renderer_async, 'EnableBlending', 'void', ['bool enable'], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'EnableAlphaToCoverage', 'void', ['bool enable'], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'SetDefaultStates', 'void', [], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'SetIndexSource', 'void', ['?std::shared_ptr<gs::gpu::Buffer> &buffer'], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'SetVertexSource', 'void', ['std::shared_ptr<gs::gpu::Buffer> &buffer', 'const gs::core::VertexLayout &layout'], ['proxy'])
+
+	gen.bind_method(shared_renderer_async, 'GetShader', 'std::future<std::shared_ptr<gs::gpu::Shader>>', [], ['proxy'])
+	gen.bind_method(shared_renderer_async, 'SetShader', 'std::future<bool>', ['std::shared_ptr<gs::gpu::Shader> &shader'], ['proxy'])
 
 	#
 	gen.bind_method(shared_renderer_async, 'NewWindow', 'std::future<gs::Window>', ['int w', 'int h', 'int bpp', 'gs::Window::Visibility visibility'], ['proxy'])
@@ -2424,6 +2461,7 @@ static bool _Plus_RenderInit(gs::Plus *plus, int width, int height, int aa = 1, 
 		('void', [], [])
 	])
 
+	gen.bind_method(plus_conv, 'GetRenderWindowSize', 'gs::tVector2<int>', ['const gs::RenderWindow &window'])
 	gen.bind_method(plus_conv, 'UpdateRenderWindow', 'void', ['const gs::RenderWindow &window'])
 
 	gen.bind_method(plus_conv, 'InitExtern', 'void', ['std::shared_ptr<gs::gpu::Renderer> renderer', 'std::shared_ptr<gs::gpu::RendererAsync> renderer_async', 'std::shared_ptr<gs::render::RenderSystem> render_system', 'std::shared_ptr<gs::render::RenderSystemAsync> render_system_async'])
@@ -3837,10 +3875,7 @@ static size_t AudioData_GetFrameToBinaryBlob(gs::AudioData *audio_data, gs::Bina
 static std::shared_ptr<gs::audio::Mixer> CreateMixer() { return gs::core::g_mixer_factory.get().Instantiate(); }
 	''', 'Mixer custom API')
 
-	gen.bind_function_overloads('CreateMixer', [
-		('std::shared_ptr<gs::audio::Mixer>', [], {'check_rval': check_rval_lambda(gen, 'CreateMixer failed, was LoadPlugins called succesfully?')}),
-		('std::shared_ptr<gs::audio::Mixer>', ['const char *name'], {'check_rval': check_rval_lambda(gen, 'CreateMixer failed, was LoadPlugins called succesfully?')})
-	])
+	gen.bind_function('CreateMixer', 'std::shared_ptr<gs::audio::Mixer>', ['?const char *name'], {'check_rval': check_rval_lambda(gen, 'CreateMixer failed, was LoadPlugins called succesfully?')})
 
 	# gs::audio::MixerAsync
 	mixer_async = gen.begin_class('gs::audio::MixerAsync', bound_name='MixerAsync_nobind', noncopyable=True, nobind=True)
@@ -3958,6 +3993,21 @@ def bind_imgui(gen):
 
 	gen.bind_named_enum('ImGuiSelectableFlags', ['ImGuiSelectableFlags_DontClosePopups', 'ImGuiSelectableFlags_SpanAllColumns', 'ImGuiSelectableFlags_AllowDoubleClick'], 'int', namespace='')
 
+	gen.bind_named_enum('ImGuiCol', [
+		'ImGuiCol_Text', 'ImGuiCol_TextDisabled', 'ImGuiCol_WindowBg', 'ImGuiCol_ChildWindowBg', 'ImGuiCol_PopupBg', 'ImGuiCol_Border', 'ImGuiCol_BorderShadow',
+		'ImGuiCol_FrameBg', 'ImGuiCol_FrameBgHovered', 'ImGuiCol_FrameBgActive', 'ImGuiCol_TitleBg', 'ImGuiCol_TitleBgCollapsed', 'ImGuiCol_TitleBgActive', 'ImGuiCol_MenuBarBg',
+		'ImGuiCol_ScrollbarBg', 'ImGuiCol_ScrollbarGrab', 'ImGuiCol_ScrollbarGrabHovered', 'ImGuiCol_ScrollbarGrabActive', 'ImGuiCol_ComboBg', 'ImGuiCol_CheckMark',
+		'ImGuiCol_SliderGrab', 'ImGuiCol_SliderGrabActive', 'ImGuiCol_Button', 'ImGuiCol_ButtonHovered', 'ImGuiCol_ButtonActive', 'ImGuiCol_Header', 'ImGuiCol_HeaderHovered',
+		'ImGuiCol_HeaderActive', 'ImGuiCol_Column', 'ImGuiCol_ColumnHovered', 'ImGuiCol_ColumnActive', 'ImGuiCol_ResizeGrip', 'ImGuiCol_ResizeGripHovered', 'ImGuiCol_ResizeGripActive',
+		'ImGuiCol_CloseButton', 'ImGuiCol_CloseButtonHovered', 'ImGuiCol_CloseButtonActive', 'ImGuiCol_PlotLines', 'ImGuiCol_PlotLinesHovered', 'ImGuiCol_PlotHistogram', 'ImGuiCol_PlotHistogramHovered',
+		'ImGuiCol_TextSelectedBg', 'ImGuiCol_ModalWindowDarkening'
+	], 'int', namespace='')
+
+	gen.bind_named_enum('ImGuiStyleVar', [
+		'ImGuiStyleVar_Alpha', 'ImGuiStyleVar_WindowPadding', 'ImGuiStyleVar_WindowRounding', 'ImGuiStyleVar_WindowMinSize', 'ImGuiStyleVar_ChildWindowRounding', 'ImGuiStyleVar_FramePadding',
+		'ImGuiStyleVar_FrameRounding', 'ImGuiStyleVar_ItemSpacing', 'ImGuiStyleVar_ItemInnerSpacing', 'ImGuiStyleVar_IndentSpacing', 'ImGuiStyleVar_GrabMinSize', 'ImGuiStyleVar_ButtonTextAlign'
+	], 'int', namespace='')
+
 	#gen.bind_function('ImGui::GetIO', 'ImGuiIO &', [], bound_name='ImGuiGetIO')
 	#gen.bind_function('ImGui::GetStyle', 'ImGuiStyle &', [], bound_name='ImGuiGetStyle')
 
@@ -3967,37 +4017,37 @@ def bind_imgui(gen):
 
 	gen.bind_function_overloads('ImGui::Begin', [
 		('bool', ['const char *name'], []),
-		('bool', ['const char *name', 'bool *open', 'ImGuiWindowFlags flags'], {'arg_in_out': ['open']}),
-		('bool', ['const char *name', 'bool *open', 'const ImVec2 &size_on_first_use', 'float background_alpha', 'ImGuiWindowFlags flags'], {'arg_in_out': ['open']})
+		('bool', ['const char *name', 'bool *open', 'ImGuiWindowFlags flags'], {'arg_out': ['open']}),
+		('bool', ['const char *name', 'bool *open', 'const gs::tVector2<float> &size_on_first_use', 'float background_alpha', 'ImGuiWindowFlags flags'], {'arg_out': ['open']})
 	], bound_name='ImGuiBegin')
 	gen.bind_function('ImGui::End', 'void', [], bound_name='ImGuiEnd')
 
 	gen.bind_function('ImGui::BeginChild', 'bool', ['const char *id', '?const ImVec2 &size', '?bool border', '?ImGuiWindowFlags extra_flags'], bound_name='ImGuiBeginChild')
 	gen.bind_function('ImGui::EndChild', 'void', [], bound_name='ImGuiEndChild')
 
-	gen.bind_function('ImGui::GetContentRegionMax', 'ImVec2', [], bound_name='ImGuiGetContentRegionMax')
-	gen.bind_function('ImGui::GetContentRegionAvail', 'ImVec2', [], bound_name='ImGuiGetContentRegionAvail')
+	gen.bind_function('ImGui::GetContentRegionMax', 'gs::tVector2<float>', [], bound_name='ImGuiGetContentRegionMax')
+	gen.bind_function('ImGui::GetContentRegionAvail', 'gs::tVector2<float>', [], bound_name='ImGuiGetContentRegionAvail')
 	gen.bind_function('ImGui::GetContentRegionAvailWidth', 'float', [], bound_name='ImGuiGetContentRegionAvailWidth')
-	gen.bind_function('ImGui::GetWindowContentRegionMin', 'ImVec2', [], bound_name='ImGuiGetWindowContentRegionMin')
-	gen.bind_function('ImGui::GetWindowContentRegionMax', 'ImVec2', [], bound_name='ImGuiGetWindowContentRegionMax')
+	gen.bind_function('ImGui::GetWindowContentRegionMin', 'gs::tVector2<float>', [], bound_name='ImGuiGetWindowContentRegionMin')
+	gen.bind_function('ImGui::GetWindowContentRegionMax', 'gs::tVector2<float>', [], bound_name='ImGuiGetWindowContentRegionMax')
 	gen.bind_function('ImGui::GetWindowContentRegionWidth', 'float', [], bound_name='ImGuiGetWindowContentRegionWidth')
 	#IMGUI_API ImDrawList*   GetWindowDrawList();                                                // get rendering command-list if you want to append your own draw primitives
-	gen.bind_function('ImGui::GetWindowPos', 'ImVec2', [], bound_name='ImGuiGetWindowPos')
-	gen.bind_function('ImGui::GetWindowSize', 'ImVec2', [], bound_name='ImGuiGetWindowSize')
+	gen.bind_function('ImGui::GetWindowPos', 'gs::tVector2<float>', [], bound_name='ImGuiGetWindowPos')
+	gen.bind_function('ImGui::GetWindowSize', 'gs::tVector2<float>', [], bound_name='ImGuiGetWindowSize')
 	gen.bind_function('ImGui::GetWindowWidth', 'float', [], bound_name='ImGuiGetWindowWidth')
 	gen.bind_function('ImGui::GetWindowHeight', 'float', [], bound_name='ImGuiGetWindowHeight')
 	gen.bind_function('ImGui::IsWindowCollapsed', 'bool', [], bound_name='ImGuiIsWindowCollapsed')
 	gen.bind_function('ImGui::SetWindowFontScale', 'void', ['float scale'], bound_name='ImGuiSetWindowFontScale')
 
-	gen.bind_function('ImGui::SetNextWindowPos', 'void', ['const ImVec2 &pos', '?ImGuiSetCond condition'], bound_name='ImGuiSetNextWindowPos')
+	gen.bind_function('ImGui::SetNextWindowPos', 'void', ['const gs::tVector2<float> &pos', '?ImGuiSetCond condition'], bound_name='ImGuiSetNextWindowPos')
 	gen.bind_function('ImGui::SetNextWindowPosCenter', 'void', ['?ImGuiSetCond condition'], bound_name='ImGuiSetNextWindowPosCenter')
-	gen.bind_function('ImGui::SetNextWindowSize', 'void', ['const ImVec2 &size', '?ImGuiSetCond condition'], bound_name='ImGuiSetNextWindowSize')
-	gen.bind_function('ImGui::SetNextWindowContentSize', 'void', ['const ImVec2 &size'], bound_name='ImGuiSetNextWindowContentSize')
+	gen.bind_function('ImGui::SetNextWindowSize', 'void', ['const gs::tVector2<float> &size', '?ImGuiSetCond condition'], bound_name='ImGuiSetNextWindowSize')
+	gen.bind_function('ImGui::SetNextWindowContentSize', 'void', ['const gs::tVector2<float> &size'], bound_name='ImGuiSetNextWindowContentSize')
 	gen.bind_function('ImGui::SetNextWindowContentWidth', 'void', ['float width'], bound_name='ImGuiSetNextWindowContentWidth')
 	gen.bind_function('ImGui::SetNextWindowCollapsed', 'void', ['bool collapsed', 'ImGuiSetCond condition'], bound_name='ImGuiSetNextWindowCollapsed')
 	gen.bind_function('ImGui::SetNextWindowFocus', 'void', [], bound_name='ImGuiSetNextWindowFocus')
-	gen.bind_function('ImGui::SetWindowPos', 'void', ['const ImVec2 &pos', '?ImGuiSetCond condition'], bound_name='ImGuiSetWindowPos')
-	gen.bind_function('ImGui::SetWindowSize', 'void', ['const ImVec2 &size', '?ImGuiSetCond condition'], bound_name='ImGuiSetWindowSize')
+	gen.bind_function('ImGui::SetWindowPos', 'void', ['const gs::tVector2<float> &pos', '?ImGuiSetCond condition'], bound_name='ImGuiSetWindowPos')
+	gen.bind_function('ImGui::SetWindowSize', 'void', ['const gs::tVector2<float> &size', '?ImGuiSetCond condition'], bound_name='ImGuiSetWindowSize')
 	gen.bind_function('ImGui::SetWindowCollapsed', 'void', ['bool collapsed', '?ImGuiSetCond condition'], bound_name='ImGuiSetWindowCollapsed')
 	gen.bind_function('ImGui::SetWindowFocus', 'void', ['?const char *name'], bound_name='ImGuiSetWindowFocus')
 
@@ -4010,6 +4060,26 @@ def bind_imgui(gen):
 	gen.bind_function('ImGui::SetScrollHere', 'void', ['?float center_y_ratio'], bound_name='ImGuiSetScrollHere')
 	gen.bind_function('ImGui::SetScrollFromPosY', 'void', ['float pos_y', '?float center_y_ratio'], bound_name='ImGuiSetScrollFromPosY')
 	gen.bind_function('ImGui::SetKeyboardFocusHere', 'void', ['?int offset'], bound_name='ImGuiSetKeyboardFocusHere')
+
+	imfont = gen.begin_class('ImFont')
+	gen.end_class(imfont)
+
+	gen.bind_function('ImGui::PushFont', 'void', ['ImFont *font'], bound_name='ImGuiPushFont')
+	gen.bind_function('ImGui::PopFont', 'void', [], bound_name='ImGuiPopFont')
+	gen.bind_function('ImGui::PushStyleColor', 'void', ['ImGuiCol idx', 'const gs::Color &color'], bound_name='ImGuiPushStyleColor')
+	gen.bind_function('ImGui::PopStyleColor', 'void', ['?int count'], bound_name='ImGuiPopStyleColor')
+	gen.bind_function_overloads('ImGui::PushStyleVar', [
+		('void', ['ImGuiStyleVar idx', 'float value'], []),
+		('void', ['ImGuiStyleVar idx', 'const gs::tVector2<float> &value'], [])
+	], bound_name='ImGuiPushStyleVar')
+	gen.bind_function('ImGui::PopStyleVar', 'void', ['?int count'], bound_name='ImGuiPopStyleVar')
+	gen.bind_function('ImGui::GetFont', 'ImFont *', [], bound_name='ImGuiGetFont')
+	gen.bind_function('ImGui::GetFontSize', 'float', [], bound_name='ImGuiGetFontSize')
+	gen.bind_function('ImGui::GetFontTexUvWhitePixel', 'gs::tVector2<float>', [], bound_name='ImGuiGetFontTexUvWhitePixel')
+	gen.bind_function_overloads('ImGui::GetColorU32', [
+		('uint32_t', ['ImGuiCol idx', '?float alpha_multiplier'], []),
+		('uint32_t', ['const gs::Color &color'], [])
+	], bound_name='ImGuiGetColorU32')
 
 	gen.bind_function('ImGui::PushItemWidth', 'void', ['float item_width'], bound_name='ImGuiPushItemWidth')
 	gen.bind_function('ImGui::PopItemWidth', 'void', [], bound_name='ImGuiPopItemWidth')
@@ -4025,20 +4095,20 @@ def bind_imgui(gen):
 	gen.bind_function('ImGui::SameLine', 'void', ['?float pos_x', '?float spacing_w'], bound_name='ImGuiSameLine')
 	gen.bind_function('ImGui::NewLine', 'void', [], bound_name='ImGuiNewLine')
 	gen.bind_function('ImGui::Spacing', 'void', [], bound_name='ImGuiSpacing')
-	gen.bind_function('ImGui::Dummy', 'void', ['const ImVec2 &size'], bound_name='ImGuiDummy')
+	gen.bind_function('ImGui::Dummy', 'void', ['const gs::tVector2<float> &size'], bound_name='ImGuiDummy')
 	gen.bind_function('ImGui::Indent', 'void', ['?float width'], bound_name='ImGuiIndent')
 	gen.bind_function('ImGui::Unindent', 'void', ['?float width'], bound_name='ImGuiUnindent')
 	gen.bind_function('ImGui::BeginGroup', 'void', [], bound_name='ImGuiBeginGroup')
 	gen.bind_function('ImGui::EndGroup', 'void', [], bound_name='ImGuiEndGroup')
-	gen.bind_function('ImGui::GetCursorPos', 'ImVec2', [], bound_name='ImGuiGetCursorPos')
+	gen.bind_function('ImGui::GetCursorPos', 'gs::tVector2<float>', [], bound_name='ImGuiGetCursorPos')
 	gen.bind_function('ImGui::GetCursorPosX', 'float', [], bound_name='ImGuiGetCursorPosX')
 	gen.bind_function('ImGui::GetCursorPosY', 'float', [], bound_name='ImGuiGetCursorPosY')
-	gen.bind_function('ImGui::SetCursorPos', 'void', ['const ImVec2 &local_pos'], bound_name='ImGuiSetCursorPos')
+	gen.bind_function('ImGui::SetCursorPos', 'void', ['const gs::tVector2<float> &local_pos'], bound_name='ImGuiSetCursorPos')
 	gen.bind_function('ImGui::SetCursorPosX', 'void', ['float x'], bound_name='ImGuiSetCursorPosX')
 	gen.bind_function('ImGui::SetCursorPosY', 'void', ['float y'], bound_name='ImGuiSetCursorPosY')
-	gen.bind_function('ImGui::GetCursorStartPos', 'ImVec2', [], bound_name='ImGuiGetCursorStartPos')
-	gen.bind_function('ImGui::GetCursorScreenPos', 'ImVec2', [], bound_name='ImGuiGetCursorScreenPos')
-	gen.bind_function('ImGui::SetCursorScreenPos', 'void', ['const ImVec2 &pos'], bound_name='ImGuiSetCursorScreenPos')
+	gen.bind_function('ImGui::GetCursorStartPos', 'gs::tVector2<float>', [], bound_name='ImGuiGetCursorStartPos')
+	gen.bind_function('ImGui::GetCursorScreenPos', 'gs::tVector2<float>', [], bound_name='ImGuiGetCursorScreenPos')
+	gen.bind_function('ImGui::SetCursorScreenPos', 'void', ['const gs::tVector2<float> &pos'], bound_name='ImGuiSetCursorScreenPos')
 	gen.bind_function('ImGui::AlignFirstTextHeightToWidgets', 'void', [], bound_name='ImGuiAlignFirstTextHeightToWidgets')
 	gen.bind_function('ImGui::GetTextLineHeight', 'float', [], bound_name='ImGuiGetTextLineHeight')
 	gen.bind_function('ImGui::GetTextLineHeightWithSpacing', 'float', [], bound_name='ImGuiGetTextLineHeightWithSpacing')
@@ -4062,28 +4132,19 @@ def bind_imgui(gen):
 	gen.bind_function('ImGui::GetID', 'ImGuiID', ['const char *id'], bound_name='ImGuiGetID')
 
 	gen.bind_function('ImGui::Text', 'void', ['const char *text'], bound_name='ImGuiText')
-	gen.bind_function('ImGui::TextColored', 'void', ['const ImVec4 &color', 'const char *text'], bound_name='ImGuiTextColored')
+	gen.bind_function('ImGui::TextColored', 'void', ['const gs::Color &color', 'const char *text'], bound_name='ImGuiTextColored')
 	gen.bind_function('ImGui::TextDisabled', 'void', ['const char *text'], bound_name='ImGuiTextDisabled')
 	gen.bind_function('ImGui::TextWrapped', 'void', ['const char *text'], bound_name='ImGuiTextWrapped')
 	gen.bind_function('ImGui::TextUnformatted', 'void', ['const char *text'], bound_name='ImGuiTextUnformatted')
 	gen.bind_function('ImGui::LabelText', 'void', ['const char *label', 'const char *text'], bound_name='ImGuiLabelText')
 	gen.bind_function('ImGui::Bullet', 'void', [], bound_name='ImGuiBullet')
 	gen.bind_function('ImGui::BulletText', 'void', ['const char *label'], bound_name='ImGuiBulletText')
-	gen.bind_function('ImGui::Button', 'bool', ['const char *label', '?const ImVec2 &size'], bound_name='ImGuiButton')
+	gen.bind_function('ImGui::Button', 'bool', ['const char *label', '?const gs::tVector2<float> &size'], bound_name='ImGuiButton')
 	gen.bind_function('ImGui::SmallButton', 'bool', ['const char *label'], bound_name='ImGuiSmallButton')
-	gen.bind_function('ImGui::InvisibleButton', 'bool', ['const char *text', 'const ImVec2 &size'], bound_name='ImGuiInvisibleButton')
+	gen.bind_function('ImGui::InvisibleButton', 'bool', ['const char *text', 'const gs::tVector2<float> &size'], bound_name='ImGuiInvisibleButton')
 
-	gen.bind_function_overloads('ImGui::Image', [
-		('void', ['gs::gpu::Texture *texture', 'const ImVec2 &size'], []),
-		('void', ['gs::gpu::Texture *texture', 'const ImVec2 &size', 'const ImVec2 &uv0', 'const ImVec2 &uv1'], []),
-		('void', ['gs::gpu::Texture *texture', 'const ImVec2 &size', 'const ImVec2 &uv0', 'const ImVec2 &uv1', 'const ImVec4 &tint_col', 'const ImVec4 &border_col'], [])
-	], bound_name='ImGuiImage')
-	gen.bind_function_overloads('ImGui::ImageButton', [
-		('void', ['gs::gpu::Texture *texture', 'const ImVec2 &size'], []),
-		('void', ['gs::gpu::Texture *texture', 'const ImVec2 &size', 'const ImVec2 &uv0', 'const ImVec2 &uv1'], []),
-		('void', ['gs::gpu::Texture *texture', 'const ImVec2 &size', 'const ImVec2 &uv0', 'const ImVec2 &uv1', 'int frame_padding'], []),
-		('void', ['gs::gpu::Texture *texture', 'const ImVec2 &size', 'const ImVec2 &uv0', 'const ImVec2 &uv1', 'int frame_padding', 'const ImVec4 &bg_col', 'const ImVec4 &tint_col'], [])
-	], bound_name='ImGuiImageButton')
+	gen.bind_function('ImGui::Image', 'void', ['gs::gpu::Texture *texture', 'const gs::tVector2<float> &size', '?const gs::tVector2<float> &uv0', '?const gs::tVector2<float> &uv1', '?const gs::Color &tint_col', '?const gs::Color &border_col'], bound_name='ImGuiImage')
+	gen.bind_function('ImGui::ImageButton', 'void', ['gs::gpu::Texture *texture', 'const gs::tVector2<float> &size', '?const gs::tVector2<float> &uv0', '?const gs::tVector2<float> &uv1', '?int frame_padding', '?const gs::Color &bg_col', '?const gs::Color &tint_col'], bound_name='ImGuiImageButton')
 
 	gen.bind_function('ImGui::Checkbox', 'bool', ['const char *label', 'bool *value'], {'arg_in_out': ['value']}, 'ImGuiCheckbox')
 	#IMGUI_API bool          CheckboxFlags(const char* label, unsigned int* flags, unsigned int flags_value);
@@ -4318,6 +4379,11 @@ static gs::Vector2 _ImGuiCalcTextSize(const char *text, bool hide_text_after_dou
 	gen.bind_function('ImGui::CaptureKeyboardFromApp', 'void', ['bool capture'], bound_name='ImGuiCaptureKeyboardFromApp')
 	gen.bind_function('ImGui::CaptureMouseFromApp', 'void', ['bool capture'], bound_name='ImGuiCaptureMouseFromApp')
 
+	gen.add_include('engine/imgui_renderer_hook.h')
+
+	gen.bind_function('gs::ImGuiLock', 'void', [])
+	gen.bind_function('gs::ImGuiUnlock', 'void', [])
+
 
 def bind_extras(gen):
 	gen.add_include('thread', True)
@@ -4443,6 +4509,7 @@ void InitializePluginsDefaultSearchPath(lua_State *L) {
 	bind_gpu(gen)
 	bind_render(gen)
 	bind_iso_surface(gen)
+	bind_frame_renderer(gen)
 	bind_scene(gen)
 	bind_input(gen)
 	bind_plus(gen)
