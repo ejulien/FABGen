@@ -30,7 +30,7 @@ Fabgen is licensed under the GPLv3.
 - Generated code has no dependencies and is human readable.
 - Generator input is a Python script.
 - Customizable type conversion from C/C++ and back.
-- Can bind many C/C++ construct.
+- Can bind many C/C++ construct (function/data members, static function/data members, exceptions, etc...).
 - User specifiable bound name.
 - Types can be hidden from the generated binding interface.
 - Feature mechanism to extend types and prototypes such as:
@@ -42,7 +42,7 @@ Fabgen is licensed under the GPLv3.
 ## Supported target language
 
 - CPython 3.2+ using the CPython limited API (`Py_Limited_API`) (generated modules can be used on all CPython version >=3.2)
-- Lua 5.2+
+- Lua 5.3+
 
 ## Contributions
 
@@ -128,6 +128,11 @@ This feature transfers the returned object ownership to the target language.
 - 'check_rval': def check(rvals):
 
 Insert return value checking code right after the native call.
+
+- 'exception': str
+
+Wrap the native function call with a try{} block and raises an exception in the target language with
+the specified string as the exception message.
 
 ## Performance notes
 

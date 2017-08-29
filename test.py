@@ -33,6 +33,17 @@ def bind_std_vector(gen, T_conv):
 	return conv
 
 
+def bind_log(gen):
+	gen.add_include('foundation/log.h')
+
+	gen.bind_named_enum('gs::LogLevel::mask_type', ['Message', 'Warning', 'Error', 'Debug', 'All'], storage_type='gs::uint', prefix='Log', bound_name='LogLevel', namespace='gs::LogLevel')
+
+	gen.bind_function('gs::SetDefaultLogOutputLevelMask', 'void', ['gs::LogLevel::mask_type mask'])
+	gen.bind_function('gs::SetDefaultLogOutputIsDetailed', 'void', ['bool is_detailed'])
+
+	gen.bind_function('gs::FlushLog', 'void', [])
+
+
 def bind_binary_blob(gen):
 	gen.add_include('foundation/binary_blob.h')
 
@@ -269,6 +280,8 @@ def bind_engine(gen):
 	gen.bind_function('gs::core::GetLastFrameDuration', 'gs::time_ns', [])
 	gen.bind_function('gs::core::GetLastFrameDurationSec', 'float', [])
 	gen.bind_function('gs::core::ResetLastFrameDuration', 'void', [])
+
+	gen.bind_function('gs::core::_DebugHalt', 'void', [])
 
 	gen.add_include('foundation/projection.h')
 
@@ -1354,7 +1367,7 @@ static std::shared_ptr<gs::core::Node> PhysicTraceGetNode(gs::core::PhysicTrace 
 		('std::vector<std::shared_ptr<gs::core::Component>>', ['const char *aspect'], ['proxy'])
 	])
 
-	#template <class T> std::shared_ptr<T> GetComponent() const {
+	gen.bind_method(shared_scene, 'GetComponent<gs::core::Environment>', 'std::shared_ptr<gs::core::Environment>', [], {'proxy': None, 'check_rval': check_rval_lambda(gen, 'GetEnvironment failed, scene has no Environment component')}, bound_name='GetEnvironment')
 
 	gen.bind_method(shared_scene, 'HasAspect', 'bool', ['const char *aspect'], ['proxy'])
 	gen.bind_method(shared_scene, 'GetMinMax', 'gs::MinMax', [], ['proxy'])
@@ -2036,11 +2049,32 @@ static int _RenderGeometry_GetMaterialCount(gs::render::Geometry *geo) { return 
 	gen.bind_method(shared_geometry, 'GetMaterialCount', 'int', [], {'proxy': None, 'route': route_lambda('_RenderGeometry_GetMaterialCount')})
 
 	gen.insert_binding_code('''
-static void _RenderGeometry_SetShadowProxy(gs::render::Geometry *geo, std::shared_ptr<gs::render::Geometry> &proxy) { geo->shadow_proxy = proxy; }
-static void _RenderGeometry_SetLodProxy(gs::render::Geometry *geo, std::shared_ptr<gs::render::Geometry> &proxy, float distance) { geo->lod_proxy = proxy; geo->lod_distance = distance; }
+static void _RenderGeometry_SetLodProxy(gs::render::Geometry *geo, std::shared_ptr<gs::render::Geometry> &proxy, float distance) {
+	geo->flag &= ~gs::core::GeometryFlag::NullLodProxy;
+	geo->lod_proxy = proxy;
+	geo->lod_distance = distance;
+}
+
+static void _RenderGeometry_SetNullLodProxy(gs::render::Geometry *geo) {
+	geo->flag |= gs::core::GeometryFlag::NullLodProxy;
+	geo->lod_proxy = nullptr;
+	geo->lod_distance = 0;
+}
+
+static void _RenderGeometry_SetShadowProxy(gs::render::Geometry *geo, std::shared_ptr<gs::render::Geometry> &proxy) {
+	geo->flag &= ~gs::core::GeometryFlag::NullShadowProxy;
+	geo->shadow_proxy = proxy;
+}
+
+static void _RenderGeometry_SetNullShadowProxy(gs::render::Geometry *geo) {
+	geo->flag |= gs::core::GeometryFlag::NullShadowProxy;
+	geo->shadow_proxy = nullptr;
+}
 ''')
-	gen.bind_method(shared_geometry, 'SetShadowProxy', 'void', ['std::shared_ptr<gs::render::Geometry> &proxy'], {'proxy': None, 'route': route_lambda('_RenderGeometry_SetShadowProxy')})
 	gen.bind_method(shared_geometry, 'SetLodProxy', 'void', ['std::shared_ptr<gs::render::Geometry> &proxy', 'float distance'], {'proxy': None, 'route': route_lambda('_RenderGeometry_SetLodProxy')})
+	gen.bind_method(shared_geometry, 'SetNullLodProxy', 'void', [], {'proxy': None, 'route': route_lambda('_RenderGeometry_SetNullLodProxy')})
+	gen.bind_method(shared_geometry, 'SetShadowProxy', 'void', ['std::shared_ptr<gs::render::Geometry> &proxy'], {'proxy': None, 'route': route_lambda('_RenderGeometry_SetShadowProxy')})
+	gen.bind_method(shared_geometry, 'SetNullShadowProxy', 'void', [], {'proxy': None, 'route': route_lambda('_RenderGeometry_SetNullShadowProxy')})
 
 	gen.end_class(shared_geometry)
 
@@ -2436,6 +2470,9 @@ def bind_plus(gen):
 	gen.bind_method(plus_conv, 'GetRenderSystem', 'std::shared_ptr<gs::render::RenderSystem>', [])
 	gen.bind_method(plus_conv, 'GetRenderSystemAsync', 'std::shared_ptr<gs::render::RenderSystemAsync>', [])
 
+	gen.bind_method(plus_conv, 'GetMixer', 'std::shared_ptr<gs::audio::Mixer>', [])
+	gen.bind_method(plus_conv, 'GetMixerAsync', 'std::shared_ptr<gs::audio::MixerAsync>', [])
+
 	gen.bind_named_enum('gs::Plus::AppEndCondition', ['EndOnEscapePressed', 'EndOnDefaultWindowClosed', 'EndOnAny'], prefix='App')
 
 	gen.bind_method_overloads(plus_conv, 'IsAppEnded', [
@@ -2457,8 +2494,8 @@ static bool _Plus_RenderInit(gs::Plus *plus, int width, int height, int aa = 1, 
 
 	gen.bind_method(plus_conv, 'GetRenderWindow', 'gs::RenderWindow', [])
 	gen.bind_method_overloads(plus_conv, 'SetRenderWindow', [
-		('void', ['gs::RenderWindow &window'], []),
-		('void', [], [])
+		('void', ['gs::RenderWindow &window'], {'exception': 'check your program for a missing ImGuiUnlock call'}),
+		('void', [], {'exception': 'check your program for a missing ImGuiUnlock call'})
 	])
 
 	gen.bind_method(plus_conv, 'GetRenderWindowSize', 'gs::tVector2<int>', ['const gs::RenderWindow &window'])
@@ -4144,7 +4181,7 @@ def bind_imgui(gen):
 	gen.bind_function('ImGui::InvisibleButton', 'bool', ['const char *text', 'const gs::tVector2<float> &size'], bound_name='ImGuiInvisibleButton')
 
 	gen.bind_function('ImGui::Image', 'void', ['gs::gpu::Texture *texture', 'const gs::tVector2<float> &size', '?const gs::tVector2<float> &uv0', '?const gs::tVector2<float> &uv1', '?const gs::Color &tint_col', '?const gs::Color &border_col'], bound_name='ImGuiImage')
-	gen.bind_function('ImGui::ImageButton', 'void', ['gs::gpu::Texture *texture', 'const gs::tVector2<float> &size', '?const gs::tVector2<float> &uv0', '?const gs::tVector2<float> &uv1', '?int frame_padding', '?const gs::Color &bg_col', '?const gs::Color &tint_col'], bound_name='ImGuiImageButton')
+	gen.bind_function('ImGui::ImageButton', 'bool', ['gs::gpu::Texture *texture', 'const gs::tVector2<float> &size', '?const gs::tVector2<float> &uv0', '?const gs::tVector2<float> &uv1', '?int frame_padding', '?const gs::Color &bg_col', '?const gs::Color &tint_col'], bound_name='ImGuiImageButton')
 
 	gen.bind_function('ImGui::Checkbox', 'bool', ['const char *label', 'bool *value'], {'arg_in_out': ['value']}, 'ImGuiCheckbox')
 	#IMGUI_API bool          CheckboxFlags(const char* label, unsigned int* flags, unsigned int flags_value);
@@ -4379,9 +4416,11 @@ static gs::Vector2 _ImGuiCalcTextSize(const char *text, bool hide_text_after_dou
 	gen.bind_function('ImGui::CaptureKeyboardFromApp', 'void', ['bool capture'], bound_name='ImGuiCaptureKeyboardFromApp')
 	gen.bind_function('ImGui::CaptureMouseFromApp', 'void', ['bool capture'], bound_name='ImGuiCaptureMouseFromApp')
 
+	gen.bind_function('gs::ImGuiSetOutputSurface', 'void', ['const gs::Surface &surface'], bound_name='ImGuiSetOutputSurface')
+
 	gen.add_include('engine/imgui_renderer_hook.h')
 
-	gen.bind_function('gs::ImGuiLock', 'void', [])
+	gen.bind_function('gs::ImGuiLock', 'bool', [], {'exception': 'double lock from the same thread, check your program for a missing unlock'})
 	gen.bind_function('gs::ImGuiUnlock', 'void', [])
 
 
@@ -4490,6 +4529,7 @@ void InitializePluginsDefaultSearchPath(lua_State *L) {
 
 	bind_std_vector(gen, gen.get_conv('std::string'))
 
+	bind_log(gen)
 	bind_binary_blob(gen)
 	bind_time(gen)
 	bind_task_system(gen)
@@ -4512,8 +4552,8 @@ void InitializePluginsDefaultSearchPath(lua_State *L) {
 	bind_frame_renderer(gen)
 	bind_scene(gen)
 	bind_input(gen)
-	bind_plus(gen)
 	bind_mixer(gen)
+	bind_plus(gen)
 	bind_imgui(gen)
 	bind_extras(gen)
 

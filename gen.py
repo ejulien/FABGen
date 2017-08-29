@@ -676,6 +676,10 @@ class FABGen:
 				arg_out = []
 			arg_out = arg_out + features['arg_in_out']
 
+		# c++ exception support
+		if 'exception' in features:
+			self._source += 'try {\n'
+
 		# declare return value
 		rvals = []
 		rvals_prepare_args = []
@@ -743,6 +747,12 @@ class FABGen:
 			self._source += self.prepare_c_rval(*prepare_args)
 
 		self._source += self.commit_rvals(rvals, ctx)
+
+		if 'exception' in features:
+			self._source += '}\n'
+			self._source += 'catch(...) {\n'
+			self._source += self.proxy_call_error(features['exception'], ctx)
+			self._source += '}\n'
 
 	def __bind_proxy(self, name, self_conv, protos, desc, expr_eval, ctx, fixed_arg_count=None):
 		if self.verbose:
