@@ -2462,17 +2462,17 @@ def bind_plus(gen):
 
 	gen.bind_method(plus_conv, 'MountFilePath', 'void', ['const char *path'])
 
-	gen.bind_method(plus_conv, 'GetRenderer', 'std::shared_ptr<gs::gpu::Renderer>', [])
-	gen.bind_method(plus_conv, 'GetRendererAsync', 'std::shared_ptr<gs::gpu::RendererAsync>', [])
+	gen.bind_method(plus_conv, 'GetRenderer', 'std::shared_ptr<gs::gpu::Renderer>', [], {'check_rval': check_rval_lambda(gen, 'no renderer, was RenderInit called succesfully?')})
+	gen.bind_method(plus_conv, 'GetRendererAsync', 'std::shared_ptr<gs::gpu::RendererAsync>', [], {'check_rval': check_rval_lambda(gen, 'no renderer, was RenderInit called succesfully?')})
 
-	gen.bind_method(plus_conv, 'GetRenderSystem', 'std::shared_ptr<gs::render::RenderSystem>', [])
-	gen.bind_method(plus_conv, 'GetRenderSystemAsync', 'std::shared_ptr<gs::render::RenderSystemAsync>', [])
+	gen.bind_method(plus_conv, 'GetRenderSystem', 'std::shared_ptr<gs::render::RenderSystem>', [], {'check_rval': check_rval_lambda(gen, 'no render system, was RenderInit called succesfully?')})
+	gen.bind_method(plus_conv, 'GetRenderSystemAsync', 'std::shared_ptr<gs::render::RenderSystemAsync>', [], {'check_rval': check_rval_lambda(gen, 'no render system, was RenderInit called succesfully?')})
 
-	gen.bind_method(plus_conv, 'AudioInit', 'bool', [])
+	gen.bind_method(plus_conv, 'AudioInit', 'bool', [], {'check_rval': check_rval_lambda(gen, 'AudioInit failed, was LoadPlugins called succesfully?')})
 	gen.bind_method(plus_conv, 'AudioUninit', 'void', [])
 
-	gen.bind_method(plus_conv, 'GetMixer', 'std::shared_ptr<gs::audio::Mixer>', [])
-	gen.bind_method(plus_conv, 'GetMixerAsync', 'std::shared_ptr<gs::audio::MixerAsync>', [])
+	gen.bind_method(plus_conv, 'GetMixer', 'std::shared_ptr<gs::audio::Mixer>', [], {'check_rval': check_rval_lambda(gen, 'no mixer, was AudioInit called succesfully?')})
+	gen.bind_method(plus_conv, 'GetMixerAsync', 'std::shared_ptr<gs::audio::MixerAsync>', [], {'check_rval': check_rval_lambda(gen, 'no mixer, was AudioInit called succesfully?')})
 
 	gen.bind_named_enum('gs::Plus::AppEndCondition', ['EndOnEscapePressed', 'EndOnDefaultWindowClosed', 'EndOnAny'], prefix='App')
 
