@@ -247,8 +247,6 @@ def bind_input(gen):
 
 	gen.bind_method(shared_input_device, 'GetMatrix', 'gs::Matrix4', ['gs::InputDevice::MatrixCode matrix_code'], ['proxy'])
 
-	gen.bind_method(shared_input_device, 'ResetLastValues', 'void', [], ['proxy'])
-
 	gen.bind_method(shared_input_device, 'SetValue', 'bool', ['gs::InputDevice::InputCode input', 'float value'], ['proxy'])
 	gen.bind_method(shared_input_device, 'SetEffect', 'bool', ['gs::InputDevice::Effect effect', 'float value'], ['proxy'])
 
@@ -2470,6 +2468,9 @@ def bind_plus(gen):
 	gen.bind_method(plus_conv, 'GetRenderSystem', 'std::shared_ptr<gs::render::RenderSystem>', [])
 	gen.bind_method(plus_conv, 'GetRenderSystemAsync', 'std::shared_ptr<gs::render::RenderSystemAsync>', [])
 
+	gen.bind_method(plus_conv, 'AudioInit', 'bool', [])
+	gen.bind_method(plus_conv, 'AudioUninit', 'void', [])
+
 	gen.bind_method(plus_conv, 'GetMixer', 'std::shared_ptr<gs::audio::Mixer>', [])
 	gen.bind_method(plus_conv, 'GetMixerAsync', 'std::shared_ptr<gs::audio::MixerAsync>', [])
 
@@ -2484,8 +2485,8 @@ def bind_plus(gen):
 static bool _Plus_RenderInit(gs::Plus *plus, int width, int height, int aa = 1, gs::Window::Visibility vis = gs::Window::Windowed, bool debug = false) { return plus->RenderInit(width, height, nullptr, aa, vis, debug); }
 ''')
 	gen.bind_method_overloads(plus_conv, 'RenderInit', [
-		('bool', ['int width', 'int height', '?const char *core_path', '?int aa', '?gs::Window::Visibility visibility', '?bool debug'], {'check_rval': check_rval_lambda(gen, 'RenderInit failed')}),
-		('bool', ['int width', 'int height', 'int aa', '?gs::Window::Visibility visibility', '?bool debug'], {'check_rval': check_rval_lambda(gen, 'RenderInit failed'), 'route': lambda args: '_Plus_RenderInit(%s);' % (', '.join(args))})
+		('bool', ['int width', 'int height', '?const char *core_path', '?int aa', '?gs::Window::Visibility visibility', '?bool debug'], {'check_rval': check_rval_lambda(gen, 'RenderInit failed, was LoadPlugins called succesfully?')}),
+		('bool', ['int width', 'int height', 'int aa', '?gs::Window::Visibility visibility', '?bool debug'], {'check_rval': check_rval_lambda(gen, 'RenderInit failed, was LoadPlugins called succesfully?'), 'route': lambda args: '_Plus_RenderInit(%s);' % (', '.join(args))})
 	])
 	gen.bind_method(plus_conv, 'RenderUninit', 'void', [])
 
@@ -3276,8 +3277,10 @@ def bind_math(gen):
 
 		gen.bind_constructor_overloads(vector2, [
 			([], []),
-			(['const gs::tVector2<%s> v'%T], []),
 			(['%s x'%T, '%s y'%T], []),
+			(['const gs::tVector2<%s> &v'%T], []),
+			(['const gs::Vector3 &v'], []),
+			(['const gs::Vector4 &v'], [])
 		])
 
 		gen.bind_arithmetic_ops_overloads(vector2, ['+', '-', '/'], [
@@ -3325,7 +3328,11 @@ def bind_math(gen):
 
 	gen.bind_constructor_overloads(vector4, [
 		([], []),
-		(['float x', 'float y', 'float z', 'float w'], [])
+		(['float x', 'float y', 'float z', 'float w'], []),
+		(['const gs::tVector2<float> &v'], []),
+		(['const gs::tVector2<int> &v'], []),
+		(['const gs::Vector3 &v'], []),
+		(['const gs::Vector4 &v'], [])
 	])
 
 	gen.bind_arithmetic_ops_overloads(vector4, ['+', '-', '/'], [
@@ -3406,7 +3413,9 @@ def bind_math(gen):
 	gen.bind_arithmetic_ops(matrix3, ['+', '-'], 'gs::Matrix3', ['gs::Matrix3 &m'])
 	gen.bind_arithmetic_op_overloads(matrix3, '*', [
 		('gs::Matrix3', ['const float v'], []),
+		('gs::tVector2<float>', ['const gs::tVector2<float> &v'], []),
 		('gs::Vector3', ['const gs::Vector3 &v'], []),
+		('gs::Vector4', ['const gs::Vector4 &v'], []),
 		('gs::Matrix3', ['const gs::Matrix3 &m'], [])
 	])
 	gen.bind_inplace_arithmetic_ops(matrix3, ['+=', '-='], ['const gs::Matrix3 &m'])
@@ -3499,7 +3508,9 @@ def bind_math(gen):
 	gen.bind_arithmetic_ops(matrix4, ['+', '-'], 'gs::Matrix4', ['gs::Matrix4 &m'])
 	gen.bind_arithmetic_op_overloads(matrix4, '*', [
 		('gs::Matrix4', ['const float v'], []),
-		('gs::Matrix4', ['const gs::Matrix4 &m'], [])
+		('gs::Matrix4', ['const gs::Matrix4 &m'], []),
+		('gs::Vector3', ['const gs::Vector3 &v'], []),
+		('gs::Vector4', ['const gs::Vector4 &v'], [])
 	])
 
 	gen.bind_method(matrix4, 'GetRow', 'gs::Vector3', ['gs::uint n'])
@@ -3584,7 +3595,10 @@ def bind_math(gen):
 	gen.bind_constructor_overloads(vector3, [
 		([], []),
 		(['float x', 'float y', 'float z'], []),
-		(['const gs::Vector3 &v'], [])
+		(['const gs::tVector2<float> &v'], []),
+		(['const gs::tVector2<int> &v'], []),
+		(['const gs::Vector3 &v'], []),
+		(['const gs::Vector4 &v'], [])
 	])
 
 	gen.bind_function('gs::Vector3FromVector4', 'gs::Vector3', ['const gs::Vector4 &v'])
@@ -3783,15 +3797,16 @@ static size_t AudioData_GetFrameToBinaryBlob(gs::AudioData *audio_data, gs::Bina
 	gen.bind_named_enum('gs::audio::MixerLoopMode', ['MixerNoLoop', 'MixerRepeat', 'MixerLoopInvalidChannel'], 'uint8_t')
 	gen.bind_named_enum('gs::audio::MixerPlayState', ['MixerStopped', 'MixerPlaying', 'MixerPaused', 'MixerStateInvalidChannel'], 'uint8_t')
 
-	gen.typedef('gs::audio::MixerChannel', 'int')
-	gen.typedef('gs::audio::MixerPriority', 'int')
+	gen.typedef('gs::audio::MixerChannel', 'int32_t')
+	gen.typedef('gs::audio::MixerPriority', 'uint8_t')
 
 	#
 	mixer_channel_state = gen.begin_class('gs::audio::MixerChannelState')
 	gen.bind_constructor_overloads(mixer_channel_state, [
 		([], []),
 		(['float volume'], []),
-		(['float volume', 'bool direct'], [])
+		(['float volume', 'bool direct'], []),
+		(['gs::audio::MixerPriority priority', '?float volume', '?gs::audio::MixerLoopMode loop_mode', '?float pitch', '?bool direct'], [])
 	])
 	gen.bind_members(mixer_channel_state, ['gs::audio::MixerPriority priority', 'gs::audio::MixerLoopMode loop_mode', 'float volume', 'float pitch', 'bool direct'])
 	gen.end_class(mixer_channel_state)
@@ -3826,8 +3841,9 @@ static size_t AudioData_GetFrameToBinaryBlob(gs::AudioData *audio_data, gs::Bina
 	shared_audio_mixer = gen.begin_class('std::shared_ptr<gs::audio::Mixer>', bound_name='Mixer', features={'proxy': lib.stl.SharedPtrProxyFeature(audio_mixer)})
 
 	gen.bind_static_members(shared_audio_mixer, [
-		'const gs::audio::MixerChannelState DefaultState', 'const gs::audio::MixerChannelState RepeatState', 'const gs::audio::MixerChannelLocation DefaultLocation',
-		'const gs::audio::MixerPriority DefaultPriority', 'const gs::audio::MixerChannel ChannelError'], ['proxy'])
+		'const gs::audio::MixerChannelState DefaultState', 'const gs::audio::MixerChannelState RepeatState',
+		'const gs::audio::MixerChannelLocation DefaultLocation', 'const gs::audio::MixerPriority DefaultPriority',
+		'const gs::audio::MixerChannel ChannelError'], ['proxy'])
 
 	gen.bind_method(shared_audio_mixer, 'Open', 'bool', [], ['proxy'])
 	gen.bind_method(shared_audio_mixer, 'Close', 'void', [], ['proxy'])
@@ -4420,7 +4436,7 @@ static gs::Vector2 _ImGuiCalcTextSize(const char *text, bool hide_text_after_dou
 
 	gen.add_include('engine/imgui_renderer_hook.h')
 
-	gen.bind_function('gs::ImGuiLock', 'bool', [], {'exception': 'double lock from the same thread, check your program for a missing unlock'})
+	gen.bind_function('gs::ImGuiLock', 'void', [], {'exception': 'double lock from the same thread, check your program for a missing unlock'})
 	gen.bind_function('gs::ImGuiUnlock', 'void', [])
 
 
