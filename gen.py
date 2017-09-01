@@ -350,6 +350,7 @@ class FABGen:
 		self._bound_functions = []  # list of bound functions
 
 		self._custom_init_code = ""
+		self._custom_free_code = ""
 		self._enums = {}
 
 		self.output_header()
@@ -381,6 +382,9 @@ class FABGen:
 
 	def add_custom_init_code(self, code):
 		self._custom_init_code += code
+
+	def add_custom_free_code(self, code):
+		self._custom_free_code += code
 
 	#
 	def begin_type(self, conv, features, nobind=False):

@@ -994,7 +994,20 @@ static void _SimpleGraphicSceneOverlay_Quad(gs::core::SimpleGraphicSceneOverlay 
 
 	gen.end_class(shared_terrain)
 
+	# gs::core::ScriptEngineEnv
+	gen.add_include('engine/script_system.h')
+
+	script_env = gen.begin_class('gs::core::ScriptEngineEnv', bound_name='ScriptEnv_nobind', noncopyable=True, nobind=True)
+	gen.end_class(script_env)
+
+	shared_script_env = gen.begin_class('std::shared_ptr<gs::core::ScriptEngineEnv>', bound_name='ScriptEnv', features={'proxy': lib.stl.SharedPtrProxyFeature(script_env)})
+	gen.bind_constructor(shared_script_env, ['std::shared_ptr<gs::render::RenderSystemAsync> render_system_async', 'std::shared_ptr<gs::gpu::RendererAsync> renderer_async', 'std::shared_ptr<gs::audio::MixerAsync> mixer'], ['proxy'])
+	gen.bind_member(shared_script_env, 'float dt', ['proxy'])
+	gen.end_class(shared_script_env)
+
 	# gs::core::Script
+	gen.bind_named_enum('gs::core::ScriptExecutionContext::Type', ['Standalone', 'Editor', 'All'], prefix='ScriptContext', bound_name='ScriptExecutionContext', namespace='gs::core::ScriptExecutionContext')
+
 	script = gen.begin_class('gs::core::Script', bound_name='Script_nobind', noncopyable=True, nobind=True)
 	gen.end_class(script)
 
@@ -1028,6 +1041,38 @@ static void _SimpleGraphicSceneOverlay_Quad(gs::core::SimpleGraphicSceneOverlay 
 	gen.add_base(shared_logic_script, shared_script)
 	gen.bind_constructor(shared_logic_script, ['?const char *path'], ['proxy'])
 	gen.end_class(shared_logic_script)
+
+	# gs::core::ScriptSystem
+	script_system = gen.begin_class('gs::core::ScriptSystem', bound_name='ScriptSystem_nobind', noncopyable=True, nobind=True)
+	gen.end_class(script_system)
+
+	shared_script_system = gen.begin_class('std::shared_ptr<gs::core::ScriptSystem>', bound_name='ScriptSystem', features={'proxy': lib.stl.SharedPtrProxyFeature(script_system)})
+	gen.add_base(shared_script_system, shared_scene_system)
+
+	gen.bind_method(shared_script_system, 'GetExecutionContext', 'gs::core::ScriptExecutionContext::Type', [], ['proxy'])
+	gen.bind_method(shared_script_system, 'SetExecutionContext', 'void', ['gs::core::ScriptExecutionContext::Type ctx'], ['proxy'])
+
+	gen.bind_method(shared_script_system, 'TestScriptIsReady', 'bool', ['const gs::core::Script &script'], ['proxy'])
+
+	gen.bind_method(shared_script_system, 'GetImplementationName', 'const std::string &', [], ['proxy'])
+
+	gen.bind_method(shared_script_system, 'Open', 'bool', [], ['proxy'])
+	gen.bind_method(shared_script_system, 'Close', 'void', [], ['proxy'])
+
+	gen.bind_method(shared_script_system, 'Reset', 'void', [], ['proxy'])
+
+	gen.end_class(shared_script_system)
+
+	# gs::core::LuaSystem
+	gen.add_include('engine/lua_system.h')
+
+	lua_system = gen.begin_class('gs::script::LuaSystem', bound_name='LuaSystem_nobind', noncopyable=True, nobind=True)
+	gen.end_class(lua_system)
+
+	shared_lua_system = gen.begin_class('std::shared_ptr<gs::script::LuaSystem>', bound_name='LuaSystem', features={'proxy': lib.stl.SharedPtrProxyFeature(lua_system)})
+	gen.add_base(shared_lua_system, shared_script_system)
+	gen.bind_constructor(shared_lua_system, ['?std::shared_ptr<gs::core::ScriptEngineEnv> environment'], ['proxy'])
+	gen.end_class(shared_lua_system)
 
 	# gs::core::Node
 	gen.bind_constructor_overloads(shared_node, [
@@ -1207,6 +1252,12 @@ static std::shared_ptr<gs::core::Node> PhysicTraceGetNode(gs::core::PhysicTrace 
 
 	gen.end_class(shared_physic_system)
 
+	gen.insert_binding_code('''static std::shared_ptr<gs::core::IPhysicSystem> CreatePhysicSystem(const char *name) { return gs::core::g_physic_system_factory.get().Instantiate(name); }
+static std::shared_ptr<gs::core::IPhysicSystem> CreatePhysicSystem() { return gs::core::g_physic_system_factory.get().Instantiate(); }
+	''', 'Physic system custom API')
+
+	gen.bind_function('CreatePhysicSystem', 'std::shared_ptr<gs::core::IPhysicSystem>', ['?const char *name'], {'check_rval': check_rval_lambda(gen, 'CreatePhysicSystem failed, was LoadPlugins called succesfully?')})
+
 	# gs::core::NavigationPath
 	gen.add_include('engine/navigation_system.h')
 
@@ -1379,6 +1430,11 @@ static std::shared_ptr<gs::core::Node> PhysicTraceGetNode(gs::core::PhysicTrace 
 
 
 def bind_gpu(gen):
+	# types
+	gen.add_include('engine/types.h')
+
+	gen.bind_named_enum('gs::gpu::PrimitiveType', ['PrimitiveLine', 'PrimitiveTriangle', 'PrimitivePoint', 'PrimitiveLast'], bound_name='GpuPrimitiveType', prefix='Gpu', storage_type='uint8_t')
+
 	# gs::gpu::Buffer
 	gen.add_include('engine/gpu_buffer.h')
 
@@ -1611,24 +1667,118 @@ static void RendererBlitTexture_wrapper(gs::gpu::Renderer *renderer, gs::gpu::Te
 	gen.bind_method(shared_renderer, 'GetShaderVariable', 'gs::gpu::ShaderVariable', ['const char *name'], ['proxy'])
 	gen.bind_method(shared_renderer, 'GetShaderBuiltin', 'gs::gpu::ShaderVariable', ['gs::core::ShaderVariable::Semantic semantic'], ['proxy'])
 
-	"""
-	virtual void SetShaderInt(const ShaderVariable &var, const int *v, uint count = 1) = 0;
-	virtual void SetShaderInt2(const ShaderVariable &var, const int *vec2, uint count = 1) = 0;
-	virtual void SetShaderInt3(const ShaderVariable &var, const int *vec3, uint count = 1) = 0;
-	virtual void SetShaderInt4(const ShaderVariable &var, const int *vec4, uint count = 1) = 0;
-	virtual void SetShaderUnsigned(const ShaderVariable &var, const uint *v, uint count = 1) = 0;
-	virtual void SetShaderUnsigned2(const ShaderVariable &var, const uint *vec2, uint count = 1) = 0;
-	virtual void SetShaderUnsigned3(const ShaderVariable &var, const uint *vec3, uint count = 1) = 0;
-	virtual void SetShaderUnsigned4(const ShaderVariable &var, const uint *vec4, uint count = 1) = 0;
-	virtual void SetShaderFloat(const ShaderVariable &var, const float *v, uint count = 1) = 0;
-	virtual void SetShaderFloat2(const ShaderVariable &var, const float *vec2, uint count = 1) = 0;
-	virtual void SetShaderFloat3(const ShaderVariable &var, const float *vec3, uint count = 1) = 0;
-	virtual void SetShaderFloat4(const ShaderVariable &var, const float *vec4, uint count = 1) = 0;
-	virtual void SetShaderMatrix3(const ShaderVariable &var, const Matrix3 *m, uint count = 1) = 0;
-	virtual void SetShaderMatrix4(const ShaderVariable &var, const Matrix4 *m, uint count = 1) = 0;
-	virtual void SetShaderMatrix44(const ShaderVariable &var, const Matrix44 *m, uint count = 1) = 0;
-	virtual void SetShaderTexture(const ShaderVariable &var, const Texture &t) = 0;
-	"""
+	gen.insert_binding_code('''\
+static void _renderer_SetShaderInt(gs::gpu::Renderer *renderer, const gs::gpu::ShaderVariable &var, int x) { renderer->SetShaderInt(var, &x); }
+static void _renderer_SetShaderInt2(gs::gpu::Renderer *renderer, const gs::gpu::ShaderVariable &var, int x, int y) { int v2[] = {x, y}; renderer->SetShaderInt2(var, v2); }
+static void _renderer_SetShaderInt3(gs::gpu::Renderer *renderer, const gs::gpu::ShaderVariable &var, int x, int y, int z) { int v3[] = {x, y, z}; renderer->SetShaderInt3(var, v3); }
+static void _renderer_SetShaderInt4(gs::gpu::Renderer *renderer, const gs::gpu::ShaderVariable &var, int x, int y, int z, int w) { int v4[] = {x, y, z, w}; renderer->SetShaderInt4(var, v4); }
+
+static void _renderer_SetShaderUnsigned(gs::gpu::Renderer *renderer, const gs::gpu::ShaderVariable &var, gs::uint x) { renderer->SetShaderUnsigned(var, &x); }
+static void _renderer_SetShaderUnsigned2(gs::gpu::Renderer *renderer, const gs::gpu::ShaderVariable &var, gs::uint x, gs::uint y) { gs::uint v2[] = {x, y}; renderer->SetShaderUnsigned2(var, v2); }
+static void _renderer_SetShaderUnsigned3(gs::gpu::Renderer *renderer, const gs::gpu::ShaderVariable &var, gs::uint x, gs::uint y, gs::uint z) { gs::uint v3[] = {x, y, z}; renderer->SetShaderUnsigned3(var, v3); }
+static void _renderer_SetShaderUnsigned4(gs::gpu::Renderer *renderer, const gs::gpu::ShaderVariable &var, gs::uint x, gs::uint y, gs::uint z, gs::uint w) { gs::uint v4[] = {x, y, z, w}; renderer->SetShaderUnsigned4(var, v4); }
+
+static void _renderer_SetShaderFloat(gs::gpu::Renderer *renderer, const gs::gpu::ShaderVariable &var, float x) { renderer->SetShaderFloat(var, &x); }
+static void _renderer_SetShaderFloat2(gs::gpu::Renderer *renderer, const gs::gpu::ShaderVariable &var, float x, float y) { float v2[] = {x, y}; renderer->SetShaderFloat2(var, v2); }
+static void _renderer_SetShaderFloat3(gs::gpu::Renderer *renderer, const gs::gpu::ShaderVariable &var, float x, float y, float z) { float v3[] = {x, y, z}; renderer->SetShaderFloat3(var, v3); }
+static void _renderer_SetShaderFloat4(gs::gpu::Renderer *renderer, const gs::gpu::ShaderVariable &var, float x, float y, float z, float w) { float v4[] = {x, y, z, w}; renderer->SetShaderFloat4(var, v4); }
+
+static void _renderer_SetShaderMatrix3(gs::gpu::Renderer *renderer, const gs::gpu::ShaderVariable &var, const gs::Matrix3 &m) { renderer->SetShaderMatrix3(var, &m); }
+static void _renderer_SetShaderMatrix4(gs::gpu::Renderer *renderer, const gs::gpu::ShaderVariable &var, const gs::Matrix4 &m) { renderer->SetShaderMatrix4(var, &m); }
+static void _renderer_SetShaderMatrix44(gs::gpu::Renderer *renderer, const gs::gpu::ShaderVariable &var, const gs::Matrix44 &m) { renderer->SetShaderMatrix44(var, &m); }
+
+static void _renderer_SetShaderTexture(gs::gpu::Renderer *renderer, const gs::gpu::ShaderVariable &var, const gs::gpu::Texture &t) { renderer->SetShaderTexture(var, t); }
+
+static void _renderer_SetShaderInt_name(gs::gpu::Renderer *renderer, const char *name, int x) { renderer->SetShaderInt(renderer->GetShaderVariable(name), &x); }
+static void _renderer_SetShaderInt2_name(gs::gpu::Renderer *renderer, const char *name, int x, int y) { int v2[] = {x, y}; renderer->SetShaderInt2(renderer->GetShaderVariable(name), v2); }
+static void _renderer_SetShaderInt3_name(gs::gpu::Renderer *renderer, const char *name, int x, int y, int z) { int v3[] = {x, y, z}; renderer->SetShaderInt3(renderer->GetShaderVariable(name), v3); }
+static void _renderer_SetShaderInt4_name(gs::gpu::Renderer *renderer, const char *name, int x, int y, int z, int w) { int v4[] = {x, y, z, w}; renderer->SetShaderInt4(renderer->GetShaderVariable(name), v4); }
+
+static void _renderer_SetShaderUnsigned_name(gs::gpu::Renderer *renderer, const char *name, gs::uint x) { renderer->SetShaderUnsigned(renderer->GetShaderVariable(name), &x); }
+static void _renderer_SetShaderUnsigned2_name(gs::gpu::Renderer *renderer, const char *name, gs::uint x, gs::uint y) { gs::uint v2[] = {x, y}; renderer->SetShaderUnsigned2(renderer->GetShaderVariable(name), v2); }
+static void _renderer_SetShaderUnsigned3_name(gs::gpu::Renderer *renderer, const char *name, gs::uint x, gs::uint y, gs::uint z) { gs::uint v3[] = {x, y, z}; renderer->SetShaderUnsigned3(renderer->GetShaderVariable(name), v3); }
+static void _renderer_SetShaderUnsigned4_name(gs::gpu::Renderer *renderer, const char *name, gs::uint x, gs::uint y, gs::uint z, gs::uint w) { gs::uint v4[] = {x, y, z, w}; renderer->SetShaderUnsigned4(renderer->GetShaderVariable(name), v4); }
+
+static void _renderer_SetShaderFloat_name(gs::gpu::Renderer *renderer, const char *name, float x) { renderer->SetShaderFloat(renderer->GetShaderVariable(name), &x); }
+static void _renderer_SetShaderFloat2_name(gs::gpu::Renderer *renderer, const char *name, float x, float y) { float v2[] = {x, y}; renderer->SetShaderFloat2(renderer->GetShaderVariable(name), v2); }
+static void _renderer_SetShaderFloat3_name(gs::gpu::Renderer *renderer, const char *name, float x, float y, float z) { float v3[] = {x, y, z}; renderer->SetShaderFloat3(renderer->GetShaderVariable(name), v3); }
+static void _renderer_SetShaderFloat4_name(gs::gpu::Renderer *renderer, const char *name, float x, float y, float z, float w) { float v4[] = {x, y, z, w}; renderer->SetShaderFloat4(renderer->GetShaderVariable(name), v4); }
+
+static void _renderer_SetShaderMatrix3_name(gs::gpu::Renderer *renderer, const char *name, const gs::Matrix3 &m) { renderer->SetShaderMatrix3(renderer->GetShaderVariable(name), &m); }
+static void _renderer_SetShaderMatrix4_name(gs::gpu::Renderer *renderer, const char *name, const gs::Matrix4 &m) { renderer->SetShaderMatrix4(renderer->GetShaderVariable(name), &m); }
+static void _renderer_SetShaderMatrix44_name(gs::gpu::Renderer *renderer, const char *name, const gs::Matrix44 &m) { renderer->SetShaderMatrix44(renderer->GetShaderVariable(name), &m); }
+
+static void _renderer_SetShaderTexture_name(gs::gpu::Renderer *renderer, const char *name, const gs::gpu::Texture &t) { renderer->SetShaderTexture(renderer->GetShaderVariable(name), t); }
+''')
+
+	gen.bind_method_overloads(shared_renderer, 'SetShaderInt', [
+		('void', ['const gs::gpu::ShaderVariable &var', 'int x'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderInt(%s);' % (', '.join(args))}),
+		('void', ['const char *name', 'int x'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderInt_name(%s);' % (', '.join(args))})
+	])
+	gen.bind_method_overloads(shared_renderer, 'SetShaderInt2', [
+		('void', ['const gs::gpu::ShaderVariable &var', 'int x', 'int y'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderInt2(%s);' % (', '.join(args))}),
+		('void', ['const char *name', 'int x', 'int y'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderInt2_name(%s);' % (', '.join(args))})
+	])
+	gen.bind_method_overloads(shared_renderer, 'SetShaderInt3', [
+		('void', ['const gs::gpu::ShaderVariable &var', 'int x', 'int y', 'int z'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderInt3(%s);' % (', '.join(args))}),
+		('void', ['const char *name', 'int x', 'int y', 'int z'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderInt3_name(%s);' % (', '.join(args))})
+	])
+	gen.bind_method_overloads(shared_renderer, 'SetShaderInt4', [
+		('void', ['const gs::gpu::ShaderVariable &var', 'int x', 'int y', 'int z', 'int w'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderInt4(%s);' % (', '.join(args))}),
+		('void', ['const char *name', 'int x', 'int y', 'int z', 'int w'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderInt4_name(%s);' % (', '.join(args))})
+	])
+
+	gen.bind_method_overloads(shared_renderer, 'SetShaderUnsigned', [
+		('void', ['const gs::gpu::ShaderVariable &var', 'gs::uint x'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderUnsigned(%s);' % (', '.join(args))}),
+		('void', ['const char *name', 'gs::uint x'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderUnsigned_name(%s);' % (', '.join(args))})
+	])
+	gen.bind_method_overloads(shared_renderer, 'SetShaderUnsigned2', [
+		('void', ['const gs::gpu::ShaderVariable &var', 'gs::uint x', 'gs::uint y'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderUnsigned2(%s);' % (', '.join(args))}),
+		('void', ['const char *name', 'gs::uint x', 'gs::uint y'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderUnsigned2_name(%s);' % (', '.join(args))})
+	])
+	gen.bind_method_overloads(shared_renderer, 'SetShaderUnsigned3', [
+		('void', ['const gs::gpu::ShaderVariable &var', 'gs::uint x', 'gs::uint y', 'gs::uint z'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderUnsigned3(%s);' % (', '.join(args))}),
+		('void', ['const char *name', 'gs::uint x', 'gs::uint y', 'gs::uint z'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderUnsigned3_name(%s);' % (', '.join(args))})
+	])
+	gen.bind_method_overloads(shared_renderer, 'SetShaderUnsigned4', [
+		('void', ['const gs::gpu::ShaderVariable &var', 'gs::uint x', 'gs::uint y', 'gs::uint z', 'gs::uint w'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderUnsigned4(%s);' % (', '.join(args))}),
+		('void', ['const char *name', 'gs::uint x', 'gs::uint y', 'gs::uint z', 'gs::uint w'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderUnsigned4_name(%s);' % (', '.join(args))})
+	])
+
+	gen.bind_method_overloads(shared_renderer, 'SetShaderFloat', [
+		('void', ['const gs::gpu::ShaderVariable &var', 'float x'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderFloat(%s);' % (', '.join(args))}),
+		('void', ['const char *name', 'float x'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderFloat_name(%s);' % (', '.join(args))})
+	])
+	gen.bind_method_overloads(shared_renderer, 'SetShaderFloat2', [
+		('void', ['const gs::gpu::ShaderVariable &var', 'float x', 'float y'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderFloat2(%s);' % (', '.join(args))}),
+		('void', ['const char *name', 'float x', 'float y'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderFloat2_name(%s);' % (', '.join(args))})
+	])
+	gen.bind_method_overloads(shared_renderer, 'SetShaderFloat3', [
+		('void', ['const gs::gpu::ShaderVariable &var', 'float x', 'float y', 'float z'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderFloat3(%s);' % (', '.join(args))}),
+		('void', ['const char *name', 'float x', 'float y', 'float z'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderFloat3_name(%s);' % (', '.join(args))})
+	])
+	gen.bind_method_overloads(shared_renderer, 'SetShaderFloat4', [
+		('void', ['const gs::gpu::ShaderVariable &var', 'float x', 'float y', 'float z', 'float w'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderFloat4(%s);' % (', '.join(args))}),
+		('void', ['const char *name', 'float x', 'float y', 'float z', 'float w'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderFloat4_name(%s);' % (', '.join(args))})
+	])
+
+	gen.bind_method_overloads(shared_renderer, 'SetShaderMatrix3', [
+		('void', ['const gs::gpu::ShaderVariable &var', 'const gs::Matrix3 &m'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderMatrix3(%s);' % (', '.join(args))}),
+		('void', ['const char *name', 'const gs::Matrix3 &m'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderMatrix3_name(%s);' % (', '.join(args))})
+	])
+	gen.bind_method_overloads(shared_renderer, 'SetShaderMatrix4', [
+		('void', ['const gs::gpu::ShaderVariable &var', 'const gs::Matrix4 &m'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderMatrix4(%s);' % (', '.join(args))}),
+		('void', ['const char *name', 'const gs::Matrix4 &m'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderMatrix4_name(%s);' % (', '.join(args))})
+	])
+	gen.bind_method_overloads(shared_renderer, 'SetShaderMatrix44', [
+		('void', ['const gs::gpu::ShaderVariable &var', 'const gs::Matrix44 &m'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderMatrix44(%s);' % (', '.join(args))}),
+		('void', ['const char *name', 'const gs::Matrix44 &m'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderMatrix44_name(%s);' % (', '.join(args))})
+	])
+
+	gen.bind_method_overloads(shared_renderer, 'SetShaderTexture', [
+		('void', ['const gs::gpu::ShaderVariable &var', 'const gs::gpu::Texture &texture'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderTexture(%s);' % (', '.join(args))}),
+		('void', ['const char *name', 'const gs::gpu::Texture &texture'], {'proxy': None, 'route': lambda args: '_renderer_SetShaderTexture_name(%s);' % (', '.join(args))})
+	])
 
 	"""
 	gen.bind_method(shared_renderer, 'SetShaderSystemBuiltins', 'void', ['float clock', 'const gs::tVector2<int> &internal_resolution', 'gs::uint fx_scale', 'const gs::Color &ambient_color', 'bool is_forward', 'bool fog_enabled', 'const gs::Color &fog_color', 'float fog_near', 'float fog_far', 'gs::gpu::Texture &depth_map'])
@@ -1665,8 +1815,8 @@ static void RendererBlitTexture_wrapper(gs::gpu::Renderer *renderer, gs::gpu::Te
 	])
 	gen.bind_method(shared_renderer, 'SetVertexSource', 'void', ['gs::gpu::Buffer &buffer', 'const gs::core::VertexLayout &layout'], ['proxy'])
 
-	#virtual const sShader &GetShader() const = 0;
-	#virtual bool SetShader(sShader shader) = 0;
+	gen.bind_method(shared_renderer, 'GetShader', 'const std::shared_ptr<gs::gpu::Shader> &', [], ['proxy'])
+	gen.bind_method(shared_renderer, 'SetShader', 'bool', ['std::shared_ptr<gs::gpu::Shader> shader'], ['proxy'])
 
 	gen.bind_method(shared_renderer, 'SetPolygonDepthOffset', 'void', ['float slope_scale', 'float bias'], ['proxy'])
 
@@ -1744,10 +1894,7 @@ static void RendererBlitTexture_wrapper(gs::gpu::Renderer *renderer, gs::gpu::Te
 static std::shared_ptr<gs::gpu::Renderer> CreateRenderer() { return gs::core::g_renderer_factory.get().Instantiate(); }
 	''', 'Renderer custom API')
 
-	gen.bind_function_overloads('CreateRenderer', [
-		('std::shared_ptr<gs::gpu::Renderer>', [], {'check_rval': check_rval_lambda(gen, 'CreateRenderer failed, was LoadPlugins called succesfully?')}),
-		('std::shared_ptr<gs::gpu::Renderer>', ['const char *name'], {'check_rval': check_rval_lambda(gen, 'CreateRenderer failed, was LoadPlugins called succesfully?')})
-	])
+	gen.bind_function('CreateRenderer', 'std::shared_ptr<gs::gpu::Renderer>', ['?const char *name'], {'check_rval': check_rval_lambda(gen, 'CreateRenderer failed, was LoadPlugins called succesfully?')})
 
 	# gs::gpu::RendererAsync
 	gen.add_include('engine/renderer_async.h')
@@ -1905,6 +2052,9 @@ static std::shared_ptr<gs::gpu::Renderer> CreateRenderer() { return gs::core::g_
 	gen.bind_method(shared_renderer_async, 'SetVSync', 'void', ['bool enabled'], ['proxy'])
 
 	gen.end_class(shared_renderer_async)
+
+	# global rendering functions
+	gen.bind_function('DrawBuffers', 'void', ['gs::gpu::Renderer &renderer', 'gs::uint index_count', 'gs::gpu::Buffer &idx', 'gs::gpu::Buffer &vtx', 'gs::core::VertexLayout &layout', '?gs::core::IndexType idx_type', '?gs::gpu::PrimitiveType primitive_type'])
 
 
 def bind_render(gen):
@@ -4511,10 +4661,12 @@ void InitializePluginsDefaultSearchPath(lua_State *L) {
 	if gen.get_language() == 'Lua':
 		init_plugins_parm = 'L'
 
-	gen.add_custom_init_code('''
+	gen.add_custom_init_code('''\
 	gs::core::Init();
 	InitializePluginsDefaultSearchPath(%s);
 \n''' % init_plugins_parm)
+
+	gen.add_custom_free_code('gs::core::Uninit();\n')
 
 	float_ptr = gen.bind_ptr('float *', bound_name='FloatPointer')
 	void_ptr = gen.bind_ptr('void *', bound_name='VoidPointer')
@@ -4566,9 +4718,9 @@ void InitializePluginsDefaultSearchPath(lua_State *L) {
 	bind_render(gen)
 	bind_iso_surface(gen)
 	bind_frame_renderer(gen)
+	bind_mixer(gen)
 	bind_scene(gen)
 	bind_input(gen)
-	bind_mixer(gen)
 	bind_plus(gen)
 	bind_imgui(gen)
 	bind_extras(gen)

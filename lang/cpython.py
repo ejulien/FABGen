@@ -470,20 +470,33 @@ static inline bool CheckArgsTuple(PyObject *args) {
 		self._source += "};\n\n"
 		return table_name
 
+	def output_module_free(self):
+		self._source += 'void PyFree_%s(void *) {\n' % self._name
+		self._source += '	// custom free code\n'
+		self._source += self._custom_free_code
+		self._source += '}\n\n'
+
 	def output_module_definition(self, methods_table):
+		self.output_module_free()
+
 		def_name = '%s_module' % self._name
 		self._source += 'static struct PyModuleDef %s = {\n' % def_name
 		self._source += '	PyModuleDef_HEAD_INIT,\n'
 		self._source += '	"%s", /* name of module */\n' % self._name
 		self._source += '	"TODO doc", /* module documentation, may be NULL */\n'
 		self._source += '	-1, /* size of per-interpreter state of the module, or -1 if the module keeps state in global variables. */\n'
-		self._source += '	%s\n' % methods_table
+		self._source += '	%s,\n' % methods_table
+		self._source += '	NULL, /* m_slots */\n'
+		self._source += '	NULL, /* m_traverse */\n'
+		self._source += '	NULL, /* m_clear */\n'
+		self._source += '	&PyFree_%s /* m_free */\n' % self._name
 		self._source += '};\n\n'
+
 		return def_name
 
 	def output_module_init_function(self, module_def):
 		self._source += 'PyMODINIT_FUNC PyInit_%s(void) {\n' % self._name
-		self._source += '	// custom initialization code'
+		self._source += '	// custom initialization code\n'
 		self._source += self._custom_init_code
 
 		self._source += '''
