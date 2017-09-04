@@ -60,12 +60,16 @@ Type converters and function prototypes all accept a list or dictionary of featu
 
 - 'proxy': class ProxyFeature
 
-Types using this feature are declared as wrapper for another underlying type.
+Types using this feature are declared as wrapper for another underlying type.  
 This feature is used to unwrap arguments to a call and wrap its return value.
 
-Note: A type converter proxy feature is consumed by prototypes proxy feature, see the prototype feature documentation.
+*Note:* A type converter proxy feature is consumed by prototypes proxy feature, see the prototype feature documentation.
 
 Support for std::shared_ptr is done with the proxy feature.
+
+- 'rval_transform': `def transform(gen, conv, expr, var_out, ownership):`
+
+Allow type conversion when returned from a function.
 
 ```python
 class StdSharedPtrProxyFeature:
