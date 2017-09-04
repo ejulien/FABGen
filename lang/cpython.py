@@ -17,7 +17,7 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 		return 'to_c_%s(%s, (void *)%s);\n' % (self.bound_name, in_var, out_var_p)
 
 	def from_c_call(self, out_var, expr, ownership):
-		return "PyObject *%s = from_c_%s((void *)%s, %s);\n" % (out_var, self.bound_name, expr, ownership)
+		return "%s = from_c_%s((void *)%s, %s);\n" % (out_var, self.bound_name, expr, ownership)
 
 	def check_call(self, in_var):
 		return "check_%s(%s)" % (self.bound_name, in_var)
@@ -431,6 +431,9 @@ static inline bool CheckArgsTuple(PyObject *args) {
 	# function call return values
 	def return_void_from_c(self):
 		return 'return 0;'
+
+	def declare_rval(self, out_var):
+		return 'PyObject *%s;\n' % out_var
 
 	def rval_from_c_ptr(self, conv, out_var, expr, ownership):
 		return conv.from_c_call(out_var, expr, ownership)

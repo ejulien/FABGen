@@ -1380,8 +1380,8 @@ static std::shared_ptr<gs::core::IPhysicSystem> CreatePhysicSystem() { return gs
 	gen.bind_method(shared_scene, 'GetNodeChildren', 'std::vector<std::shared_ptr<gs::core::Node>>', ['const gs::core::Node &node'], ['proxy'])
 	gen.bind_method(shared_scene, 'GetNodesWithAspect', 'std::vector<std::shared_ptr<gs::core::Node>>', ['const char *aspect'], ['proxy'])
 
-	gen.insert_binding_code('static bool _Scene_Load(gs::core::Scene *scene, const char *path, std::shared_ptr<gs::render::RenderSystem> &render_system) { return gs::core::LoadScene(*scene, path, render_system); }')
-	gen.bind_method(shared_scene, 'Load', 'bool', ['const char *path', 'std::shared_ptr<gs::render::RenderSystem> &render_system'], {'proxy': None, 'route': route_lambda('_Scene_Load')})
+	gen.insert_binding_code('static bool _Scene_Load(gs::core::Scene *scene, const char *path, std::shared_ptr<gs::render::RenderSystem> &render_system, std::vector<std::shared_ptr<gs::core::Node>> *nodes) { return gs::core::LoadScene(*scene, path, render_system, nodes); }')
+	gen.bind_method(shared_scene, 'Load', 'bool', ['const char *path', 'std::shared_ptr<gs::render::RenderSystem> &render_system', 'std::vector<std::shared_ptr<gs::core::Node>> *nodes'], {'proxy': None, 'route': route_lambda('_Scene_Load'), 'arg_out': ['nodes']})
 
 	gen.bind_method_overloads(shared_scene, 'Update', [
 		('void', [], ['proxy']),

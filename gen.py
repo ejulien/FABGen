@@ -298,6 +298,9 @@ class TypeConverter:
 	def get_all_static_methods(self):
 		return collect_attr_from_conv_recursive([], self, 'static_methods', lambda a,b: a['bound_name'] == b['bound_name'])
 
+	def add_feature(self, key, val):
+		self._features[key] = val
+
 
 def format_list_for_comment(lst):
 	ln = len(lst)
@@ -629,13 +632,24 @@ class FABGen:
 	def _prepare_c_arg(self, idx, conv, var, ctx='default'):
 		return self._declare_c_arg(conv.arg_storage_ctype, var) + self._convert_c_arg(idx, conv, var, ctx)
 
+	def declare_rval(self, out_var):
+		return ''
+
 	def prepare_c_rval(self, conv, ctype, var, ownership=None):
 		if ownership is None:
 			ownership = self.__ctype_to_ownership_policy(ctype)
 
 		# transform from {T&, T*, T**, ...} to T* where T is conv.ctype
 		expr = transform_var_ref_to(var, ctype.get_ref(), conv.ctype.add_ref('*').get_ref())
-		return self.rval_from_c_ptr(conv, var+'_out', expr, ownership)
+
+		out_var = var + '_out'
+		src = self.declare_rval(out_var)
+		if 'rval_transform' in conv._features:
+			src += conv._features['rval_transform'](self, conv, expr, out_var, ownership)
+		else:
+			src += self.rval_from_c_ptr(conv, out_var, expr, ownership)
+
+		return src
 
 	def __proto_call(self, self_conv, proto, expr_eval, ctx, fixed_arg_count=None):
 		features = proto['features']
@@ -739,6 +753,7 @@ class FABGen:
 						arg_ctype = arg['conv'].arg_storage_ctype
 					else:
 						arg_ctype = arg['conv'].ctype
+
 					rvals_prepare_args.append((arg['conv'], arg_ctype, 'arg%d' % idx))
 					rvals.append('arg%d' % idx)
 
