@@ -38,8 +38,8 @@ def bind_log(gen):
 
 	gen.bind_named_enum('gs::LogLevel::mask_type', ['Message', 'Warning', 'Error', 'Debug', 'All'], storage_type='gs::uint', prefix='Log', bound_name='LogLevel', namespace='gs::LogLevel')
 
-	gen.bind_function('gs::SetDefaultLogOutputLevelMask', 'void', ['gs::LogLevel::mask_type mask'])
-	gen.bind_function('gs::SetDefaultLogOutputIsDetailed', 'void', ['bool is_detailed'])
+	gen.bind_function('gs::SetLogLevel', 'void', ['gs::LogLevel::mask_type mask'])
+	gen.bind_function('gs::SetLogIsDetailed', 'void', ['bool is_detailed'])
 
 	gen.bind_function('gs::FlushLog', 'void', [])
 
