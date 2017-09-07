@@ -1642,9 +1642,6 @@ def bind_gpu(gen):
 	Signal<void(Renderer &)> show_frame_signal;
 	"""
 
-	gen.bind_method(shared_renderer, 'GetWorkerAffinity', 'gs::task_affinity', [], ['proxy'])
-	gen.bind_method(shared_renderer, 'SetWorkerAffinity', 'void', ['gs::task_affinity affinity'], ['proxy'])
-
 	gen.bind_method(shared_renderer, 'NewRenderTarget', 'std::shared_ptr<gs::gpu::RenderTarget>', [], ['proxy'])
 
 	gen.bind_method_overloads(shared_renderer, 'SetRenderTargetColorTexture', [
@@ -1970,10 +1967,7 @@ static std::shared_ptr<gs::gpu::Renderer> CreateRenderer() { return gs::core::g_
 
 	shared_renderer_async = gen.begin_class('std::shared_ptr<gs::gpu::RendererAsync>', bound_name='RendererAsync', features={'proxy': lib.stl.SharedPtrProxyFeature(renderer_async)})
 
-	gen.bind_constructor_overloads(shared_renderer_async, [
-		(['std::shared_ptr<gs::gpu::Renderer> renderer'], ['proxy']),
-		(['std::shared_ptr<gs::gpu::Renderer> renderer', 'gs::task_affinity affinity'], ['proxy'])
-	])
+	gen.bind_constructor(shared_renderer_async, ['std::shared_ptr<gs::gpu::Renderer> renderer'], ['proxy'])
 	gen.bind_method(shared_renderer_async, 'GetRenderer', 'const std::shared_ptr<gs::gpu::Renderer> &', [], ['proxy'])
 
 	gen.bind_method(shared_renderer_async, 'PurgeCache', 'std::future<gs::uint>', [], ['proxy'])

@@ -558,3 +558,4 @@ static type_tag_info *get_type_tag_info(const char *type_tag) {
 		super().finalize()
 
 		self.output_module_init_function(module_def)
+	

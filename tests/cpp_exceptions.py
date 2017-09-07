@@ -34,4 +34,8 @@ assert exception_raised == True
 
 test_lua = '''\
 my_test = require "my_test"
+
+exception_raised = false
+
+my_test.get_int() -- will raise a native exception
 '''

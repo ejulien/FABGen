@@ -434,7 +434,7 @@ static int wrapped_Object_gc(lua_State *L) {
 
 		self._source += 'extern "C" _DLL_EXPORT_ int luaopen_%s(lua_State* L) {\n' % self._name
 
-		self._source += '	// custom initialization code'
+		self._source += '	// custom initialization code\n'
 		self._source += self._custom_init_code
 
 		self._source += '	// new module table\n'
