@@ -64,36 +64,34 @@ int read_virtual_method_through_base_class(base_class &o) {
 test_python = '''\
 import my_test
 
-from tests_api import expect_eq
-
 base = my_test.base_class()
-expect_eq(base.base_method(), 4)
-expect_eq(base.base_method_override(), 4)
+assert base.base_method() == 4
+assert base.base_method_override() == 4
 
 derived = my_test.derived_class()
-expect_eq(derived.base_method(), 4)  # can still access base class
-expect_eq(derived.derived_method(), 8)  # can access its own methods
-expect_eq(derived.base_method_override(), 8)  # properly overshadows redeclared base methods
+assert derived.base_method() == 4  # can still access base class
+assert derived.derived_method() == 8  # can access its own methods
+assert derived.base_method_override() == 8  # properly overshadows redeclared base methods
 
 # argument casting through inheritance tree
-expect_eq(my_test.read_virtual_method_through_base_class(base), 6)
-expect_eq(my_test.read_virtual_method_through_base_class(derived), 9)
+assert my_test.read_virtual_method_through_base_class(base) == 6
+assert my_test.read_virtual_method_through_base_class(derived) == 9
 
 # member access through inheritance tree
-expect_eq(base.u, 6)
-expect_eq(derived.u, 6)  # can access base class member
-expect_eq(base.v, 7)
-expect_eq(derived.v, 7)  # can access base class static member
+assert base.u == 6
+assert derived.u == 6  # can access base class member
+assert base.v == 7
+assert derived.v == 7  # can access base class static member
 
-expect_eq(base.override, 4)
-expect_eq(base.static_override, 1)
-expect_eq(derived.override, 12)  # member overshadowing
-expect_eq(derived.static_override, 42)  # static member overshadowing
+assert base.override == 4
+assert base.static_override == 1
+assert derived.override == 12  # member overshadowing
+assert derived.static_override == 42  # static member overshadowing
 
-expect_eq(my_test.base_class.v, 7)
-expect_eq(my_test.derived_class.v, 7)
-expect_eq(my_test.base_class.static_override, 1)
-expect_eq(my_test.derived_class.static_override, 42)
+assert my_test.base_class.v == 7
+assert my_test.derived_class.v == 7
+assert my_test.base_class.static_override == 1
+assert my_test.derived_class.static_override == 42
 '''
 
 test_lua = '''\

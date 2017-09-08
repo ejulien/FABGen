@@ -40,17 +40,15 @@ struct simple_struct {
 test_python = '''\
 import my_test
 
-from tests_api import expect_eq
-
 s = my_test.simple_struct()
 
-expect_eq(s.get_a(), 1)
-expect_eq(s.set_a(8, 2), True)
+assert s.get_a() == 1
+assert s.set_a(8, 2) == True
 
-expect_eq(s.get_a(), 10)
+assert s.get_a() == 10
 
-expect_eq(s.set_a(9), 9)
-expect_eq(s.get_a(), 9)
+assert s.set_a(9) == 9
+assert s.get_a() == 9
 '''
 
 test_lua = '''\

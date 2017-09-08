@@ -150,7 +150,6 @@ class CPythonTestBed:
 		test_path = os.path.join(work_path, 'test.py')
 		with open(test_path, 'w') as file:
 			file.write(module.test_python)
-		shutil.copy(os.path.join(start_path, 'tests_api.py'), os.path.join(work_path, 'tests_api.py'))
 
 		print("Executing Python test...")
 		os.chdir(work_path)

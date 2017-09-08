@@ -35,29 +35,27 @@ void modify_in_out_struct(A *a) { a->v = 3; }
 test_python = '''\
 import my_test
 
-from tests_api import expect_eq
-
 a = my_test.A()
 a = my_test.modify_in_out_struct(a)
-expect_eq(a.v, 3)
+assert a.v == 3
 
 a, b = my_test.out_values_function_call(2, 3)
-expect_eq(a, 16)
-expect_eq(b, 42)
+assert a == 16
+assert b == 42
 
 r, a, b = my_test.out_values_function_call_rval(2)
-expect_eq(r, 2)
-expect_eq(a, 16)
-expect_eq(b, 28)
+assert r == 2
+assert a == 16
+assert b == 28
 
 r, a, b = my_test.out_values_function_call_rval(2, 2)
-expect_eq(r, 4)
-expect_eq(a, 16)
-expect_eq(b, 28)
+assert r == 4
+assert a == 16
+assert b == 28
 
 r, v = my_test.in_out_value(5)
-expect_eq(r, True)
-expect_eq(v, 20)
+assert r == True
+assert v == 20
 '''
 
 test_lua = '''\

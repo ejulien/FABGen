@@ -44,42 +44,40 @@ int consume_pointer_to_int(const int *p) {
 test_python = '''\
 import my_test
 
-from tests_api import expect_eq
-
 v = my_test.vector_of_int()
 
-expect_eq(v.size(), 0)
-expect_eq(len(v), 0)
+assert v.size() == 0
+assert len(v) == 0
 
 v.push_back(5)
 v.push_back(1)
 v.push_back(9)
 
-expect_eq(v.size(), 3)
-expect_eq(len(v), 3)
+assert v.size() == 3
+assert len(v) == 3
 
-expect_eq(v.at(1), 1)
-expect_eq(v.at(2), 9)
-expect_eq(v.at(0), 5)
+assert v.at(1) == 1
+assert v.at(2) == 9
+assert v.at(0) == 5
 
-expect_eq(v[1], 1)
-expect_eq(v[2], 9)
-expect_eq(v[0], 5)
+assert v[1] == 1
+assert v[2] == 9
+assert v[0] == 5
 
 v[1] = 16
 
-expect_eq(v[2], 9)
-expect_eq(v[0], 5)
-expect_eq(v[1], 16)
+assert v[2] == 9
+assert v[0] == 5
+assert v[1] == 16
 
 v[0] *= 4
 
-expect_eq(v[0], 20)
+assert v[0] == 20
 
-expect_eq(my_test.consume_pointer_to_int(v.data()), 16)
+assert my_test.consume_pointer_to_int(v.data()) == 16
 
 # implicit cast to const int *
-expect_eq(my_test.consume_pointer_to_int(v), 16)
+assert my_test.consume_pointer_to_int(v) == 16
 '''
 
 test_lua = '''\

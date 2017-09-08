@@ -30,13 +30,11 @@ struct simple_struct {
 test_python = '''\
 import my_test
 
-from tests_api import expect_eq
-
 s = my_test.simple_struct()
 t = my_test.simple_struct(4)
 
-expect_eq(s.v_, -8)
-expect_eq(t.v_, 4)
+assert s.v_ == -8
+assert t.v_ == 4
 '''
 
 test_lua = '''\

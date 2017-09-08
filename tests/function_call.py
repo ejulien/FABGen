@@ -31,15 +31,13 @@ int get(int v, int k, int b) { return v * k + b; }
 test_python = '''\
 import my_test
 
-from tests_api import expect_eq
-
-expect_eq(my_test.get_int(), 8)
+assert my_test.get_int() == 8
 
 # overload
-expect_eq(my_test.get(), 0)
-expect_eq(my_test.get(2), 1)
-expect_eq(my_test.get(4, 3), 12)
-expect_eq(my_test.get(4, 3, 2), 14)
+assert my_test.get() == 0
+assert my_test.get(2) == 1
+assert my_test.get(4, 3) == 12
+assert my_test.get(4, 3, 2) == 14
 '''
 
 test_lua = '''\

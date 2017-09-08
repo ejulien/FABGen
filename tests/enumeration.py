@@ -31,23 +31,21 @@ enum NamedEnum { NE_a, NE_b, NE_c = 4096 };
 test_python = '''\
 import my_test
 
-from tests_api import expect_eq
+assert my_test.GE_a == 0
+assert my_test.GE_b == 1
+assert my_test.GE_c == 8
 
-expect_eq(my_test.GE_a, 0)
-expect_eq(my_test.GE_b, 1)
-expect_eq(my_test.GE_c, 8)
+assert my_test.SE_a == 0
+assert my_test.SE_b == 128
+assert my_test.SE_c == 512
 
-expect_eq(my_test.SE_a, 0)
-expect_eq(my_test.SE_b, 128)
-expect_eq(my_test.SE_c, 512)
+assert my_test.TE_a == 0
+assert my_test.TE_b == 1
+assert my_test.TE_c == 16384
 
-expect_eq(my_test.TE_a, 0)
-expect_eq(my_test.TE_b, 1)
-expect_eq(my_test.TE_c, 16384)
-
-expect_eq(my_test.NE_a, 0)
-expect_eq(my_test.NE_b, 1)
-expect_eq(my_test.NE_c, 4096)
+assert my_test.NE_a == 0
+assert my_test.NE_b == 1
+assert my_test.NE_c == 4096
 '''
 
 test_lua = '''\

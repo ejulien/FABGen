@@ -28,10 +28,8 @@ int ObjectGet(Object *o, int v) { return o->a + v; }
 test_python = '''\
 import my_test
 
-from tests_api import expect_eq
-
 o = my_test.Object()
-expect_eq(o.Get(4), 15)
+assert o.Get(4) == 15
 '''
 
 test_lua = '''\

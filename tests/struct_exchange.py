@@ -50,20 +50,18 @@ bool test_simple_struct() {
 test_python = '''\
 import my_test
 
-from tests_api import expect_eq
-
 # take by value
 s = my_test.return_simple_struct_by_value()
 my_test.take_simple_struct_by_value(s)
-expect_eq(my_test.test_simple_struct(), True)
+assert my_test.test_simple_struct() == True
 
 s = my_test.return_simple_struct_by_pointer()
 my_test.take_simple_struct_by_value(s)
-expect_eq(my_test.test_simple_struct(), True)
+assert my_test.test_simple_struct() == True
 
 s = my_test.return_simple_struct_by_ref()
 my_test.take_simple_struct_by_value(s)
-expect_eq(my_test.test_simple_struct(), True)
+assert my_test.test_simple_struct() == True
 '''
 
 

@@ -21,10 +21,8 @@ template <typename T> T get() { return T(8); }
 test_python = '''\
 import my_test
 
-from tests_api import expect_eq
-
-expect_eq(my_test.get_int(), 8)
-expect_eq(my_test.get_float(), 8)
+assert my_test.get_int() == 8
+assert my_test.get_float() == 8
 '''
 
 test_lua = '''\

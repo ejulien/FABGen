@@ -67,10 +67,10 @@ test_python = '''\
 import my_test
 
 B = my_test.get_b()
-assert(B.b == 3)
+assert B.b == 3
 
 C = my_test.get_c()
-assert(C.c == 7)
+assert C.c == 7
 '''
 
 test_lua = '''\

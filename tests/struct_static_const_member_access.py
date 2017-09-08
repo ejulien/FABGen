@@ -32,13 +32,11 @@ const char *simple_struct::s = "some string";
 test_python = '''\
 import my_test
 
-from tests_api import expect_eq
-
 v = my_test.simple_struct()
-expect_eq(v.v, 3)
+assert v.v == 3
 
-expect_eq(my_test.simple_struct.i, 5)
-expect_eq(my_test.simple_struct.s, "some string")
+assert my_test.simple_struct.i == 5
+assert my_test.simple_struct.s == "some string"
 '''
 
 test_lua = '''\

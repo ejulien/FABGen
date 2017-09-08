@@ -64,37 +64,35 @@ struct simple_struct {
 test_python = '''\
 import my_test
 
-from tests_api import expect_eq, expect_neq
-
 a, b = my_test.simple_struct(4), my_test.simple_struct(8)
 
 s = a + b
-expect_eq(s.v, 12)
+assert s.v == 12
 s += b
-expect_eq(s.v, 20)
+assert s.v == 20
 s += 4
-expect_eq(s.v, 24)
+assert s.v == 24
 
 s = s / 4
-expect_eq(s.v, 6)
+assert s.v == 6
 s /= 3
-expect_eq(s.v, 2)
+assert s.v == 2
 s += a
-expect_eq(s.v, 6)
+assert s.v == 6
 
 s = s * a
-expect_eq(s.v, 24)
+assert s.v == 24
 s *= 2
-expect_eq(s.v, 48)
+assert s.v == 48
 
 s = s - b
-expect_eq(s.v, 40)
+assert s.v == 40
 s -= 32
-expect_eq(s.v, 8)
+assert s.v == 8
 
 c = a * 2
-expect_eq(c, b)
-expect_neq(a, b)
+assert c == b
+assert a != b
 '''
 
 test_lua = '''\

@@ -34,23 +34,21 @@ struct enclosing_struct {
 test_python = '''\
 import my_test
 
-from tests_api import expect_eq
-
 #
 n = my_test.nested_struct()
-expect_eq(n.v, 8)
+assert n.v == 8
 n.v -= 4
-expect_eq(n.v, 4)
+assert n.v == 4
 
 #
 e = my_test.enclosing_struct()
-expect_eq(e.n.v, 8)
+assert e.n.v == 8
 e.n.v = 12
-expect_eq(e.n.v, 12)
+assert e.n.v == 12
 e.n.v *= 4
-expect_eq(e.n.v, 48)
+assert e.n.v == 48
 e.n.v //= 2
-expect_eq(e.n.v, 24)
+assert e.n.v == 24
 '''
 
 test_lua = '''\

@@ -28,21 +28,19 @@ struct simple_struct {
 test_python = '''\
 import my_test
 
-from tests_api import expect_eq
-
 s = my_test.simple_struct()
 
-expect_eq(s.a, 3)
-expect_eq(s.b, 11)
-expect_eq(s.c, 1)
+assert s.a == 3
+assert s.b == 11
+assert s.c == 1
 
 s.a = 1
 s.b = 7
 s.c = 2
 
-expect_eq(s.a, 1)
-expect_eq(s.b, 7)
-expect_eq(s.c, 2)
+assert s.a == 1
+assert s.b == 7
+assert s.c == 2
 '''
 
 test_lua = '''\
