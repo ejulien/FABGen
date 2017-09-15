@@ -1,0 +1,455 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+A_rval_transform	../tests/transform_rval.py	/^	def A_rval_transform(gen, conv, expr, var_out, ownership):$/;"	kind:function	line:35
+CPythonGenerator	../lang/cpython.py	/^class CPythonGenerator(gen.FABGen):$/;"	kind:class	line:285
+CPythonTestBed	../tests.py	/^class CPythonTestBed:$/;"	kind:class	line:137
+DrawLineAuto_wrapper_route	../examples/harfang.py	/^	DrawLineAuto_wrapper_route = lambda args: 'RenderSystemDrawLineAuto_wrapper(%s);' % (', '.join(args))$/;"	kind:variable	line:2446
+DrawLine_wrapper_route	../examples/harfang.py	/^	DrawLine_wrapper_route = lambda args: 'RenderSystemDrawLine_wrapper(%s);' % (', '.join(args))$/;"	kind:variable	line:2392
+DrawSpriteAuto_wrapper_route	../examples/harfang.py	/^	DrawSpriteAuto_wrapper_route = lambda args: 'RenderSystemDrawSpriteAuto_wrapper(%s);' % (', '.join(args))$/;"	kind:variable	line:2448
+DrawSprite_wrapper_route	../examples/harfang.py	/^	DrawSprite_wrapper_route = lambda args: 'RenderSystemDrawSprite_wrapper(%s);' % (', '.join(args))$/;"	kind:variable	line:2394
+DrawTriangleAuto_wrapper_route	../examples/harfang.py	/^	DrawTriangleAuto_wrapper_route = lambda args: 'RenderSystemDrawTriangleAuto_wrapper(%s);' % (', '.join(args))$/;"	kind:variable	line:2447
+DrawTriangle_wrapper_route	../examples/harfang.py	/^	DrawTriangle_wrapper_route = lambda args: 'RenderSystemDrawTriangle_wrapper(%s);' % (', '.join(args))$/;"	kind:variable	line:2393
+FABGen	../gen.py	/^class FABGen:$/;"	kind:class	line:319
+LuaBoolConverter	../lib/lua/std.py	/^	class LuaBoolConverter(lang.lua.LuaTypeConverterCommon):$/;"	kind:class	line:7
+LuaClassTypeConverter	../lang/lua.py	/^class LuaClassTypeConverter(LuaTypeConverterCommon):$/;"	kind:class	line:27
+LuaConstCharPtrConverter	../lib/lua/std.py	/^	class LuaConstCharPtrConverter(lang.lua.LuaTypeConverterCommon):$/;"	kind:class	line:50
+LuaDoubleConverter	../lib/lua/std.py	/^	class LuaDoubleConverter(lang.lua.LuaTypeConverterCommon):$/;"	kind:class	line:41
+LuaGenerator	../lang/lua.py	/^class LuaGenerator(gen.FABGen):$/;"	kind:class	line:310
+LuaIntConverter	../lib/lua/std.py	/^	class LuaIntConverter(lang.lua.LuaTypeConverterCommon):$/;"	kind:class	line:15
+LuaPtrTypeConverter	../lang/lua.py	/^class LuaPtrTypeConverter(LuaTypeConverterCommon):$/;"	kind:class	line:287
+LuaStringConverter	../lib/lua/stl.py	/^	class LuaStringConverter(lang.lua.LuaTypeConverterCommon):$/;"	kind:class	line:9
+LuaTestBed	../tests.py	/^class LuaTestBed:$/;"	kind:class	line:223
+LuaTypeConverterCommon	../lang/lua.py	/^class LuaTypeConverterCommon(gen.TypeConverter):$/;"	kind:class	line:5
+PySequenceToStdVectorConverter	../lib/cpython/stl.py	/^class PySequenceToStdVectorConverter(lang.cpython.PythonTypeConverterCommon):$/;"	kind:class	line:23
+PythonBoolConverter	../lib/cpython/std.py	/^	class PythonBoolConverter(lang.cpython.PythonTypeConverterCommon):$/;"	kind:class	line:7
+PythonClassTypeDefaultConverter	../lang/cpython.py	/^class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):$/;"	kind:class	line:27
+PythonConstCharPtrConverter	../lib/cpython/std.py	/^	class PythonConstCharPtrConverter(lang.cpython.PythonTypeConverterCommon):$/;"	kind:class	line:78
+PythonFloatConverter	../lib/cpython/std.py	/^	class PythonFloatConverter(lang.cpython.PythonTypeConverterCommon):$/;"	kind:class	line:69
+PythonInt64Converter	../lib/cpython/std.py	/^	class PythonInt64Converter(lang.cpython.PythonTypeConverterCommon):$/;"	kind:class	line:45
+PythonIntConverter	../lib/cpython/std.py	/^	class PythonIntConverter(lang.cpython.PythonTypeConverterCommon):$/;"	kind:class	line:15
+PythonPtrTypeDefaultConverter	../lang/cpython.py	/^class PythonPtrTypeDefaultConverter(PythonTypeConverterCommon):$/;"	kind:class	line:256
+PythonSize_tConverter	../lib/cpython/std.py	/^	class PythonSize_tConverter(lang.cpython.PythonTypeConverterCommon):$/;"	kind:class	line:61
+PythonStringConverter	../lib/cpython/stl.py	/^	class PythonStringConverter(lang.cpython.PythonTypeConverterCommon):$/;"	kind:class	line:9
+PythonTypeConverterCommon	../lang/cpython.py	/^class PythonTypeConverterCommon(gen.TypeConverter):$/;"	kind:class	line:5
+PythonTypeValueConverter	../examples/harfang.py	/^		class PythonTypeValueConverter(lang.cpython.PythonTypeConverterCommon):$/;"	kind:class	line:352
+PythonUnsignedInt64Converter	../lib/cpython/std.py	/^	class PythonUnsignedInt64Converter(lang.cpython.PythonTypeConverterCommon):$/;"	kind:class	line:53
+PythonUnsignedIntConverter	../lib/cpython/std.py	/^	class PythonUnsignedIntConverter(lang.cpython.PythonTypeConverterCommon):$/;"	kind:class	line:31
+SharedPtrProxyFeature	../lib/stl.py	/^class SharedPtrProxyFeature:$/;"	kind:class	line:1
+TypeConverter	../gen.py	/^class TypeConverter:$/;"	kind:class	line:242
+VectorSequenceFeature	../lib/std.py	/^class VectorSequenceFeature:$/;"	kind:class	line:1
+_CArg	../gen.py	/^class _CArg:$/;"	kind:class	line:178
+_CType	../gen.py	/^class _CType:$/;"	kind:class	line:122
+_TemplateParameters	../gen.py	/^class _TemplateParameters(List):$/;"	kind:class	line:118
+__add_upcast	../gen.py	/^	def __add_upcast(self, conv, base):$/;"	kind:member	line:490
+__assert_conv_feature	../gen.py	/^	def __assert_conv_feature(self, conv, feature):$/;"	kind:member	line:608
+__bind_proxy	../gen.py	/^	def __bind_proxy(self, name, self_conv, protos, desc, expr_eval, ctx, fixed_arg_count=None):$/;"	kind:member	line:776
+__ctype_to_ownership_policy	../gen.py	/^	def __ctype_to_ownership_policy(self, ctype):$/;"	kind:member	line:546
+__expand_protos	../gen.py	/^	def __expand_protos(self, protos):$/;"	kind:member	line:550
+__get_stats	../gen.py	/^	def __get_stats(self):$/;"	kind:member	line:1116
+__init__	../gen.py	/^	def __init__(self):$/;"	kind:member	line:320
+__init__	../gen.py	/^	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):$/;"	kind:member	line:243
+__init__	../lang/cpython.py	/^	def __init__(self):$/;"	kind:member	line:289
+__init__	../lang/cpython.py	/^	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):$/;"	kind:member	line:257
+__init__	../lang/cpython.py	/^	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):$/;"	kind:member	line:28
+__init__	../lang/cpython.py	/^	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):$/;"	kind:member	line:6
+__init__	../lang/lua.py	/^	def __init__(self):$/;"	kind:member	line:314
+__init__	../lang/lua.py	/^	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):$/;"	kind:member	line:28
+__init__	../lang/lua.py	/^	def __init__(self, type, storage_type=None, bound_name=None, rval_storage_type=None):$/;"	kind:member	line:6
+__init__	../lib/cpython/stl.py	/^	def __init__(self, type, T_conv):$/;"	kind:member	line:24
+__init__	../lib/std.py	/^	def __init__(self, wrapped_conv):$/;"	kind:member	line:2
+__init__	../lib/stl.py	/^	def __init__(self, wrapped_conv):$/;"	kind:member	line:2
+__init__.py	../lib/__init__.py	1;"	kind:file	line:1
+__prepare_protos	../gen.py	/^	def __prepare_protos(self, protos):$/;"	kind:member	line:568
+__print_stats	../gen.py	/^	def __print_stats(self):$/;"	kind:member	line:1138
+__proto_call	../gen.py	/^	def __proto_call(self, self_conv, proto, expr_eval, ctx, fixed_arg_count=None):$/;"	kind:member	line:654
+__repr__	../gen.py	/^	def __repr__(self):$/;"	kind:member	line:123
+__repr__	../gen.py	/^	def __repr__(self):$/;"	kind:member	line:179
+_convert_c_arg	../gen.py	/^	def _convert_c_arg(self, idx, conv, var, ctx='default'):$/;"	kind:member	line:629
+_declare_c_arg	../gen.py	/^	def _declare_c_arg(self, ctype, var):$/;"	kind:member	line:626
+_prepare_c_arg	../gen.py	/^	def _prepare_c_arg(self, idx, conv, var, ctx='default'):$/;"	kind:member	line:632
+_prepare_c_arg_self	../gen.py	/^	def _prepare_c_arg_self(self, conv, out_var, ctx='none', features=[]):$/;"	kind:member	line:611
+_prepare_ctypes	../gen.py	/^def _prepare_ctypes(ctypes, template):$/;"	kind:function	line:171
+add_base	../gen.py	/^	def add_base(self, conv, base):$/;"	kind:member	line:495
+add_bases	../gen.py	/^	def add_bases(self, conv, bases):$/;"	kind:member	line:499
+add_cast	../gen.py	/^	def add_cast(self, src_conv, tgt_conv, cast_delegate):$/;"	kind:member	line:485
+add_custom_free_code	../gen.py	/^	def add_custom_free_code(self, code):$/;"	kind:member	line:389
+add_custom_init_code	../gen.py	/^	def add_custom_init_code(self, code):$/;"	kind:member	line:386
+add_feature	../gen.py	/^	def add_feature(self, key, val):$/;"	kind:member	line:301
+add_include	../gen.py	/^	def add_include(self, path, is_system=False):$/;"	kind:member	line:366
+add_list_unique	../gen.py	/^def add_list_unique(lst, val, dlg):$/;"	kind:function	line:227
+add_ref	../gen.py	/^	def add_ref(self, ref):$/;"	kind:member	line:129
+arg_out.py	../tests/arg_out.py	1;"	kind:file	line:1
+args	../bind.py	/^args = parser.parse_args()$/;"	kind:variable	line:20
+args	../examples/harfang.py	/^args = parser.parse_args()$/;"	kind:variable	line:4806
+args	../tests.py	/^args = parser.parse_args()$/;"	kind:variable	line:21
+audio_io	../examples/harfang.py	/^	audio_io = gen.begin_class('gs::AudioIO', noncopyable=True)$/;"	kind:variable	line:4005
+audio_mixer	../examples/harfang.py	/^	audio_mixer = gen.begin_class('gs::audio::Mixer', bound_name='Mixer_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:4058
+basic_type_exchange.py	../tests/basic_type_exchange.py	1;"	kind:file	line:1
+begin_class	../gen.py	/^	def begin_class(self, type, converter_class=None, noncopyable=False, moveable=False, bound_name=None, features={}, nobind=False):$/;"	kind:member	line:456
+begin_type	../gen.py	/^	def begin_type(self, conv, features, nobind=False):$/;"	kind:member	line:393
+bind.py	../bind.py	1;"	kind:file	line:1
+bind_arithmetic_op	../gen.py	/^	def bind_arithmetic_op(self, conv, op, rval, args, features=[]):$/;"	kind:member	line:996
+bind_arithmetic_op_overloads	../gen.py	/^	def bind_arithmetic_op_overloads(self, conv, op, protos):$/;"	kind:member	line:999
+bind_arithmetic_ops	../gen.py	/^	def bind_arithmetic_ops(self, conv, ops, rval, args, features=[]):$/;"	kind:member	line:1008
+bind_arithmetic_ops_overloads	../gen.py	/^	def bind_arithmetic_ops_overloads(self, conv, ops, protos):$/;"	kind:member	line:1012
+bind_binary_blob	../examples/harfang.py	/^def bind_binary_blob(gen):$/;"	kind:function	line:47
+bind_color	../examples/harfang.py	/^def bind_color(gen):$/;"	kind:function	line:3162
+bind_comparison_op	../gen.py	/^	def bind_comparison_op(self, conv, op, args, features=[]):$/;"	kind:member	line:1039
+bind_comparison_op_overloads	../gen.py	/^	def bind_comparison_op_overloads(self, conv, op, args):$/;"	kind:member	line:1042
+bind_comparison_ops	../gen.py	/^	def bind_comparison_ops(self, conv, ops, args, features=[]):$/;"	kind:member	line:1052
+bind_comparison_ops_overloads	../gen.py	/^	def bind_comparison_ops_overloads(self, conv, ops, protos):$/;"	kind:member	line:1056
+bind_constructor	../gen.py	/^	def bind_constructor(self, conv, args, features=[]):$/;"	kind:member	line:888
+bind_constructor_overloads	../gen.py	/^	def bind_constructor_overloads(self, conv, proto_args):$/;"	kind:member	line:891
+bind_core	../examples/harfang.py	/^def bind_core(gen):$/;"	kind:function	line:431
+bind_create_geometry	../examples/harfang.py	/^def bind_create_geometry(gen):$/;"	kind:function	line:613
+bind_defaults	../lib/__init__.py	/^def bind_defaults(gen):$/;"	kind:function	line:1
+bind_document	../examples/harfang.py	/^def bind_document(gen):$/;"	kind:function	line:3347
+bind_engine	../examples/harfang.py	/^def bind_engine(gen):$/;"	kind:function	line:271
+bind_extras	../examples/harfang.py	/^def bind_extras(gen):$/;"	kind:function	line:4663
+bind_filesystem	../examples/harfang.py	/^def bind_filesystem(gen):$/;"	kind:function	line:3000
+bind_font_engine	../examples/harfang.py	/^def bind_font_engine(gen):$/;"	kind:function	line:3213
+bind_frame_renderer	../examples/harfang.py	/^def bind_frame_renderer(gen):$/;"	kind:function	line:665
+bind_frustum	../examples/harfang.py	/^def bind_frustum(gen):$/;"	kind:function	line:3941
+bind_function	../gen.py	/^	def bind_function(self, name, rval, args, features=[], bound_name=None):$/;"	kind:member	line:874
+bind_function_overloads	../gen.py	/^	def bind_function_overloads(self, name, protos, bound_name=None):$/;"	kind:member	line:877
+bind_future_T	../lib/stl.py	/^def bind_future_T(gen, T, bound_name=None):$/;"	kind:function	line:16
+bind_gpu	../examples/harfang.py	/^def bind_gpu(gen):$/;"	kind:function	line:1498
+bind_gs	../examples/harfang.py	/^def bind_gs(gen):$/;"	kind:function	line:4670
+bind_imgui	../examples/harfang.py	/^def bind_imgui(gen):$/;"	kind:function	line:4226
+bind_inplace_arithmetic_op	../gen.py	/^	def bind_inplace_arithmetic_op(self, conv, op, args, features=[]):$/;"	kind:member	line:1017
+bind_inplace_arithmetic_op_overloads	../gen.py	/^	def bind_inplace_arithmetic_op_overloads(self, conv, op, args):$/;"	kind:member	line:1020
+bind_inplace_arithmetic_ops	../gen.py	/^	def bind_inplace_arithmetic_ops(self, conv, ops, args, features=[]):$/;"	kind:member	line:1030
+bind_inplace_arithmetic_ops_overloads	../gen.py	/^	def bind_inplace_arithmetic_ops_overloads(self, conv, ops, args):$/;"	kind:member	line:1034
+bind_input	../examples/harfang.py	/^def bind_input(gen):$/;"	kind:function	line:174
+bind_iso_surface	../examples/harfang.py	/^def bind_iso_surface(gen):$/;"	kind:function	line:2636
+bind_log	../examples/harfang.py	/^def bind_log(gen):$/;"	kind:function	line:36
+bind_math	../examples/harfang.py	/^def bind_math(gen):$/;"	kind:function	line:3411
+bind_member	../gen.py	/^	def bind_member(self, conv, member, features=[]):$/;"	kind:member	line:934
+bind_members	../gen.py	/^	def bind_members(self, conv, members, features=[]):$/;"	kind:member	line:930
+bind_method	../gen.py	/^	def bind_method(self, conv, name, rval, args, features=[], bound_name=None):$/;"	kind:member	line:902
+bind_method_overloads	../gen.py	/^	def bind_method_overloads(self, conv, name, protos, bound_name=None):$/;"	kind:member	line:905
+bind_mixer	../examples/harfang.py	/^def bind_mixer(gen):$/;"	kind:function	line:3948
+bind_named_enum	../gen.py	/^	def bind_named_enum(self, name, symbols, storage_type='int', bound_name=None, prefix='', namespace=None):$/;"	kind:member	line:440
+bind_picture	../examples/harfang.py	/^def bind_picture(gen):$/;"	kind:function	line:3222
+bind_plugins	../examples/harfang.py	/^def bind_plugins(gen):$/;"	kind:function	line:293
+bind_plus	../examples/harfang.py	/^def bind_plus(gen):$/;"	kind:function	line:2663
+bind_ptr	../gen.py	/^	def bind_ptr(self, type, converter_class=None, bound_name=None, features={}):$/;"	kind:member	line:475
+bind_rect_T	../examples/harfang.py	/^	def bind_rect_T(T, bound_name):$/;"	kind:function	line:3865
+bind_render	../examples/harfang.py	/^def bind_render(gen):$/;"	kind:function	line:2120
+bind_scene	../examples/harfang.py	/^def bind_scene(gen):$/;"	kind:function	line:679
+bind_static_member	../gen.py	/^	def bind_static_member(self, conv, member, features=[]):$/;"	kind:member	line:963
+bind_static_members	../gen.py	/^	def bind_static_members(self, conv, members, features=[]):$/;"	kind:member	line:991
+bind_static_method	../gen.py	/^	def bind_static_method(self, conv, name, rval, args, features=[], bound_name=None):$/;"	kind:member	line:916
+bind_static_method_overloads	../gen.py	/^	def bind_static_method_overloads(self, conv, name, protos, bound_name=None):$/;"	kind:member	line:919
+bind_std	../lib/cpython/std.py	/^def bind_std(gen):$/;"	kind:function	line:4
+bind_std	../lib/lua/std.py	/^def bind_std(gen):$/;"	kind:function	line:4
+bind_std_vector	../examples/harfang.py	/^def bind_std_vector(gen, T_conv):$/;"	kind:function	line:19
+bind_stl	../lib/cpython/stl.py	/^def bind_stl(gen):$/;"	kind:function	line:4
+bind_stl	../lib/lua/stl.py	/^def bind_stl(gen):$/;"	kind:function	line:4
+bind_task_system	../examples/harfang.py	/^def bind_task_system(gen):$/;"	kind:function	line:131
+bind_tcache_T	../examples/harfang.py	/^	def bind_tcache_T(T, bound_name):$/;"	kind:function	line:1590
+bind_test	../tests/arg_out.py	/^def bind_test(gen):$/;"	kind:function	line:4
+bind_test	../tests/basic_type_exchange.py	/^def bind_test(gen):$/;"	kind:function	line:4
+bind_test	../tests/cpp_exceptions.py	/^def bind_test(gen):$/;"	kind:function	line:4
+bind_test	../tests/enumeration.py	/^def bind_test(gen):$/;"	kind:function	line:4
+bind_test	../tests/function_call.py	/^def bind_test(gen):$/;"	kind:function	line:4
+bind_test	../tests/function_template_call.py	/^def bind_test(gen):$/;"	kind:function	line:4
+bind_test	../tests/method_route_feature.py	/^def bind_test(gen):$/;"	kind:function	line:4
+bind_test	../tests/shared_ptr.py	/^def bind_test(gen):$/;"	kind:function	line:6
+bind_test	../tests/std_vector.py	/^def bind_test(gen):$/;"	kind:function	line:5
+bind_test	../tests/struct_bitfield_member_access.py	/^def bind_test(gen):$/;"	kind:function	line:4
+bind_test	../tests/struct_exchange.py	/^def bind_test(gen):$/;"	kind:function	line:4
+bind_test	../tests/struct_inheritance.py	/^def bind_test(gen):$/;"	kind:function	line:4
+bind_test	../tests/struct_instantiation.py	/^def bind_test(gen):$/;"	kind:function	line:4
+bind_test	../tests/struct_member_access.py	/^def bind_test(gen):$/;"	kind:function	line:4
+bind_test	../tests/struct_method_call.py	/^def bind_test(gen):$/;"	kind:function	line:4
+bind_test	../tests/struct_nesting.py	/^def bind_test(gen):$/;"	kind:function	line:4
+bind_test	../tests/struct_operator_call.py	/^def bind_test(gen):$/;"	kind:function	line:4
+bind_test	../tests/struct_static_const_member_access.py	/^def bind_test(gen):$/;"	kind:function	line:4
+bind_test	../tests/transform_rval.py	/^def bind_test(gen):$/;"	kind:function	line:4
+bind_time	../examples/harfang.py	/^def bind_time(gen):$/;"	kind:function	line:138
+bind_type	../gen.py	/^	def bind_type(self, conv, features={}):$/;"	kind:member	line:421
+bind_type_value	../examples/harfang.py	/^def bind_type_value(gen):$/;"	kind:function	line:347
+bind_vector2_T	../examples/harfang.py	/^	def bind_vector2_T(T, bound_name):$/;"	kind:function	line:3485
+bind_window_system	../examples/harfang.py	/^def bind_window_system(gen):$/;"	kind:function	line:298
+bind_write	../examples/harfang.py	/^	def bind_write(type, alias):$/;"	kind:function	line:71
+bind_write_at	../examples/harfang.py	/^	def bind_write_at(type, alias):$/;"	kind:function	line:103
+box_collision	../examples/harfang.py	/^	box_collision = gen.begin_class('gs::core::BoxCollision', bound_name='BoxCollision_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:1014
+build_and_deploy_cpython_extension	../tests.py	/^def build_and_deploy_cpython_extension(work_path, build_path, python_interpreter):$/;"	kind:function	line:106
+build_and_deploy_lua_extension	../tests.py	/^def build_and_deploy_lua_extension(work_path, build_path, lua_interpreter):$/;"	kind:function	line:192
+build_and_test_extension	../tests.py	/^	def build_and_test_extension(self, work_path, module):$/;"	kind:member	line:138
+build_and_test_extension	../tests.py	/^	def build_and_test_extension(self, work_path, module):$/;"	kind:member	line:224
+build_index_map	../lang/lua.py	/^		def build_index_map(name, values, filter, gen_output):$/;"	kind:function	line:85
+cam	../examples/harfang.py	/^	cam = gen.begin_class('gs::core::Camera', bound_name='Camera_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:880
+check_call	../lang/cpython.py	/^	def check_call(self, in_var):$/;"	kind:member	line:22
+check_call	../lang/lua.py	/^	def check_call(self, in_var):$/;"	kind:member	line:22
+check_rval_lambda	../examples/harfang.py	/^def check_rval_lambda(gen, msg):$/;"	kind:function	line:11
+clean_symbol_name_part	../gen.py	/^	def clean_symbol_name_part(part):$/;"	kind:function	line:99
+close_proxy	../lang/cpython.py	/^	def close_proxy(self, ctx):$/;"	kind:function	line:414
+close_proxy	../lang/lua.py	/^	def close_proxy(self, ctx):$/;"	kind:function	line:397
+collect_attr_from_conv_recursive	../gen.py	/^def collect_attr_from_conv_recursive(out, conv, attr, dlg):$/;"	kind:function	line:234
+commit_rvals	../gen.py	/^	def commit_rvals(self, rval, ctx):$/;"	kind:member	line:538
+commit_rvals	../lang/cpython.py	/^	def commit_rvals(self, rvals, ctx='default'):$/;"	kind:function	line:441
+commit_rvals	../lang/lua.py	/^	def commit_rvals(self, rvals, ctx='default'):$/;"	kind:function	line:410
+cpp_exceptions.py	../tests/cpp_exceptions.py	1;"	kind:file	line:1
+cpython.py	../lang/cpython.py	1;"	kind:file	line:1
+create_clang_format_file	../tests.py	/^def create_clang_format_file(work_path):$/;"	kind:function	line:257
+create_cpython_cmake_file	../tests.py	/^def create_cpython_cmake_file(module, work_path, site_package, include_dir, python_lib):$/;"	kind:function	line:87
+create_lua_cmake_file	../tests.py	/^def create_lua_cmake_file(module, work_path, lua_path, lua_src):$/;"	kind:function	line:170
+ctype_ref_to	../gen.py	/^def ctype_ref_to(src_ref, dst_ref):$/;"	kind:function	line:190
+ctypes_to_string	../gen.py	/^def ctypes_to_string(ctypes):$/;"	kind:function	line:63
+decl_comp_get_set_method	../examples/harfang.py	/^	def decl_comp_get_set_method(conv, comp_type, comp_var_name, type, method_suffix, var_name, features=[]):$/;"	kind:function	line:706
+decl_get_set_method	../examples/harfang.py	/^	def decl_get_set_method(conv, type, method_suffix, var_name, features=[]):$/;"	kind:function	line:702
+decl_var	../gen.py	/^	def decl_var(self, ctype, name, eol=';\\n'):$/;"	kind:member	line:530
+declare_rval	../gen.py	/^	def declare_rval(self, out_var):$/;"	kind:member	line:635
+declare_rval	../lang/cpython.py	/^	def declare_rval(self, out_var):$/;"	kind:function	line:435
+default_class_converter	../lang/cpython.py	/^	default_class_converter = PythonClassTypeDefaultConverter$/;"	kind:variable	line:286
+default_class_converter	../lang/lua.py	/^	default_class_converter = LuaClassTypeConverter$/;"	kind:variable	line:312
+default_ptr_converter	../lang/cpython.py	/^	default_ptr_converter = PythonPtrTypeDefaultConverter$/;"	kind:variable	line:287
+default_ptr_converter	../lang/lua.py	/^	default_ptr_converter = LuaPtrTypeConverter$/;"	kind:variable	line:311
+dereference_once	../gen.py	/^	def dereference_once(self):$/;"	kind:member	line:151
+draw_line_auto_protos	../examples/harfang.py	/^	draw_line_auto_protos = [$/;"	kind:variable	line:2450
+draw_line_protos	../examples/harfang.py	/^	draw_line_protos = [$/;"	kind:variable	line:2396
+draw_sprite_auto_protos	../examples/harfang.py	/^	draw_sprite_auto_protos = [$/;"	kind:variable	line:2474
+draw_sprite_protos	../examples/harfang.py	/^	draw_sprite_protos = [$/;"	kind:variable	line:2420
+draw_triangle_auto_protos	../examples/harfang.py	/^	draw_triangle_auto_protos = [$/;"	kind:variable	line:2462
+draw_triangle_protos	../examples/harfang.py	/^	draw_triangle_protos = [$/;"	kind:variable	line:2408
+end_class	../gen.py	/^	def end_class(self, conv):$/;"	kind:member	line:470
+end_type	../gen.py	/^	def end_type(self, conv):$/;"	kind:member	line:418
+enumeration.py	../tests/enumeration.py	1;"	kind:file	line:1
+failed_test_list	../tests.py	/^failed_test_list = []$/;"	kind:variable	line:33
+finalize	../gen.py	/^	def finalize(self):$/;"	kind:member	line:1141
+finalize	../lang/cpython.py	/^	def finalize(self):$/;"	kind:function	line:532
+finalize	../lang/lua.py	/^	def finalize(self):$/;"	kind:function	line:414
+finalize_type	../gen.py	/^	def finalize_type(self):$/;"	kind:member	line:277
+finalize_type	../lang/cpython.py	/^	def finalize_type(self):$/;"	kind:member	line:247
+finalize_type	../lang/lua.py	/^	def finalize_type(self):$/;"	kind:member	line:281
+float_ptr	../examples/harfang.py	/^	float_ptr = gen.bind_ptr('float *', bound_name='FloatPointer')$/;"	kind:variable	line:4741
+format_list_for_comment	../gen.py	/^def format_list_for_comment(lst):$/;"	kind:function	line:305
+fps_controller	../examples/harfang.py	/^	fps_controller = gen.begin_class('gs::FPSController')$/;"	kind:variable	line:2970
+from_c_call	../gen.py	/^	def from_c_call(self, out_var, expr, ownership):$/;"	kind:member	line:282
+from_c_call	../lang/cpython.py	/^	def from_c_call(self, out_var, expr, ownership):$/;"	kind:member	line:19
+from_c_call	../lang/lua.py	/^	def from_c_call(self, out_var, expr, ownership):$/;"	kind:member	line:19
+fs	../examples/harfang.py	/^	fs = gen.begin_class('gs::io::Filesystem')$/;"	kind:variable	line:3120
+function_call.py	../tests/function_call.py	1;"	kind:file	line:1
+function_template_call.py	../tests/function_template_call.py	1;"	kind:file	line:1
+gen	../tests.py	/^	gen = lang.cpython.CPythonGenerator()$/;"	kind:variable	line:279
+gen	../tests.py	/^	gen = lang.lua.LuaGenerator()$/;"	kind:variable	line:284
+gen.py	../gen.py	1;"	kind:file	line:1
+geometry	../examples/harfang.py	/^	geometry = gen.begin_class('gs::core::Geometry', bound_name='Geometry_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:488
+geometry	../examples/harfang.py	/^	geometry = gen.begin_class('gs::render::Geometry', bound_name='RenderGeometry_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:2238
+get_all_members	../gen.py	/^	def get_all_members(self):$/;"	kind:member	line:292
+get_all_methods	../gen.py	/^	def get_all_methods(self):$/;"	kind:member	line:296
+get_all_static_members	../gen.py	/^	def get_all_static_members(self):$/;"	kind:member	line:294
+get_all_static_methods	../gen.py	/^	def get_all_static_methods(self):$/;"	kind:member	line:298
+get_arg	../lang/cpython.py	/^	def get_arg(self, i, ctx):$/;"	kind:function	line:382
+get_arg	../lang/lua.py	/^	def get_arg(self, i, ctx):$/;"	kind:function	line:381
+get_clean_ctype_name	../gen.py	/^def get_clean_ctype_name(ctype):$/;"	kind:function	line:35
+get_clean_symbol_name	../gen.py	/^def get_clean_symbol_name(name):$/;"	kind:function	line:95
+get_conv	../gen.py	/^	def get_conv(self, type):$/;"	kind:member	line:526
+get_ctype_default_bound_name	../gen.py	/^def get_ctype_default_bound_name(ctype):$/;"	kind:function	line:57
+get_fully_qualified_ctype_name	../gen.py	/^def get_fully_qualified_ctype_name(ctype):$/;"	kind:function	line:7
+get_item	../lib/std.py	/^	def get_item(self, self_var, idx, out_var, error_var):$/;"	kind:member	line:8
+get_language	../gen.py	/^	def get_language(self):$/;"	kind:member	line:325
+get_language	../lang/cpython.py	/^	def get_language(self):$/;"	kind:member	line:295
+get_language	../lang/lua.py	/^	def get_language(self):$/;"	kind:member	line:319
+get_operator	../gen.py	/^	def get_operator(self, op):$/;"	kind:member	line:269
+get_operator_slot	../lang/cpython.py	/^		def get_operator_slot(slot, op):$/;"	kind:function	line:152
+get_output	../gen.py	/^	def get_output(self):$/;"	kind:member	line:1160
+get_protos_per_arg_conv	../gen.py	/^		def get_protos_per_arg_conv(protos, arg_idx):$/;"	kind:function	line:810
+get_protos_per_arg_count	../gen.py	/^		def get_protos_per_arg_count(protos):$/;"	kind:function	line:784
+get_ref	../gen.py	/^	def get_ref(self):$/;"	kind:member	line:126
+get_self	../lang/cpython.py	/^	def get_self(self, ctx):$/;"	kind:function	line:377
+get_self	../lang/lua.py	/^	def get_self(self, ctx):$/;"	kind:function	line:378
+get_size	../lib/std.py	/^	def get_size(self, self_var, out_var):$/;"	kind:member	line:5
+get_symbol_default_bound_name	../gen.py	/^def get_symbol_default_bound_name(name):$/;"	kind:function	line:108
+get_type_api	../gen.py	/^	def get_type_api(self, module_name):$/;"	kind:member	line:274
+get_type_api	../lang/cpython.py	/^	def get_type_api(self, module_name):$/;"	kind:member	line:9
+get_type_api	../lang/lua.py	/^	def get_type_api(self, module_name):$/;"	kind:member	line:9
+get_type_glue	../examples/harfang.py	/^			def get_type_glue(self, gen, module_name):$/;"	kind:member	line:353
+get_type_glue	../lang/cpython.py	/^	def get_type_glue(self, gen, module_name):$/;"	kind:member	line:260
+get_type_glue	../lang/cpython.py	/^	def get_type_glue(self, gen, module_name):$/;"	kind:member	line:31
+get_type_glue	../lang/lua.py	/^	def get_type_glue(self, gen, module_name):$/;"	kind:member	line:288
+get_type_glue	../lang/lua.py	/^	def get_type_glue(self, gen, module_name):$/;"	kind:member	line:31
+get_type_glue	../lib/cpython/std.py	/^		def get_type_glue(self, gen, module_name):$/;"	kind:member	line:16
+get_type_glue	../lib/cpython/std.py	/^		def get_type_glue(self, gen, module_name):$/;"	kind:member	line:32
+get_type_glue	../lib/cpython/std.py	/^		def get_type_glue(self, gen, module_name):$/;"	kind:member	line:46
+get_type_glue	../lib/cpython/std.py	/^		def get_type_glue(self, gen, module_name):$/;"	kind:member	line:54
+get_type_glue	../lib/cpython/std.py	/^		def get_type_glue(self, gen, module_name):$/;"	kind:member	line:62
+get_type_glue	../lib/cpython/std.py	/^		def get_type_glue(self, gen, module_name):$/;"	kind:member	line:70
+get_type_glue	../lib/cpython/std.py	/^		def get_type_glue(self, gen, module_name):$/;"	kind:member	line:79
+get_type_glue	../lib/cpython/std.py	/^		def get_type_glue(self, gen, module_name):$/;"	kind:member	line:8
+get_type_glue	../lib/cpython/stl.py	/^		def get_type_glue(self, gen, module_name):$/;"	kind:member	line:10
+get_type_glue	../lib/cpython/stl.py	/^	def get_type_glue(self, gen, module_name):$/;"	kind:member	line:29
+get_type_glue	../lib/lua/std.py	/^		def get_type_glue(self, gen, module_name):$/;"	kind:member	line:16
+get_type_glue	../lib/lua/std.py	/^		def get_type_glue(self, gen, module_name):$/;"	kind:member	line:42
+get_type_glue	../lib/lua/std.py	/^		def get_type_glue(self, gen, module_name):$/;"	kind:member	line:51
+get_type_glue	../lib/lua/std.py	/^		def get_type_glue(self, gen, module_name):$/;"	kind:member	line:8
+get_type_glue	../lib/lua/stl.py	/^		def get_type_glue(self, gen, module_name):$/;"	kind:member	line:10
+get_type_tag_cast_function	../gen.py	/^	def get_type_tag_cast_function(self):$/;"	kind:member	line:1067
+group	../examples/harfang.py	/^	group = gen.begin_class('gs::core::Group', bound_name='Group_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:1365
+handle	../examples/harfang.py	/^	handle = gen.begin_class('gs::io::Handle', noncopyable=True)$/;"	kind:variable	line:3026
+harfang.py	../examples/harfang.py	1;"	kind:file	line:1
+imgui_combo_protos	../examples/harfang.py	/^	imgui_combo_protos = [('bool', ['const char *label', 'int *current_item', 'const std::vector<std::string> &items', '?int height_in_items'], {'arg_in_out': ['current_item']})]$/;"	kind:variable	line:4443
+init_type_converter	../lib/stl.py	/^	def init_type_converter(self, gen, conv):$/;"	kind:member	line:5
+insert_binding_code	../gen.py	/^	def insert_binding_code(self, code, comment=None):$/;"	kind:member	line:380
+insert_code	../gen.py	/^	def insert_code(self, code, in_source=True, in_header=True):$/;"	kind:member	line:374
+io_cfile	../examples/harfang.py	/^	io_cfile = gen.begin_class('gs::io::CFile', bound_name='CFile_nobind', nobind=True)$/;"	kind:variable	line:3074
+io_zip	../examples/harfang.py	/^	io_zip = gen.begin_class('gs::io::Zip', bound_name='Zip_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:3100
+is_const	../gen.py	/^	def is_const(self):$/;"	kind:member	line:141
+is_pointer	../gen.py	/^	def is_pointer(self):$/;"	kind:member	line:137
+light	../examples/harfang.py	/^	light = gen.begin_class('gs::core::Light', bound_name='Light_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:935
+logic_script	../examples/harfang.py	/^	logic_script = gen.begin_class('gs::core::LogicScript', bound_name='LogicScript_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:1102
+lua.py	../lang/lua.py	1;"	kind:file	line:1
+lua_system	../examples/harfang.py	/^	lua_system = gen.begin_class('gs::script::LuaSystem', bound_name='LuaSystem_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:1134
+mesh_collision	../examples/harfang.py	/^	mesh_collision = gen.begin_class('gs::core::MeshCollision', bound_name='MeshCollision_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:1026
+method_route_feature.py	../tests/method_route_feature.py	1;"	kind:file	line:1
+mixer_async	../examples/harfang.py	/^	mixer_async = gen.begin_class('gs::audio::MixerAsync', bound_name='MixerAsync_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:4154
+mixer_channel_location	../examples/harfang.py	/^	mixer_channel_location = gen.begin_class('gs::audio::MixerChannelLocation')$/;"	kind:variable	line:4034
+mixer_channel_state	../examples/harfang.py	/^	mixer_channel_state = gen.begin_class('gs::audio::MixerChannelState')$/;"	kind:variable	line:4024
+mod	../bind.py	/^mod = os.path.splitext(split[1])[0]$/;"	kind:variable	line:37
+navigation_config	../examples/harfang.py	/^	navigation_config = gen.begin_class('gs::core::NavigationConfig')$/;"	kind:variable	line:1343
+navigation_layer	../examples/harfang.py	/^	navigation_layer = gen.begin_class('gs::core::NavigationLayer')$/;"	kind:variable	line:1335
+navigation_path	../examples/harfang.py	/^	navigation_path = gen.begin_class('gs::core::NavigationPath')$/;"	kind:variable	line:1330
+navigation_system	../examples/harfang.py	/^	navigation_system = gen.begin_class('gs::core::NavigationSystem', bound_name='NavigationSystem_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:1348
+non_const	../gen.py	/^	def non_const(self):$/;"	kind:member	line:146
+obj	../examples/harfang.py	/^	obj = gen.begin_class('gs::core::Object', bound_name='Object_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:907
+open_proxy	../lang/cpython.py	/^	def open_proxy(self, name, max_arg_count, ctx):$/;"	kind:function	line:389
+open_proxy	../lang/lua.py	/^	def open_proxy(self, name, max_arg_count, ctx):$/;"	kind:function	line:387
+output_arg_check_and_dispatch	../gen.py	/^			def output_arg_check_and_dispatch(protos, arg_idx, arg_limit):$/;"	kind:function	line:829
+output_binding	../bind.py	/^def output_binding(gen):$/;"	kind:function	line:23
+output_binding	../examples/harfang.py	/^def output_binding(gen):$/;"	kind:function	line:4809
+output_header	../gen.py	/^	def output_header(self):$/;"	kind:member	line:331
+output_includes	../gen.py	/^	def output_includes(self):$/;"	kind:member	line:339
+output_includes	../lang/cpython.py	/^	def output_includes(self):$/;"	kind:member	line:298
+output_includes	../lang/lua.py	/^	def output_includes(self):$/;"	kind:member	line:322
+output_module_definition	../lang/cpython.py	/^	def output_module_definition(self, methods_table):$/;"	kind:function	line:482
+output_module_free	../lang/cpython.py	/^	def output_module_free(self):$/;"	kind:function	line:476
+output_module_functions_table	../lang/cpython.py	/^	def output_module_functions_table(self):$/;"	kind:function	line:463
+output_module_init_function	../lang/cpython.py	/^	def output_module_init_function(self, module_def):$/;"	kind:function	line:500
+output_summary	../gen.py	/^	def output_summary(self):$/;"	kind:member	line:1061
+output_type_tag_cast_tree	../gen.py	/^		def output_type_tag_cast_tree(expr):$/;"	kind:function	line:1070
+parse_ctype	../gen.py	/^	def parse_ctype(self, type):$/;"	kind:member	line:328
+parser	../bind.py	/^parser = argparse.ArgumentParser(description='FabGen binding script')$/;"	kind:variable	line:15
+parser	../examples/harfang.py	/^parser = argparse.ArgumentParser(description='Harfang API binding script')$/;"	kind:variable	line:4802
+parser	../tests.py	/^parser = argparse.ArgumentParser(description='Run generator unit tests.')$/;"	kind:variable	line:16
+path	../bind.py	/^path = split[0]$/;"	kind:variable	line:36
+physic_system	../examples/harfang.py	/^	physic_system = gen.begin_class('gs::core::IPhysicSystem', bound_name='PhysicSystem_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:1251
+physic_trace	../examples/harfang.py	/^	physic_trace = gen.begin_class('gs::core::PhysicTrace')$/;"	kind:variable	line:1239
+prepare_c_rval	../gen.py	/^	def prepare_c_rval(self, conv, ctype, var, ownership=None):$/;"	kind:member	line:638
+prepare_var_for_conv	../gen.py	/^	def prepare_var_for_conv(self, var, input_ref):$/;"	kind:member	line:285
+prepare_var_from_conv	../gen.py	/^	def prepare_var_from_conv(self, var, target_ref):$/;"	kind:member	line:288
+protos	../examples/harfang.py	/^	protos = [('bool', ['gs::uint channel', 'gs::uint poly_index', 'const std::vector<gs::tVector2<float>> &uvs'], ['proxy'])]$/;"	kind:variable	line:534
+protos	../examples/harfang.py	/^	protos = [('bool', ['gs::uint index', 'const std::vector<int> &idx'], ['proxy'])]$/;"	kind:variable	line:545
+protos	../examples/harfang.py	/^	protos = [('bool', ['gs::uint poly_index', 'const std::vector<gs::Color> &colors'], ['proxy'])]$/;"	kind:variable	line:528
+proxy_call_error	../gen.py	/^	def proxy_call_error(self, msg, ctx):$/;"	kind:member	line:542
+proxy_call_error	../lang/cpython.py	/^	def proxy_call_error(self, msg, ctx):$/;"	kind:function	line:421
+proxy_call_error	../lang/lua.py	/^	def proxy_call_error(self, msg, ctx):$/;"	kind:function	line:400
+python_include_dir	../tests.py	/^	python_include_dir = args.python_base_path + '\/' + 'include'$/;"	kind:variable	line:25
+python_interpreter	../tests.py	/^	python_interpreter = args.python_base_path + '\/' + 'python.exe'$/;"	kind:variable	line:28
+python_library	../tests.py	/^	python_library = args.python_base_path + '\/' + 'libs\/python3.lib'$/;"	kind:variable	line:26
+python_site_package	../tests.py	/^	python_site_package = args.python_base_path + '\/' + 'Lib\/site-packages'$/;"	kind:variable	line:27
+raster_font	../examples/harfang.py	/^	raster_font = gen.begin_class('gs::render::RasterFont', bound_name='RasterFont_nobind', nobind=True)$/;"	kind:variable	line:2564
+ref_re	../gen.py	/^ref_re = re.compile(r"[&*]+")$/;"	kind:variable	line:115
+ref_stripped	../gen.py	/^	def ref_stripped(self):$/;"	kind:member	line:159
+ref_to_string	../gen.py	/^def ref_to_string(ref):$/;"	kind:function	line:25
+render_script	../examples/harfang.py	/^	render_script = gen.begin_class('gs::core::RenderScript', bound_name='RenderScript_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:1093
+render_stats	../examples/harfang.py	/^	render_stats = gen.begin_class('gs::render::Statistics')$/;"	kind:variable	line:2295
+render_system_async	../examples/harfang.py	/^	render_system_async = gen.begin_class('gs::render::RenderSystemAsync', bound_name='RenderSystemAsync_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:2498
+renderable_system	../examples/harfang.py	/^	renderable_system = gen.begin_class('gs::core::RenderableSystem', bound_name='RenderableSystem_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:1221
+renderer_async	../examples/harfang.py	/^	renderer_async = gen.begin_class('gs::gpu::RendererAsync', bound_name='RendererAsync_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:1965
+return_void_from_c	../lang/cpython.py	/^	def return_void_from_c(self):$/;"	kind:function	line:432
+return_void_from_c	../lang/lua.py	/^	def return_void_from_c(self):$/;"	kind:function	line:404
+rigid_body	../examples/harfang.py	/^	rigid_body = gen.begin_class('gs::core::RigidBody', bound_name='RigidBody_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:972
+route_function	../tests/method_route_feature.py	/^	def route_function(args):$/;"	kind:function	line:17
+route_lambda	../examples/harfang.py	/^def route_lambda(name):$/;"	kind:function	line:15
+run_test	../tests.py	/^def run_test(gen, name, testbed):$/;"	kind:function	line:36
+run_test_list	../tests.py	/^run_test_list = []$/;"	kind:variable	line:32
+run_tests	../tests.py	/^def run_tests(gen, names, testbed):$/;"	kind:function	line:68
+rval_from_c_ptr	../lang/cpython.py	/^	def rval_from_c_ptr(self, conv, out_var, expr, ownership):$/;"	kind:function	line:438
+rval_from_c_ptr	../lang/lua.py	/^	def rval_from_c_ptr(self, conv, out_var, expr, ownership):$/;"	kind:function	line:407
+script	../bind.py	/^script = importlib.import_module(mod)$/;"	kind:variable	line:40
+script	../examples/harfang.py	/^	script = gen.begin_class('gs::core::Script', bound_name='Script_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:1076
+script_env	../examples/harfang.py	/^	script_env = gen.begin_class('gs::core::ScriptEngineEnv', bound_name='ScriptEnv_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:1065
+script_system	../examples/harfang.py	/^	script_system = gen.begin_class('gs::core::ScriptSystem', bound_name='ScriptSystem_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:1111
+select_args_convs	../gen.py	/^	def select_args_convs(self, args):$/;"	kind:member	line:534
+select_ctype_conv	../gen.py	/^	def select_ctype_conv(self, ctype):$/;"	kind:member	line:504
+set_error	../lang/cpython.py	/^	def set_error(self, type, reason):$/;"	kind:function	line:373
+set_error	../lang/lua.py	/^	def set_error(self, type, reason):$/;"	kind:function	line:374
+set_item	../lib/std.py	/^	def set_item(self, self_var, idx, in_var, error_var):$/;"	kind:member	line:15
+shared_audio_mixer	../examples/harfang.py	/^	shared_audio_mixer = gen.begin_class('std::shared_ptr<gs::audio::Mixer>', bound_name='Mixer', features={'proxy': lib.stl.SharedPtrProxyFeature(audio_mixer)})$/;"	kind:variable	line:4061
+shared_box_collision	../examples/harfang.py	/^	shared_box_collision = gen.begin_class('std::shared_ptr<gs::core::BoxCollision>', bound_name='BoxCollision', features={'proxy': lib.stl.SharedPtrProxyFeature(box_collision)})$/;"	kind:variable	line:1017
+shared_cam	../examples/harfang.py	/^	shared_cam = gen.begin_class('std::shared_ptr<gs::core::Camera>', bound_name='Camera', features={'proxy': lib.stl.SharedPtrProxyFeature(cam)})$/;"	kind:variable	line:883
+shared_geometry	../examples/harfang.py	/^	shared_geometry = gen.begin_class('std::shared_ptr<gs::core::Geometry>', bound_name='Geometry', features={'proxy': lib.stl.SharedPtrProxyFeature(geometry)})$/;"	kind:variable	line:491
+shared_geometry	../examples/harfang.py	/^	shared_geometry = gen.begin_class('std::shared_ptr<gs::render::Geometry>', bound_name='RenderGeometry', features={'proxy': lib.stl.SharedPtrProxyFeature(geometry)})$/;"	kind:variable	line:2241
+shared_group	../examples/harfang.py	/^	shared_group = gen.begin_class('std::shared_ptr<gs::core::Group>', bound_name='Group', features={'proxy': lib.stl.SharedPtrProxyFeature(group)})$/;"	kind:variable	line:1368
+shared_io_cfile	../examples/harfang.py	/^	shared_io_cfile = gen.begin_class('std::shared_ptr<gs::io::CFile>', bound_name='StdFileDriver', features={'proxy': lib.stl.SharedPtrProxyFeature(io_cfile)})$/;"	kind:variable	line:3077
+shared_io_zip	../examples/harfang.py	/^	shared_io_zip = gen.begin_class('std::shared_ptr<gs::io::Zip>', bound_name='ZipFileDriver', features={'proxy': lib.stl.SharedPtrProxyFeature(io_zip)})$/;"	kind:variable	line:3103
+shared_light	../examples/harfang.py	/^	shared_light = gen.begin_class('std::shared_ptr<gs::core::Light>', bound_name='Light', features={'proxy': lib.stl.SharedPtrProxyFeature(light)})$/;"	kind:variable	line:938
+shared_logic_script	../examples/harfang.py	/^	shared_logic_script = gen.begin_class('std::shared_ptr<gs::core::LogicScript>', bound_name='LogicScript', features={'proxy': lib.stl.SharedPtrProxyFeature(logic_script)})$/;"	kind:variable	line:1105
+shared_lua_system	../examples/harfang.py	/^	shared_lua_system = gen.begin_class('std::shared_ptr<gs::script::LuaSystem>', bound_name='LuaSystem', features={'proxy': lib.stl.SharedPtrProxyFeature(lua_system)})$/;"	kind:variable	line:1137
+shared_material	../examples/harfang.py	/^	shared_material = gen.begin_class('std::shared_ptr<gs::core::Material>', bound_name='Material', features={'proxy': lib.stl.SharedPtrProxyFeature(material)})$/;"	kind:variable	line:478
+shared_mesh_collision	../examples/harfang.py	/^	shared_mesh_collision = gen.begin_class('std::shared_ptr<gs::core::MeshCollision>', bound_name='MeshCollision', features={'proxy': lib.stl.SharedPtrProxyFeature(mesh_collision)})$/;"	kind:variable	line:1029
+shared_mixer_async	../examples/harfang.py	/^	shared_mixer_async = gen.begin_class('std::shared_ptr<gs::audio::MixerAsync>', bound_name='MixerAsync', features={'proxy': lib.stl.SharedPtrProxyFeature(mixer_async)})$/;"	kind:variable	line:4157
+shared_navigation_system	../examples/harfang.py	/^	shared_navigation_system = gen.begin_class('std::shared_ptr<gs::core::NavigationSystem>', bound_name='NavigationSystem', features={'proxy': lib.stl.SharedPtrProxyFeature(navigation_system)})$/;"	kind:variable	line:1351
+shared_obj	../examples/harfang.py	/^	shared_obj = gen.begin_class('std::shared_ptr<gs::core::Object>', bound_name='Object', features={'proxy': lib.stl.SharedPtrProxyFeature(obj)})$/;"	kind:variable	line:910
+shared_physic_system	../examples/harfang.py	/^	shared_physic_system = gen.begin_class('std::shared_ptr<gs::core::IPhysicSystem>', bound_name='PhysicSystem', features={'proxy': lib.stl.SharedPtrProxyFeature(physic_system)})$/;"	kind:variable	line:1254
+shared_ptr.py	../tests/shared_ptr.py	1;"	kind:file	line:1
+shared_raster_font	../examples/harfang.py	/^	shared_raster_font = gen.begin_class('std::shared_ptr<gs::render::RasterFont>', bound_name='RasterFont', features={'proxy': lib.stl.SharedPtrProxyFeature(raster_font)})$/;"	kind:variable	line:2567
+shared_render_script	../examples/harfang.py	/^	shared_render_script = gen.begin_class('std::shared_ptr<gs::core::RenderScript>', bound_name='RenderScript', features={'proxy': lib.stl.SharedPtrProxyFeature(render_script)})$/;"	kind:variable	line:1096
+shared_render_system_async	../examples/harfang.py	/^	shared_render_system_async = gen.begin_class('std::shared_ptr<gs::render::RenderSystemAsync>', bound_name='RenderSystemAsync', features={'proxy': lib.stl.SharedPtrProxyFeature(render_system_async)})$/;"	kind:variable	line:2501
+shared_renderable_system	../examples/harfang.py	/^	shared_renderable_system = gen.begin_class('std::shared_ptr<gs::core::RenderableSystem>', bound_name='RenderableSystem', features={'proxy': lib.stl.SharedPtrProxyFeature(renderable_system)})$/;"	kind:variable	line:1224
+shared_renderer_async	../examples/harfang.py	/^	shared_renderer_async = gen.begin_class('std::shared_ptr<gs::gpu::RendererAsync>', bound_name='RendererAsync', features={'proxy': lib.stl.SharedPtrProxyFeature(renderer_async)})$/;"	kind:variable	line:1968
+shared_rigid_body	../examples/harfang.py	/^	shared_rigid_body = gen.begin_class('std::shared_ptr<gs::core::RigidBody>', bound_name='RigidBody', features={'proxy': lib.stl.SharedPtrProxyFeature(rigid_body)})$/;"	kind:variable	line:975
+shared_script	../examples/harfang.py	/^	shared_script = gen.begin_class('std::shared_ptr<gs::core::Script>', bound_name='Script', features={'proxy': lib.stl.SharedPtrProxyFeature(script)})$/;"	kind:variable	line:1079
+shared_script_env	../examples/harfang.py	/^	shared_script_env = gen.begin_class('std::shared_ptr<gs::core::ScriptEngineEnv>', bound_name='ScriptEnv', features={'proxy': lib.stl.SharedPtrProxyFeature(script_env)})$/;"	kind:variable	line:1068
+shared_script_system	../examples/harfang.py	/^	shared_script_system = gen.begin_class('std::shared_ptr<gs::core::ScriptSystem>', bound_name='ScriptSystem', features={'proxy': lib.stl.SharedPtrProxyFeature(script_system)})$/;"	kind:variable	line:1114
+shared_sound	../examples/harfang.py	/^	shared_sound = gen.begin_class('std::shared_ptr<gs::audio::Sound>', bound_name='Sound', features={'proxy': lib.stl.SharedPtrProxyFeature(sound)})$/;"	kind:variable	line:4046
+shared_terrain	../examples/harfang.py	/^	shared_terrain = gen.begin_class('std::shared_ptr<gs::core::Terrain>', bound_name='Terrain', features={'proxy': lib.stl.SharedPtrProxyFeature(terrain)})$/;"	kind:variable	line:1041
+shared_transform	../examples/harfang.py	/^	shared_transform = gen.begin_class('std::shared_ptr<gs::core::Transform>', bound_name='Transform', features={'proxy': lib.stl.SharedPtrProxyFeature(transform)})$/;"	kind:variable	line:850
+simple_graphic_engine	../examples/harfang.py	/^	simple_graphic_engine = gen.begin_class('gs::render::SimpleGraphicEngine', bound_name='SimpleGraphicEngine', noncopyable=True)$/;"	kind:variable	line:2594
+sound	../examples/harfang.py	/^	sound = gen.begin_class('gs::audio::Sound', bound_name='Sound_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:4043
+split	../bind.py	/^split = os.path.split(args.script[0])$/;"	kind:variable	line:35
+start	../gen.py	/^	def start(self, name):$/;"	kind:member	line:344
+start	../lang/cpython.py	/^	def start(self, module_name):$/;"	kind:function	line:305
+start	../lang/lua.py	/^	def start(self, module_name):$/;"	kind:function	line:331
+start_path	../tests.py	/^start_path = os.path.dirname(__file__)$/;"	kind:variable	line:14
+std.py	../lib/cpython/std.py	1;"	kind:file	line:1
+std.py	../lib/lua/std.py	1;"	kind:file	line:1
+std.py	../lib/std.py	1;"	kind:file	line:1
+std_vector.py	../tests/std_vector.py	1;"	kind:file	line:1
+std_vector_shared_group	../examples/harfang.py	/^	std_vector_shared_group = gen.begin_class('std::vector<std::shared_ptr<gs::core::Group>>', bound_name='GroupList', features={'sequence': lib.std.VectorSequenceFeature(shared_group)})$/;"	kind:variable	line:1370
+stl.py	../lib/cpython/stl.py	1;"	kind:file	line:1
+stl.py	../lib/lua/stl.py	1;"	kind:file	line:1
+stl.py	../lib/stl.py	1;"	kind:file	line:1
+struct_bitfield_member_access.py	../tests/struct_bitfield_member_access.py	1;"	kind:file	line:1
+struct_exchange.py	../tests/struct_exchange.py	1;"	kind:file	line:1
+struct_inheritance.py	../tests/struct_inheritance.py	1;"	kind:file	line:1
+struct_instantiation.py	../tests/struct_instantiation.py	1;"	kind:file	line:1
+struct_member_access.py	../tests/struct_member_access.py	1;"	kind:file	line:1
+struct_method_call.py	../tests/struct_method_call.py	1;"	kind:file	line:1
+struct_nesting.py	../tests/struct_nesting.py	1;"	kind:file	line:1
+struct_operator_call.py	../tests/struct_operator_call.py	1;"	kind:file	line:1
+struct_static_const_member_access.py	../tests/struct_static_const_member_access.py	1;"	kind:file	line:1
+symbol_clean_rules	../gen.py	/^symbol_clean_rules = OrderedDict()$/;"	kind:variable	line:68
+terrain	../examples/harfang.py	/^	terrain = gen.begin_class('gs::core::Terrain', bound_name='Terrain_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:1038
+test_names	../tests.py	/^	test_names = [file[:-3] for file in os.listdir('.\/tests') if file.endswith('.py')]$/;"	kind:variable	line:276
+tests.py	../tests.py	1;"	kind:file	line:1
+tex_unit_cfg	../examples/harfang.py	/^	tex_unit_cfg = gen.begin_class('gs::core::TextureUnitConfig')$/;"	kind:variable	line:566
+to_c_call	../gen.py	/^	def to_c_call(self, out_var, expr):$/;"	kind:member	line:280
+to_c_call	../lang/cpython.py	/^	def to_c_call(self, in_var, out_var_p):$/;"	kind:member	line:16
+to_c_call	../lang/lua.py	/^	def to_c_call(self, in_var, out_var_p):$/;"	kind:member	line:16
+transform	../examples/harfang.py	/^	transform = gen.begin_class('gs::core::Transform', bound_name='Transform_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:847
+transform_rval.py	../tests/transform_rval.py	1;"	kind:file	line:1
+transform_var_ref_to	../gen.py	/^def transform_var_ref_to(var, from_ref, to_ref):$/;"	kind:function	line:223
+typedef	../gen.py	/^	def typedef(self, type, alias_of, arg_storage_type=None, bound_name=None):$/;"	kind:member	line:427
+typename	../gen.py	/^typename = re.compile(r"((::)*(_|[A-z])[A-z0-9_]*)+")$/;"	kind:variable	line:114
+unwrap	../lib/stl.py	/^	def unwrap(self, in_var, out_var):$/;"	kind:member	line:9
+view_state	../examples/harfang.py	/^	view_state = gen.begin_class('gs::render::ViewState')$/;"	kind:variable	line:2300
+void_ptr	../examples/harfang.py	/^	void_ptr = gen.bind_ptr('void *', bound_name='VoidPointer')$/;"	kind:variable	line:4742
+vtx_layout	../examples/harfang.py	/^	vtx_layout = gen.begin_class('gs::core::VertexLayout')$/;"	kind:variable	line:581
+wrap	../lib/stl.py	/^	def wrap(self, in_var, out_var):$/;"	kind:member	line:12

@@ -151,25 +151,25 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		# slots
 		def get_operator_slot(slot, op):
 			op = self.get_operator(op)
-			return '	{%s, &%s},\n' % (slot, op['proxy_name']) if op else ''
+			return '	{%s, (void *)&%s},\n' % (slot, op['proxy_name']) if op else ''
 
 		out += 'static PyType_Slot %s_slots[] = {\n' % self.bound_name
-		out += '	{Py_tp_new, &%s_tp_new},\n' % self.bound_name
-		out += '	{Py_tp_doc, "TODO doc"},\n'
-		out += '	{Py_tp_dealloc, &wrapped_Object_tp_dealloc},\n'
-		out += '	{Py_tp_getset, &%s_tp_getset},\n' % self.bound_name
-		out += '	{Py_tp_methods, &%s_tp_methods},\n' % self.bound_name
-		out += '	{Py_tp_richcompare, &%s_tp_richcompare},\n' % self.bound_name
+		out += '	{Py_tp_new, (void *)&%s_tp_new},\n' % self.bound_name
+		out += '	{Py_tp_doc, (void *)"TODO doc"},\n'
+		out += '	{Py_tp_dealloc, (void *)&wrapped_Object_tp_dealloc},\n'
+		out += '	{Py_tp_getset, (void *)&%s_tp_getset},\n' % self.bound_name
+		out += '	{Py_tp_methods, (void *)&%s_tp_methods},\n' % self.bound_name
+		out += '	{Py_tp_richcompare, (void *)&%s_tp_richcompare},\n' % self.bound_name
 		if has_repr:
-			out += '	{Py_tp_repr, &%s_tp_repr},\n' % self.bound_name
+			out += '	{Py_tp_repr, (void *)&%s_tp_repr},\n' % self.bound_name
 		out += get_operator_slot('Py_nb_add', '+')
 		out += get_operator_slot('Py_nb_subtract', '-')
 		out += get_operator_slot('Py_nb_multiply', '*')
 		out += get_operator_slot('Py_nb_true_divide', '/')
 		if has_sequence:
-			out += '	{Py_sq_length, &%s_sq_length},\n' % self.bound_name
-			out += '	{Py_sq_item, &%s_sq_item},\n' % self.bound_name
-			out += '	{Py_sq_ass_item, &%s_sq_ass_item},\n' % self.bound_name
+			out += '	{Py_sq_length, (void *)&%s_sq_length},\n' % self.bound_name
+			out += '	{Py_sq_item, (void *)&%s_sq_item},\n' % self.bound_name
+			out += '	{Py_sq_ass_item, (void *)&%s_sq_ass_item},\n' % self.bound_name
 		out += '''	{0, NULL}
 };
 \n'''
