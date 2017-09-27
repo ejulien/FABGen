@@ -424,6 +424,8 @@ static int wrapped_Object_gc(lua_State *L) {
 		self._source += '''\
 #if WIN32
  #define _DLL_EXPORT_ __declspec(dllexport)
+#else
+ #define _DLL_EXPORT_
 #endif
 \n'''
 
