@@ -140,11 +140,48 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		out += '};\n\n'
 
 		# comparison operators dispatcher
+		def output_default_op_proxy(name, op):
+			out = '''\
+static PyObject *%s_default_Py_%s(PyObject *o1, PyObject *o2) {
+	wrapped_Object *w1 = cast_to_wrapped_Object_safe(o1);
+	wrapped_Object *w2 = cast_to_wrapped_Object_safe(o2);
+
+	if (!w1 || !w2 || w1->type_tag != w2->type_tag) {
+		Py_RETURN_FALSE;
+	}
+''' % (self.bound_name, name)
+
+			if self._inline:
+				out += '''
+	if (*(%s *)w1->inline_obj %s *(%s *)w2->inline_obj) {
+		Py_RETURN_FALSE;
+	}
+''' % (self.ctype, op, self.ctype)
+			else:
+				out += '''
+	if (!(w1->obj %s w2->obj)) {
+		Py_RETURN_FALSE;
+	}
+''' % op
+
+			out += '''
+	Py_RETURN_TRUE;
+}
+'''
+			return out
+
 		op_to_py_op = {'<': 'Py_LT', '<=': 'Py_LE', '==': 'Py_EQ', '!=': 'Py_NE', '>': 'Py_GT', '>=': 'Py_GE'}
+
+		out += output_default_op_proxy('EQ', '==')
+		out += output_default_op_proxy('NE', '!=')
 
 		out += 'static PyObject *%s_tp_richcompare(PyObject *o1, PyObject *o2, int op) {\n' % self.bound_name
 		for i, ops in enumerate(self.comparison_ops):
 			out += "	if (op == %s) return %s(o1, o2);\n" % (op_to_py_op[ops['op']], ops['proxy_name'])
+		if '==' not in self.comparison_ops:
+			out += "	if (op == Py_EQ) return %s_default_Py_EQ(o1, o2);\n" % self.bound_name
+		if '!=' not in self.comparison_ops:
+			out += "	if (op == Py_NE) return %s_default_Py_NE(o1, o2);\n" % self.bound_name
 		out += '	Py_RETURN_NOTIMPLEMENTED;\n'
 		out += '}\n\n'
 
@@ -558,4 +595,3 @@ static type_tag_info *get_type_tag_info(const char *type_tag) {
 		super().finalize()
 
 		self.output_module_init_function(module_def)
-	
