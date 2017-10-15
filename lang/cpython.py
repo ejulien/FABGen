@@ -120,7 +120,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 		if len(static_members) > 0:
 			out += 'static void bind_%s_static_members(PyObject *o) {\n' % self.bound_name
-			
+			out += '	PyObject *tmp;\n'
 			for i, attr in enumerate(static_members):
 				if attr['getter']:
 					out += '	// %s::%s\n' % (self.ctype, attr['name'])

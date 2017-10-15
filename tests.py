@@ -155,14 +155,14 @@ class CPythonTestBed:
 		os.mkdir(build_path)
 		os.chdir(build_path)
 
-		if not build_and_deploy_cpython_extension(work_path, build_path, python_interpreter):
-			return False
-
-		# run test to assert extension correctness
 		test_path = os.path.join(work_path, 'test.py')
 		with open(test_path, 'w') as file:
 			file.write(module.test_python)
 
+		if not build_and_deploy_cpython_extension(work_path, build_path, python_interpreter):
+			return False
+
+		# run test to assert extension correctness
 		print("Executing Python test...")
 		os.chdir(work_path)
 
@@ -245,13 +245,13 @@ class LuaTestBed:
 		os.mkdir(build_path)
 		os.chdir(build_path)
 
-		if not build_and_deploy_lua_extension(work_path, build_path):
-			return False
-
 		# run test to assert extension correctness
 		test_path = os.path.join(work_path, 'test.lua')
 		with open(test_path, 'w') as file:
 			file.write(module.test_lua)
+
+		if not build_and_deploy_lua_extension(work_path, build_path):
+			return False
 
 		print("Executing Lua test...")
 		os.chdir(work_path)

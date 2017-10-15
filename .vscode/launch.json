@@ -9,7 +9,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--pybase", "C:/Pythons/test-install", "--x64"],
+			"args": ["--pybase", "C:/Pythons/36-64", "--x64"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
@@ -26,7 +26,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--pybase", "C:/Pythons/test-install", "--debug", "struct_default_comparison", "--x64"],
+			"args": ["--pybase", "C:/Pythons/36-64", "--debug", "struct_static_const_member_access", "--x64"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
