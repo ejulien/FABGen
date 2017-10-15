@@ -15,8 +15,9 @@ start_path = os.path.dirname(__file__)
 
 parser = argparse.ArgumentParser(description='Run generator unit tests.')
 parser.add_argument('--pybase', dest='python_base_path', help='Specify the base path of the Python interpreter location')
-parser.add_argument('--luabase', dest='lua_base_path', help='Specify the base path of the Lua interpreter location')
+parser.add_argument('--sdkbase', dest='sdk_base_path', help='Specify the base path of the Harfang SDK')
 parser.add_argument('--debug', dest='debug_test', help='Generate a working solution to debug a test')
+parser.add_argument('--x64', dest='x64', help='Build for 64 bit architecture', action='store_true', default=False)
 
 args = parser.parse_args()
 
@@ -26,6 +27,17 @@ if args.python_base_path:
 	python_library = args.python_base_path + '/' + 'libs/python3.lib'
 	python_site_package = args.python_base_path + '/' + 'Lib/site-packages'
 	python_interpreter = args.python_base_path + '/' + 'python.exe'
+
+
+# -- CMake generator
+if args.x64:
+	cmake_generator = 'Visual Studio 15 2017 Win64'
+else:
+	cmake_generator = 'Visual Studio 15 2017'
+
+print("Using CMake generator: %s" % cmake_generator)
+
+msvc_arch = 'x64' if args.x64 else 'Win32'
 
 
 # --
@@ -66,7 +78,7 @@ def run_test(gen, name, testbed):
 
 
 def run_tests(gen, names, testbed):
-	print("Starting tests with generator %s" % gen.get_language())
+	print("Starting tests with fabgen generator %s" % gen.get_language())
 
 	test_count = len(names)
 	print("Running %d tests\n" % test_count)
@@ -80,7 +92,7 @@ def run_tests(gen, names, testbed):
 	failed_test_count = len(failed_test_list)
 
 	print("[Test summary: %d run, %d failed]" % (run_test_count, failed_test_count))
-	print("Done with generator %s" % gen.get_language())
+	print("Done with fabgen generator %s" % gen.get_language())
 
 
 # CPython test bed
@@ -106,7 +118,7 @@ target_link_libraries(my_test "%s")
 def build_and_deploy_cpython_extension(work_path, build_path, python_interpreter):
 	print("Generating build system...")
 	try:
-		subprocess.check_output('cmake .. -G "Visual Studio 15 2017')
+		subprocess.check_output('cmake .. -G "%s"' % cmake_generator)
 	except subprocess.CalledProcessError as e:
 		print(e.output.decode('utf-8'))
 		return False
@@ -116,13 +128,13 @@ def build_and_deploy_cpython_extension(work_path, build_path, python_interpreter
 			file.write('''\
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|Win32'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|%s'">
     <LocalDebuggerCommand>%s</LocalDebuggerCommand>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <LocalDebuggerCommandArguments>test.py</LocalDebuggerCommandArguments>
     <LocalDebuggerWorkingDirectory>%s</LocalDebuggerWorkingDirectory>
   </PropertyGroup>
-</Project>''' % (python_interpreter, work_path))
+</Project>''' % (msvc_arch, python_interpreter, work_path))
 
 	print("Building extension...")
 	try:
@@ -167,7 +179,7 @@ class CPythonTestBed:
 
 
 # Lua test bed
-def create_lua_cmake_file(module, work_path, lua_path, lua_src):
+def create_lua_cmake_file(module, work_path, sdk_path):
 	cmake_path = os.path.join(work_path, 'CMakeLists.txt')
 
 	with open(cmake_path, 'w') as file:
@@ -179,36 +191,40 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/")
 project(%s)
 enable_language(C CXX)
 
-link_directories("%s/build")
+link_directories("%s/lib/Debug")
 
 #add_definitions(-DLUA_USE_APICHECK)
 add_library(my_test SHARED test_module.cpp)
 set_target_properties(my_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG %s)
-target_include_directories(my_test PRIVATE %s)
+target_include_directories(my_test PRIVATE %s/include/lua)
 target_link_libraries(my_test lua)
-''' % (module, lua_path, work_path.replace('\\', '/'), lua_src))
+''' % (module, sdk_path, work_path.replace('\\', '/'), sdk_path))
 
 
-def build_and_deploy_lua_extension(work_path, build_path, lua_interpreter):
+def build_and_deploy_lua_extension(work_path, build_path):
 	print("Generating build system...")
 	try:
-		subprocess.check_output('cmake .. -G "Visual Studio 15 2017')
+		subprocess.check_output('cmake .. -G "%s"' % cmake_generator)
 	except subprocess.CalledProcessError as e:
 		print(e.output.decode('utf-8'))
 		return False
+
+	# deploy Lua runtime from the SDK to the work folder
+	shutil.copyfile(args.sdk_base_path + '/bin/Debug/lua.exe', os.path.join(work_path, 'lua.exe'))
+	shutil.copyfile(args.sdk_base_path + '/bin/Debug/lua53.dll', os.path.join(work_path, 'lua53.dll'))
 
 	if args.debug_test:
 		with open(os.path.join(build_path, 'my_test.vcxproj.user'), 'w') as file:
 			file.write('''\
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LocalDebuggerCommand>%s</LocalDebuggerCommand>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|%s'">
+    <LocalDebuggerCommand>lua.exe</LocalDebuggerCommand>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <LocalDebuggerCommandArguments>test.lua</LocalDebuggerCommandArguments>
     <LocalDebuggerWorkingDirectory>%s</LocalDebuggerWorkingDirectory>
   </PropertyGroup>
-</Project>''' % (lua_interpreter, work_path))
+</Project>''' % (msvc_arch, work_path))
 
 	print("Building extension...")
 	try:
@@ -222,15 +238,14 @@ def build_and_deploy_lua_extension(work_path, build_path, lua_interpreter):
 
 class LuaTestBed:
 	def build_and_test_extension(self, work_path, module):
-		create_lua_cmake_file("test", work_path, args.lua_base_path, args.lua_base_path + '/src')
+		create_lua_cmake_file("test", work_path, args.sdk_base_path)
 		create_clang_format_file(work_path)
 
 		build_path = os.path.join(work_path, 'build')
 		os.mkdir(build_path)
 		os.chdir(build_path)
 
-		lua_interpreter = args.lua_base_path + '/build/Debug/lua.exe'
-		if not build_and_deploy_lua_extension(work_path, build_path, lua_interpreter):
+		if not build_and_deploy_lua_extension(work_path, build_path):
 			return False
 
 		# run test to assert extension correctness
@@ -243,7 +258,7 @@ class LuaTestBed:
 
 		success = True
 		try:
-			subprocess.check_output('%s/build/Debug/lua.exe test.lua' % args.lua_base_path, stderr=subprocess.STDOUT)
+			subprocess.check_output('lua.exe test.lua', stderr=subprocess.STDOUT)
 		except subprocess.CalledProcessError as e:
 			print(e.output.decode('utf-8'))
 			success = False
@@ -280,7 +295,7 @@ if args.python_base_path:
 	gen.verbose = False
 	run_tests(gen, test_names, CPythonTestBed())
 
-if args.lua_base_path:
+if args.sdk_base_path:
 	gen = lang.lua.LuaGenerator()
 	gen.verbose = False
 	run_tests(gen, test_names, LuaTestBed())

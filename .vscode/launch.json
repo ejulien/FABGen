@@ -60,7 +60,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--luabase", "D:/lua53"],
+			"args": ["--sdkbase", "D:/harfang/sdk"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
@@ -77,7 +77,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--luabase", "D:/lua53", "--debug", "struct_default_comparison"],
+			"args": ["--sdkbase", "D:/harfang/sdk", "--debug", "struct_default_comparison", "--x64"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [

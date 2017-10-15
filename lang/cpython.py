@@ -120,8 +120,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 		if len(static_members) > 0:
 			out += 'static void bind_%s_static_members(PyObject *o) {\n' % self.bound_name
-			out += '	PyObject *tmp;\n\n'
-
+			
 			for i, attr in enumerate(static_members):
 				if attr['getter']:
 					out += '	// %s::%s\n' % (self.ctype, attr['name'])
@@ -153,7 +152,7 @@ static PyObject *%s_default_Py_%s(PyObject *o1, PyObject *o2) {
 
 			if self._inline:
 				out += '''
-	if (*(%s *)w1->inline_obj %s *(%s *)w2->inline_obj) {
+	if (!(*(%s *)w1->inline_obj %s *(%s *)w2->inline_obj)) {
 		Py_RETURN_FALSE;
 	}
 ''' % (self.ctype, op, self.ctype)

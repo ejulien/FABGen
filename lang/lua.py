@@ -184,6 +184,41 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 			out += '	{"__call", %s},\n' % self.constructor['proxy_name']
 		out += '	{NULL, NULL}};\n\n'
 
+		# type default comparison operator
+		out += '''\
+static int __default_Lua_eq_%s(lua_State *L) {
+	wrapped_Object *w1 = cast_to_wrapped_Object_safe(L, -2);
+	wrapped_Object *w2 = cast_to_wrapped_Object_safe(L, -1);
+
+	lua_pop(L, 2);
+
+	if (!w1 || !w2 || w1->type_tag != w2->type_tag) {
+		lua_pushboolean(L, 0);
+		return 1;
+	}
+''' % self.bound_name
+
+		if self._inline:
+			out += '''
+	if (!(*(%s *)w1->inline_obj == *(%s *)w2->inline_obj)) {
+		lua_pushboolean(L, 0);
+		return 1;
+	}
+''' % (self.ctype, self.ctype)
+		else:
+			out += '''
+	if (!(w1->obj == w2->obj)) {
+		lua_pushboolean(L, 0);
+		return 1;
+	}
+'''
+
+		out += '''
+	lua_pushboolean(L, 1);
+	return 1;
+}
+'''
+
 		# type instance metatable
 		comp_op_to_metaevent = {'<': '__lt', '<=': '__le', '==': '__eq' }
 		arit_op_to_metaevent = {'+': '__add', '-': '__sub', '*': '__mul', '/': '__div' }
@@ -192,14 +227,24 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 		out += '	{"__gc", wrapped_Object_gc},\n'
 		out += '	{"__index", __index_%s_instance},\n' % self.bound_name
 		out += '	{"__newindex", __newindex_%s_instance},\n' % self.bound_name
+
+		has_eq_op = False
 		for i, ops in enumerate(self.comparison_ops):
+			if ops['op'] == '==':
+				has_eq_op = True
 			if ops['op'] in comp_op_to_metaevent:
 				out += '	{"%s", %s},\n' % (comp_op_to_metaevent[ops['op']], ops['proxy_name'])
+
+		if not has_eq_op:
+			out += '	{"__eq", __default_Lua_eq_%s},\n' % self.bound_name
+
 		for i, ops in enumerate(self.arithmetic_ops):
 			if ops['op'] in arit_op_to_metaevent:
 				out += '	{"%s", %s},\n' % (arit_op_to_metaevent[ops['op']], ops['proxy_name'])
+
 		if has_sequence:
 			out += '	{"__len", __len_%s},\n' % self.bound_name
+
 		out += '	{NULL, NULL}};\n\n'
 
 		# type registration
