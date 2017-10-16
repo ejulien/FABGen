@@ -290,6 +290,7 @@ if args.debug_test:
 else:
 	test_names = [file[:-3] for file in os.listdir('./tests') if file.endswith('.py')]
 
+
 if args.python_base_path:
 	gen = lang.cpython.CPythonGenerator()
 	gen.verbose = False
@@ -299,3 +300,14 @@ if args.sdk_base_path:
 	gen = lang.lua.LuaGenerator()
 	gen.verbose = False
 	run_tests(gen, test_names, LuaTestBed())
+
+
+#
+print("[Final summary]")
+
+if len(failed_test_list) == 0:
+	print("All tests passed!")
+else:
+	print("The following tests failed:")
+	for test in failed_test_list:
+		print(" - " + test)

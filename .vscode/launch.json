@@ -26,7 +26,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--pybase", "C:/Pythons/36-64", "--debug", "struct_static_const_member_access", "--x64"],
+			"args": ["--pybase", "C:/Pythons/36-64", "--debug", "basic_type_exchange", "--x64"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
@@ -43,7 +43,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/bind.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["d:/gs-fabgen/harfang.py", "--cpython", "--out", "d:/gs-fabgen/"],
+			"args": ["d:/gs-fabgen/bind_harfang.py", "--cpython", "--out", "d:/gs-fabgen/"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
@@ -94,7 +94,24 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/bind.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["d:/gs-fabgen/harfang.py", "--lua", "--out", "d:/gs-fabgen/"],
+			"args": ["d:/gs-fabgen/bind_harfang.py", "--lua", "--out", "d:/gs-fabgen/"],
+			"env": null,
+			"envFile": "${workspaceRoot}/.env",
+			"debugOptions": [
+				"WaitOnAbnormalExit",
+				"WaitOnNormalExit",
+				"RedirectOutput"
+			]
+		},
+		{
+			"name": "All: Tests",
+			"type": "python",
+			"request": "launch",
+			"stopOnEntry": false,
+			"pythonPath": "${config:python.pythonPath}",
+			"program": "${workspaceRoot}/tests.py",
+			"cwd": "${workspaceRoot}",
+			"args": ["--pybase", "C:/Pythons/36-64", "--sdkbase", "D:/harfang/sdk", "--x64"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
@@ -111,7 +128,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/bind.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["d:/gs-fabgen/harfang.py", "--lua", "--cpython", "--out", "d:/gs-fabgen/"],
+			"args": ["d:/gs-fabgen/bind_harfang.py", "--lua", "--cpython", "--out", "d:/gs-fabgen/"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
