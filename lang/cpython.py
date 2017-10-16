@@ -334,7 +334,7 @@ class CPythonGenerator(gen.FABGen):
 	def output_includes(self):
 		super().output_includes()
 
-		self._source += '''#define Py_LIMITED_API // ensure a single build for Python 3.x (with x>2)
+		self._source += '''#define Py_LIMITED_API 0x03020000 // ensure a single build for Python 3.x (with x>2)
 #include "Python.h"
 \n'''
 
