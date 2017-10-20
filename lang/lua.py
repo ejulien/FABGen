@@ -3,18 +3,31 @@ import gen
 
 #
 class LuaTypeConverterCommon(gen.TypeConverter):
-	def __init__(self, type, storage_type=None, bound_name=None, rval_storage_type=None):
-		super().__init__(type, storage_type, bound_name, rval_storage_type)
+	def __init__(self, type, storage_type=None, bound_name=None, rval_storage_type=None, needs_c_storage_class=False):
+		super().__init__(type, storage_type, bound_name, rval_storage_type, needs_c_storage_class)
 
 	def get_type_api(self, module_name):
-		return '// type API for %s\n' % self.ctype +\
-		'bool check_%s(lua_State *L, int idx);\n' % self.bound_name +\
-		'void to_c_%s(lua_State *L, int idx, void *obj);\n' % self.bound_name +\
-		'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy);\n' % self.bound_name +\
-		'\n'
+		out = '// type API for %s\n' % self.ctype
+		if self.c_storage_class:
+			out += 'struct %s;\n' % self.c_storage_class
+		out += 'bool check_%s(lua_State *L, int idx);\n' % self.bound_name
+		if self.c_storage_class:
+			out += 'void to_c_%s(lua_State *L, int idx, void *obj, %s &storage);\n' % (self.bound_name, self.c_storage_class)
+		else:
+			out += 'void to_c_%s(lua_State *L, int idx, void *obj);\n' % self.bound_name
+		out += 'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy);\n' % self.bound_name
+		out += '\n'
+		return out
 
 	def to_c_call(self, in_var, out_var_p):
-		return 'to_c_%s(L, %s, %s);\n' % (self.bound_name, in_var, out_var_p)
+		out = ''
+		if self.c_storage_class:
+			c_storage_var = 'storage_%s' % out_var_p.replace('&', '_')
+			out += '%s %s;\n' % (self.c_storage_class, c_storage_var)
+			out += 'to_c_%s(L, %s, (void *)%s, %s);\n' % (self.bound_name, in_var, out_var_p, c_storage_var)
+		else:
+			out += 'to_c_%s(L, %s, %s);\n' % (self.bound_name, in_var, out_var_p)
+		return out
 
 	def from_c_call(self, out_var, expr, ownership):
 		return "from_c_%s(L, (void *)%s, %s);\n" % (self.bound_name, expr, ownership)

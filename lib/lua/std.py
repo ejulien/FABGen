@@ -48,9 +48,17 @@ def bind_std(gen):
 	gen.bind_type(LuaDoubleConverter('double'))
 
 	class LuaConstCharPtrConverter(lang.lua.LuaTypeConverterCommon):
+		def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):
+			super().__init__(type, arg_storage_type, bound_name, rval_storage_type, True)
+
 		def get_type_glue(self, gen, module_name):
-			return 'bool check_%s(lua_State *L, int idx) { return lua_isstring(L, idx) ? true : false; }\n' % self.bound_name +\
-			'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = lua_tostring(L, idx); }\n' % (self.bound_name, self.ctype) +\
+			return 'struct %s { std::string s; };\n' % self.c_storage_class +\
+			'bool check_%s(lua_State *L, int idx) { return lua_isstring(L, idx) ? true : false; }\n' % self.bound_name +\
+			'''void to_c_%s(lua_State *L, int idx, void *obj, %s &storage) {
+	storage.s = lua_tostring(L, idx);
+	*((%s*)obj) = storage.s.data();
+}
+''' % (self.bound_name, self.c_storage_class, self.ctype) +\
 			'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushstring(L, (*(%s*)obj)); return 1; }\n' % (self.bound_name, self.ctype)
 
 	gen.bind_type(LuaConstCharPtrConverter('const char *'))

@@ -80,7 +80,7 @@ def bind_std(gen):
 			super().__init__(type, arg_storage_type, bound_name, rval_storage_type, True)
 
 		def get_type_glue(self, gen, module_name):
-			return 'struct %s { std::string s; }\n' % self.c_storage_class +\
+			return 'struct %s { std::string s; };\n' % self.c_storage_class +\
 			'bool check_%s(PyObject *o) { return PyUnicode_Check(o) ? true : false; }\n' % self.bound_name +\
 			'''void to_c_%s(PyObject *o, void *obj, %s &storage) {
 	PyObject *utf8_pyobj = PyUnicode_AsUTF8String(o);

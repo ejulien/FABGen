@@ -77,7 +77,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--sdkbase", "D:/harfang/sdk", "--debug", "cpp_exceptions", "--x64"],
+			"args": ["--sdkbase", "D:/harfang/sdk", "--debug", "basic_type_exchange", "--x64"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
