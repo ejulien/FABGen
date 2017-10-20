@@ -3,18 +3,31 @@ import gen
 
 #
 class PythonTypeConverterCommon(gen.TypeConverter):
-	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):
-		super().__init__(type, arg_storage_type, bound_name, rval_storage_type)
+	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None, needs_c_storage_class=False):
+		super().__init__(type, arg_storage_type, bound_name, rval_storage_type, needs_c_storage_class)
 
 	def get_type_api(self, module_name):
-		return '// type API for %s\n' % self.ctype +\
-		'bool check_%s(PyObject *o);\n' % self.bound_name +\
-		'void to_c_%s(PyObject *o, void *obj);\n' % self.bound_name +\
-		'PyObject *from_c_%s(void *obj, OwnershipPolicy);\n' % self.bound_name +\
-		'\n'
+		out = '// type API for %s\n' % self.ctype
+		if self.c_storage_class:
+			out += 'struct %s;\n' % self.c_storage_class
+		out += 'bool check_%s(PyObject *o);\n' % self.bound_name
+		if self.c_storage_class:
+			out += 'void to_c_%s(PyObject *o, void *obj, %s &storage);\n' % (self.bound_name, self.c_storage_class)
+		else:
+			out += 'void to_c_%s(PyObject *o, void *obj);\n' % self.bound_name
+		out += 'PyObject *from_c_%s(void *obj, OwnershipPolicy);\n' % self.bound_name
+		out += '\n'
+		return out
 
 	def to_c_call(self, in_var, out_var_p):
-		return 'to_c_%s(%s, (void *)%s);\n' % (self.bound_name, in_var, out_var_p)
+		out = ''
+		if self.c_storage_class:
+			c_storage_var = 'storage_%s' % out_var_p.replace('&', '_')
+			out += '%s %s;\n' % (self.c_storage_class, c_storage_var)
+			out += 'to_c_%s(%s, (void *)%s, %s);\n' % (self.bound_name, in_var, out_var_p, c_storage_var)
+		else:
+			out += 'to_c_%s(%s, (void *)%s);\n' % (self.bound_name, in_var, out_var_p)
+		return out
 
 	def from_c_call(self, out_var, expr, ownership):
 		return "%s = from_c_%s((void *)%s, %s);\n" % (out_var, self.bound_name, expr, ownership)
@@ -574,10 +587,12 @@ static inline bool CheckArgsTuple(PyObject *args) {
 		module_def = self.output_module_definition(methods_table)
 
 		# typetag info structure
+		self._source += '// Note: Types using a storage class for conversion are not listed here.\n'
 		self._source += 'static type_tag_info type_tag_infos[] = {\n'
 		entries = []
 		for type in self._bound_types:
-			entries.append('	{%s, "%s", check_%s, to_c_%s, from_c_%s}' % (type.type_tag, str(type.ctype), type.bound_name, type.bound_name, type.bound_name))
+			if not type.c_storage_class:
+				entries.append('	{%s, "%s", check_%s, to_c_%s, from_c_%s}' % (type.type_tag, str(type.ctype), type.bound_name, type.bound_name, type.bound_name))
 		entries.append('	{nullptr, nullptr, nullptr, nullptr, nullptr}')
 		self._source += ',\n'.join(entries) + '\n'
 		self._source += '};\n\n'

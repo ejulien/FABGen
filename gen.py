@@ -240,11 +240,16 @@ def collect_attr_from_conv_recursive(out, conv, attr, dlg):
 
 
 class TypeConverter:
-	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):
+	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None, needs_c_storage_class=False):
 		self.ctype = parse(type, _CType)
 		self.arg_storage_ctype = parse(arg_storage_type, _CType) if arg_storage_type is not None else self.ctype.non_const()
 		self.bound_name = get_ctype_default_bound_name(self.ctype) if bound_name is None else bound_name
 		self.rval_storage_ctype = parse(rval_storage_type, _CType) if rval_storage_type is not None else None  # if None the prototype return value type will be used to determine adequate storage at binding time
+
+		if needs_c_storage_class:
+			self.c_storage_class = 'storage_%s' % self.bound_name
+		else:
+			self.c_storage_class = None
 
 		self.type_tag = 'type_tag_' + self.bound_name
 

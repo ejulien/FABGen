@@ -76,14 +76,19 @@ def bind_std(gen):
 	gen.bind_type(PythonFloatConverter('double'))
 
 	class PythonConstCharPtrConverter(lang.cpython.PythonTypeConverterCommon):
+		def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):
+			super().__init__(type, arg_storage_type, bound_name, rval_storage_type, True)
+
 		def get_type_glue(self, gen, module_name):
-			return 'bool check_%s(PyObject *o) { return PyUnicode_Check(o) ? true : false; }\n' % self.bound_name +\
-			'''void to_c_%s(PyObject *o, void *obj) {
+			return 'struct %s { std::string s; };\n' % self.c_storage_class +\
+			'bool check_%s(PyObject *o) { return PyUnicode_Check(o) ? true : false; }\n' % self.bound_name +\
+			'''void to_c_%s(PyObject *o, void *obj, %s &storage) {
 	PyObject *utf8_pyobj = PyUnicode_AsUTF8String(o);
-	*((%s*)obj) = PyBytes_AsString(utf8_pyobj);
+	storage.s = PyBytes_AsString(utf8_pyobj);
+	*((%s*)obj) = storage.s.data();
 	Py_DECREF(utf8_pyobj);
 }
-''' % (self.bound_name, self.ctype) +\
+''' % (self.bound_name, self.c_storage_class, self.ctype) +\
 			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyUnicode_FromString(*((%s*)obj)); }\n' % (self.bound_name, self.ctype)
 
 	gen.bind_type(PythonConstCharPtrConverter('const char *'))
