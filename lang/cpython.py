@@ -7,7 +7,7 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 		super().__init__(type, arg_storage_type, bound_name, rval_storage_type, needs_c_storage_class)
 
 	def get_type_api(self, module_name):
-		out = '// type API for %s\n' % self.c_storage_class
+		out = '// type API for %s\n' % self.ctype
 		if self.c_storage_class:
 			out += 'struct %s;\n' % self.c_storage_class
 		out += 'bool check_%s(PyObject *o);\n' % self.bound_name

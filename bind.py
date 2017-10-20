@@ -25,10 +25,15 @@ def output_binding(gen):
 
 	hdr, src = gen.get_output()
 
-	with open(os.path.join(args.out, 'bind_%s.h' % gen.get_language()), mode='w', encoding='utf-8') as f:
+	hdr_path = os.path.join(args.out, 'bind_%s.h' % gen.get_language())
+	cpp_path = os.path.join(args.out, 'bind_%s.cpp' % gen.get_language())
+
+	with open(hdr_path, mode='w', encoding='utf-8') as f:
 		f.write(hdr)
-	with open(os.path.join(args.out, 'bind_%s.cpp' % gen.get_language()), mode='w', encoding='utf-8') as f:
+	with open(cpp_path, mode='w', encoding='utf-8') as f:
 		f.write(src)
+
+	print('Files written as %s and %s' % (hdr_path, cpp_path))
 
 
 # load binding script
