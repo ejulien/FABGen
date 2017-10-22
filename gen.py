@@ -335,6 +335,7 @@ def format_list_for_comment(lst):
 class FABGen:
 	def __init__(self):
 		self.verbose = True
+		self.embedded = False
 		self.check_self_type_in_ops = False
 
 	def get_language(self):
@@ -348,8 +349,10 @@ class FABGen:
 
 		self._source += "// FABgen .cpp\n"
 		self._source += common
+
 		self._header += "// FABgen .h\n"
 		self._header += common
+		self._header += "#pragma once\n\n"
 
 	def output_includes(self):
 		self.add_include('cstdint', True)

@@ -481,7 +481,12 @@ static int wrapped_Object_gc(lua_State *L) {
 	lua_setfield(L, idx, name);
 }\n\n'''
 
-		self._source += 'extern "C" _DLL_EXPORT_ int luaopen_%s(lua_State* L) {\n' % self._name
+		if self.embedded:
+			bind_func = gen.apply_api_prefix('bind_%s' % self._name)
+			self._header += 'int %s(lua_State* L);\n\n' % bind_func
+			self._source += 'int %s(lua_State* L) {\n' % bind_func
+		else:
+			self._source += 'extern "C" _DLL_EXPORT_ int luaopen_%s(lua_State* L) {\n' % self._name
 
 		self._source += '	// custom initialization code\n'
 		self._source += self._custom_init_code

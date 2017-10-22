@@ -18,10 +18,15 @@ parser.add_argument('--lua', help='Bind to Lua 5.2+', action="store_true")
 parser.add_argument('--cpython', help='Bind to CPython', action="store_true")
 parser.add_argument('--out', help='Path to output generated files', required=True)
 parser.add_argument('--prefix', help='Prefix to append to all public symbols')
+parser.add_argument('--embedded', help='Specify that the generated binding is for embedding and not expanding the target language', action="store_true")
 args = parser.parse_args()
 
 
 def output_binding(gen):
+	if args.embedded:
+		print("Generating embedded binding code")
+		gen.embedded = args.embedded
+
 	script.bind(gen)
 
 	hdr, src = gen.get_output()
