@@ -6,17 +6,17 @@ def bind_std(gen):
 
 	class LuaBoolConverter(lang.lua.LuaTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
-			return 'bool check_%s(lua_State *L, int idx) { return lua_isboolean(L, idx) ? true : false; }\n' % self.bound_name +\
-			'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = lua_toboolean(L, idx) == 1; }\n' % (self.bound_name, self.ctype) +\
-			'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushboolean(L, *((%s*)obj) ? 1 : 0); return 1; }\n' % (self.bound_name, self.ctype)
+			return 'bool %s(lua_State *L, int idx) { return lua_isboolean(L, idx) ? true : false; }\n' % self.check_func +\
+			'void %s(lua_State *L, int idx, void *obj) { *((%s*)obj) = lua_toboolean(L, idx) == 1; }\n' % (self.to_c_func, self.ctype) +\
+			'int %s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushboolean(L, *((%s*)obj) ? 1 : 0); return 1; }\n' % (self.from_c_func, self.ctype)
 
 	gen.bind_type(LuaBoolConverter('bool'))
 
 	class LuaIntConverter(lang.lua.LuaTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
-			return 'bool check_%s(lua_State *L, int idx) { return lua_isnumber(L, idx) ? true : false; }\n' % self.bound_name +\
-			'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = (%s)lua_tonumber(L, idx); }\n' % (self.bound_name, self.ctype, self.ctype) +\
-			'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushinteger(L, *((%s*)obj)); return 1; }\n' % (self.bound_name, self.ctype)
+			return 'bool %s(lua_State *L, int idx) { return lua_isnumber(L, idx) ? true : false; }\n' % self.check_func +\
+			'void %s(lua_State *L, int idx, void *obj) { *((%s*)obj) = (%s)lua_tonumber(L, idx); }\n' % (self.to_c_func, self.ctype, self.ctype) +\
+			'int %s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushinteger(L, *((%s*)obj)); return 1; }\n' % (self.from_c_func, self.ctype)
 
 	gen.bind_type(LuaIntConverter('char'))
 	gen.bind_type(LuaIntConverter('short'))
@@ -40,9 +40,9 @@ def bind_std(gen):
 
 	class LuaDoubleConverter(lang.lua.LuaTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
-			return 'bool check_%s(lua_State *L, int idx) { return lua_isnumber(L, idx) ? true : false; }\n' % self.bound_name +\
-			'void to_c_%s(lua_State *L, int idx, void *obj) { *((%s*)obj) = (%s)lua_tonumber(L, idx); }\n' % (self.bound_name, self.ctype, self.ctype) +\
-			'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushnumber(L, *((%s*)obj)); return 1; }\n' % (self.bound_name, self.ctype)
+			return 'bool %s(lua_State *L, int idx) { return lua_isnumber(L, idx) ? true : false; }\n' % self.check_func +\
+			'void %s(lua_State *L, int idx, void *obj) { *((%s*)obj) = (%s)lua_tonumber(L, idx); }\n' % (self.to_c_func, self.ctype, self.ctype) +\
+			'int %s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushnumber(L, *((%s*)obj)); return 1; }\n' % (self.from_c_func, self.ctype)
 
 	gen.bind_type(LuaDoubleConverter('float'))
 	gen.bind_type(LuaDoubleConverter('double'))
@@ -53,12 +53,12 @@ def bind_std(gen):
 
 		def get_type_glue(self, gen, module_name):
 			return 'struct %s { std::string s; };\n' % self.c_storage_class +\
-			'bool check_%s(lua_State *L, int idx) { return lua_isstring(L, idx) ? true : false; }\n' % self.bound_name +\
-			'''void to_c_%s(lua_State *L, int idx, void *obj, %s &storage) {
+			'bool %s(lua_State *L, int idx) { return lua_isstring(L, idx) ? true : false; }\n' % self.check_func +\
+			'''void %s(lua_State *L, int idx, void *obj, %s &storage) {
 	storage.s = lua_tostring(L, idx);
 	*((%s*)obj) = storage.s.data();
 }
-''' % (self.bound_name, self.c_storage_class, self.ctype) +\
-			'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushstring(L, (*(%s*)obj)); return 1; }\n' % (self.bound_name, self.ctype)
+''' % (self.to_c_func, self.c_storage_class, self.ctype) +\
+			'int %s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushstring(L, (*(%s*)obj)); return 1; }\n' % (self.from_c_func, self.ctype)
 
 	gen.bind_type(LuaConstCharPtrConverter('const char *'))

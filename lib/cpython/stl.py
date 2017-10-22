@@ -8,14 +8,14 @@ def bind_stl(gen):
 
 	class PythonStringConverter(lang.cpython.PythonTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
-			return 'bool check_%s(PyObject *o) { return PyUnicode_Check(o) ? true : false; }\n' % self.bound_name +\
-			'''void to_c_%s(PyObject *o, void *obj) {
+			return 'bool %s(PyObject *o) { return PyUnicode_Check(o) ? true : false; }\n' % self.check_func +\
+			'''void %s(PyObject *o, void *obj) {
 PyObject *utf8_pyobj = PyUnicode_AsUTF8String(o);
 *((%s*)obj) = PyBytes_AsString(utf8_pyobj);
 Py_DECREF(utf8_pyobj);
 }
-''' % (self.bound_name, self.ctype) +\
-			'PyObject *from_c_%s(void *obj, OwnershipPolicy) { return PyUnicode_FromString(((%s*)obj)->c_str()); }\n' % (self.bound_name, self.ctype)
+''' % (self.to_c_func, self.ctype) +\
+			'PyObject *%s(void *obj, OwnershipPolicy) { return PyUnicode_FromString(((%s*)obj)->c_str()); }\n' % (self.from_c_func, self.ctype)
 
 	gen.bind_type(PythonStringConverter('std::string'))
 
@@ -27,9 +27,9 @@ class PySequenceToStdVectorConverter(lang.cpython.PythonTypeConverterCommon):
 		self.T_conv = T_conv
 
 	def get_type_glue(self, gen, module_name):
-		out = 'bool check_%s(PyObject *o) { return PySequence_Check(o) ? true : false; }\n' % self.bound_name
+		out = 'bool %s(PyObject *o) { return PySequence_Check(o) ? true : false; }\n' % self.check_func
 
-		out += '''void to_c_%s(PyObject *o, void *obj) {
+		out += '''void %s(PyObject *o, void *obj) {
 	std::vector<%s> *sv = (std::vector<%s> *)obj;
 
 	int size = PySequence_Length(o);
@@ -41,17 +41,17 @@ class PySequenceToStdVectorConverter(lang.cpython.PythonTypeConverterCommon):
 		(*sv)[i] = %s;
 		Py_DECREF(itm);
 	}
-}\n''' % (self.bound_name, self.T_conv.ctype, self.T_conv.ctype, self.T_conv.arg_storage_ctype, self.T_conv.bound_name, self.T_conv.prepare_var_from_conv('v', ''))
+}\n''' % (self.to_c_func, self.T_conv.ctype, self.T_conv.ctype, self.T_conv.arg_storage_ctype, self.T_conv.to_c_func, self.T_conv.prepare_var_from_conv('v', ''))
 
-		out += '''PyObject *from_c_%s(void *obj, OwnershipPolicy) {
+		out += '''PyObject *%s(void *obj, OwnershipPolicy) {
 	std::vector<%s> *sv = (std::vector<%s> *)obj;
 
 	size_t size = sv->size();
 	PyObject *out = PyList_New(size);
 	for (size_t i = 0; i < size; ++i) {
-		PyObject *p = from_c_%s(&sv->at(i), Copy);
+		PyObject *p = %s(&sv->at(i), Copy);
 		PyList_SetItem(out, i, p);
 	}
 	return out;
-}\n''' % (self.bound_name, self.T_conv.ctype, self.T_conv.ctype, self.T_conv.bound_name)
+}\n''' % (self.from_c_func, self.T_conv.ctype, self.T_conv.ctype, self.T_conv.from_c_func)
 		return out

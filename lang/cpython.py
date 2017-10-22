@@ -10,12 +10,12 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 		out = '// type API for %s\n' % self.ctype
 		if self.c_storage_class:
 			out += 'struct %s;\n' % self.c_storage_class
-		out += 'bool check_%s(PyObject *o);\n' % self.bound_name
+		out += 'bool %s(PyObject *o);\n' % self.check_func
 		if self.c_storage_class:
-			out += 'void to_c_%s(PyObject *o, void *obj, %s &storage);\n' % (self.bound_name, self.c_storage_class)
+			out += 'void %s(PyObject *o, void *obj, %s &storage);\n' % (self.to_c_func, self.c_storage_class)
 		else:
-			out += 'void to_c_%s(PyObject *o, void *obj);\n' % self.bound_name
-		out += 'PyObject *from_c_%s(void *obj, OwnershipPolicy);\n' % self.bound_name
+			out += 'void %s(PyObject *o, void *obj);\n' % self.to_c_func
+		out += 'PyObject *%s(void *obj, OwnershipPolicy);\n' % self.from_c_func
 		out += '\n'
 		return out
 
@@ -24,16 +24,16 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 		if self.c_storage_class:
 			c_storage_var = 'storage_%s' % out_var_p.replace('&', '_')
 			out += '%s %s;\n' % (self.c_storage_class, c_storage_var)
-			out += 'to_c_%s(%s, (void *)%s, %s);\n' % (self.bound_name, in_var, out_var_p, c_storage_var)
+			out += '%s(%s, (void *)%s, %s);\n' % (self.to_c_func, in_var, out_var_p, c_storage_var)
 		else:
-			out += 'to_c_%s(%s, (void *)%s);\n' % (self.bound_name, in_var, out_var_p)
+			out += '%s(%s, (void *)%s);\n' % (self.to_c_func, in_var, out_var_p)
 		return out
 
 	def from_c_call(self, out_var, expr, ownership):
-		return "%s = from_c_%s((void *)%s, %s);\n" % (out_var, self.bound_name, expr, ownership)
+		return "%s = %s((void *)%s, %s);\n" % (out_var, self.from_c_func, expr, ownership)
 
 	def check_call(self, in_var):
-		return "check_%s(%s)" % (self.bound_name, in_var)
+		return "%s(%s)" % (self.check_func, in_var)
 
 
 #
@@ -237,20 +237,20 @@ static PyObject *%s_default_Py_%s(PyObject *o1, PyObject *o2) {
 		out += 'static void delete_%s(void *o) { delete (%s *)o; }\n\n' % (self.bound_name, self.ctype)
 
 		# check
-		out += '''bool check_%s(PyObject *o) {
+		out += '''bool %s(PyObject *o) {
 	wrapped_Object *w = cast_to_wrapped_Object_safe(o);
 	if (!w)
 		return false;
 	return _type_tag_can_cast(w->type_tag, %s);
 }
-\n''' % (self.bound_name, self.type_tag)
+\n''' % (self.check_func, self.type_tag)
 
 		# to C
-		out += '''void to_c_%s(PyObject *o, void *obj) {
+		out += '''void %s(PyObject *o, void *obj) {
 	wrapped_Object *w = cast_to_wrapped_Object_unsafe(o);
 	*(void **)obj = _type_tag_cast(w->obj, w->type_tag, %s);
 }
-\n''' % (self.bound_name, self.type_tag)
+\n''' % (self.to_c_func, self.type_tag)
 
 		# from C
 		is_inline = False
@@ -279,7 +279,7 @@ static void delete_inline_%s(void *o) {
 	((T*)o)->~T();
 }\n\n''' % (self.bound_name, self.ctype)
 
-		out += '''PyObject *from_c_%s(void *obj, OwnershipPolicy own) {
+		out += '''PyObject *%s(void *obj, OwnershipPolicy own) {
 	wrapped_Object *pyobj = PyObject_New(wrapped_Object, (PyTypeObject *)%s_type);
 	if (own == Copy) {
 		%s
@@ -289,7 +289,7 @@ static void delete_inline_%s(void *o) {
 		%s
 	return (PyObject *)pyobj;
 }
-\n''' % (self.bound_name, self.bound_name, copy_code, self.type_tag, delete_code)
+\n''' % (self.from_c_func, self.bound_name, copy_code, self.type_tag, delete_code)
 
 		return out
 
@@ -307,25 +307,25 @@ class PythonPtrTypeDefaultConverter(PythonTypeConverterCommon):
 		super().__init__(type, arg_storage_type, bound_name, rval_storage_type)
 
 	def get_type_glue(self, gen, module_name):
-		out = '''bool check_%s(PyObject *o) {
+		out = '''bool %s(PyObject *o) {
 	if (PyLong_Check(o))
 		return true;
 	if (wrapped_Object *w = cast_to_wrapped_Object_safe(o))
 		return _type_tag_can_cast(w->type_tag, %s);
 	return false;
-}\n''' % (self.bound_name, self.type_tag)
+}\n''' % (self.check_func, self.type_tag)
 
-		out += '''void to_c_%s(PyObject *o, void *obj) {
+		out += '''void %s(PyObject *o, void *obj) {
 	if (PyLong_Check(o)) {
 		*(void **)obj = PyLong_AsVoidPtr(o);
 	} else if (wrapped_Object *w = cast_to_wrapped_Object_unsafe(o)) {
 		*(void **)obj = _type_tag_cast(w->obj, w->type_tag, %s);
 	}
-}\n''' % (self.bound_name, self.type_tag)
+}\n''' % (self.to_c_func, self.type_tag)
 
-		out += '''PyObject *from_c_%s(void *obj, OwnershipPolicy) {
+		out += '''PyObject *%s(void *obj, OwnershipPolicy) {
 	return PyLong_FromVoidPtr(*(void **)obj);
-}\n''' % self.bound_name
+}\n''' % self.from_c_func
 
 		return out
 
@@ -592,7 +592,7 @@ static inline bool CheckArgsTuple(PyObject *args) {
 		entries = []
 		for type in self._bound_types:
 			if not type.c_storage_class:
-				entries.append('	{%s, "%s", check_%s, to_c_%s, from_c_%s}' % (type.type_tag, str(type.ctype), type.bound_name, type.bound_name, type.bound_name))
+				entries.append('	{%s, "%s", %s, %s, %s}' % (type.type_tag, str(type.ctype), type.check_func, type.to_c_func, type.from_c_func))
 		entries.append('	{nullptr, nullptr, nullptr, nullptr, nullptr}')
 		self._source += ',\n'.join(entries) + '\n'
 		self._source += '};\n\n'

@@ -271,6 +271,10 @@ class TypeConverter:
 
 		self.nobind = False
 
+		self.check_func = 'check_%s' % self.bound_name
+		self.to_c_func = 'to_c_%s' % self.bound_name
+		self.from_c_func = 'from_c_%s' % self.bound_name
+
 	def get_operator(self, op):
 		for arithmetic_op in self.arithmetic_ops:
 			if arithmetic_op['op'] == op:

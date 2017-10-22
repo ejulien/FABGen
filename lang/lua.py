@@ -3,19 +3,16 @@ import gen
 
 #
 class LuaTypeConverterCommon(gen.TypeConverter):
-	def __init__(self, type, storage_type=None, bound_name=None, rval_storage_type=None, needs_c_storage_class=False):
-		super().__init__(type, storage_type, bound_name, rval_storage_type, needs_c_storage_class)
-
 	def get_type_api(self, module_name):
 		out = '// type API for %s\n' % self.ctype
 		if self.c_storage_class:
 			out += 'struct %s;\n' % self.c_storage_class
-		out += 'bool check_%s(lua_State *L, int idx);\n' % self.bound_name
+		out += 'bool %s(lua_State *L, int idx);\n' % self.check_func
 		if self.c_storage_class:
-			out += 'void to_c_%s(lua_State *L, int idx, void *obj, %s &storage);\n' % (self.bound_name, self.c_storage_class)
+			out += 'void %s(lua_State *L, int idx, void *obj, %s &storage);\n' % (self.to_c_func, self.c_storage_class)
 		else:
-			out += 'void to_c_%s(lua_State *L, int idx, void *obj);\n' % self.bound_name
-		out += 'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy);\n' % self.bound_name
+			out += 'void %s(lua_State *L, int idx, void *obj);\n' % self.to_c_func
+		out += 'int %s(lua_State *L, void *obj, OwnershipPolicy);\n' % self.from_c_func
 		out += '\n'
 		return out
 
@@ -24,23 +21,20 @@ class LuaTypeConverterCommon(gen.TypeConverter):
 		if self.c_storage_class:
 			c_storage_var = 'storage_%s' % out_var_p.replace('&', '_')
 			out += '%s %s;\n' % (self.c_storage_class, c_storage_var)
-			out += 'to_c_%s(L, %s, (void *)%s, %s);\n' % (self.bound_name, in_var, out_var_p, c_storage_var)
+			out += '%s(L, %s, (void *)%s, %s);\n' % (self.to_c_func, in_var, out_var_p, c_storage_var)
 		else:
-			out += 'to_c_%s(L, %s, %s);\n' % (self.bound_name, in_var, out_var_p)
+			out += '%s(L, %s, %s);\n' % (self.to_c_func, in_var, out_var_p)
 		return out
 
 	def from_c_call(self, out_var, expr, ownership):
-		return "from_c_%s(L, (void *)%s, %s);\n" % (self.bound_name, expr, ownership)
+		return "%s(L, (void *)%s, %s);\n" % (self.from_c_func, expr, ownership)
 
 	def check_call(self, in_var):
-		return "check_%s(L, %s)" % (self.bound_name, in_var)
+		return "%s(L, %s)" % (self.check_func, in_var)
 
 
 #
 class LuaClassTypeConverter(LuaTypeConverterCommon):
-	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):
-		super().__init__(type, arg_storage_type, bound_name, rval_storage_type)
-
 	def get_type_glue(self, gen, module_name):
 		out = ''
 
@@ -282,18 +276,18 @@ static int __default_Lua_eq_%s(lua_State *L) {
 		out += 'static void delete_%s(void *o) { delete (%s *)o; }\n\n' % (self.bound_name, self.ctype)
 
 		# check
-		out += '''bool check_%s(lua_State *L, int idx) {
+		out += '''bool %s(lua_State *L, int idx) {
 	wrapped_Object *w = cast_to_wrapped_Object_safe(L, idx);
 	if (!w)
 		return false;
 	return _type_tag_can_cast(w->type_tag, %s);
-}\n''' % (self.bound_name, self.type_tag)
+}\n''' % (self.check_func, self.type_tag)
 
 		# to C
-		out += '''void to_c_%s(lua_State *L, int idx, void *obj) {
+		out += '''void %s(lua_State *L, int idx, void *obj) {
 	wrapped_Object *w = cast_to_wrapped_Object_unsafe(L, idx);
 	*(void **)obj = _type_tag_cast(w->obj, w->type_tag, %s);
-}\n''' % (self.bound_name, self.type_tag)
+}\n''' % (self.to_c_func, self.type_tag)
 
 		# from C
 		is_inline = False
@@ -322,7 +316,7 @@ static void delete_inline_%s(void *o) {
 	((T*)o)->~T();
 }\n\n''' % (self.bound_name, self.ctype)
 
-		out += '''int from_c_%s(lua_State *L, void *obj, OwnershipPolicy own) {
+		out += '''int %s(lua_State *L, void *obj, OwnershipPolicy own) {
 	wrapped_Object *w = (wrapped_Object *)lua_newuserdata(L, sizeof(wrapped_Object));
 	if (own == Copy)
 		%s
@@ -332,7 +326,7 @@ static void delete_inline_%s(void *o) {
 	luaL_setmetatable(L, "%s");
 	return 1;
 }
-\n''' % (self.bound_name, copy_code, self.type_tag, delete_code, self.bound_name)
+\n''' % (self.from_c_func, copy_code, self.type_tag, delete_code, self.bound_name)
 
 		return out
 
@@ -344,23 +338,23 @@ static void delete_inline_%s(void *o) {
 #
 class LuaPtrTypeConverter(LuaTypeConverterCommon):
 	def get_type_glue(self, gen, module_name):
-		out = '''bool check_%s(lua_State *L, int idx) {
+		out = '''bool %s(lua_State *L, int idx) {
 	if (lua_isinteger(L, idx))
 		return true;
 	if (wrapped_Object *w = cast_to_wrapped_Object_safe(L, idx))
 		return _type_tag_can_cast(w->type_tag, %s);
 	return false;
-}\n''' % (self.bound_name, self.type_tag)
+}\n''' % (self.check_func, self.type_tag)
 
-		out += '''void to_c_%s(lua_State *L, int idx, void *obj) {
+		out += '''void %s(lua_State *L, int idx, void *obj) {
 	if (lua_isinteger(L, idx)) {
 		*((%s*)obj) = (%s)lua_tointeger(L, idx);
 	} else if (wrapped_Object *w = cast_to_wrapped_Object_unsafe(L, idx)) {
 		*(void **)obj = _type_tag_cast(w->obj, w->type_tag, %s);
 	}
-}\n''' % (self.bound_name, self.ctype, self.ctype, self.type_tag)
+}\n''' % (self.to_c_func, self.ctype, self.ctype, self.type_tag)
 
-		out += 'int from_c_%s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushinteger(L, (lua_Integer)*((%s*)obj)); return 1; }\n' % (self.bound_name, self.ctype)
+		out += 'int %s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushinteger(L, (lua_Integer)*((%s*)obj)); return 1; }\n' % (self.from_c_func, self.ctype)
 		return out
 
 
