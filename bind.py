@@ -17,6 +17,7 @@ parser.add_argument("script", nargs=1)
 parser.add_argument('--lua', help='Bind to Lua 5.2+', action="store_true")
 parser.add_argument('--cpython', help='Bind to CPython', action="store_true")
 parser.add_argument('--out', help='Path to output generated files', required=True)
+parser.add_argument('--prefix', help='Prefix to append to all public symbols')
 args = parser.parse_args()
 
 
@@ -43,6 +44,12 @@ mod = os.path.splitext(split[1])[0]
 
 sys.path.append(path)
 script = importlib.import_module(mod)
+
+
+# set prefix
+if args.prefix:
+	import gen
+	gen.api_prefix = args.prefix
 
 
 # execute through generators

@@ -337,8 +337,6 @@ class CPythonGenerator(gen.FABGen):
 
 	def __init__(self):
 		super().__init__()
-
-		self.api_prefix = 'cpython'
 		self.check_self_type_in_ops = True
 
 	def get_language(self):

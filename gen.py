@@ -4,6 +4,13 @@ import copy
 
 
 #
+api_prefix = 'gen'
+
+def apply_api_prefix(symbol):
+	return '%s_%s' % (api_prefix, symbol) if api_prefix else symbol
+
+
+#
 def get_fully_qualified_ctype_name(ctype):
 	out = ''
 	if ctype.const:
@@ -271,9 +278,9 @@ class TypeConverter:
 
 		self.nobind = False
 
-		self.check_func = 'check_%s' % self.bound_name
-		self.to_c_func = 'to_c_%s' % self.bound_name
-		self.from_c_func = 'from_c_%s' % self.bound_name
+		self.check_func = apply_api_prefix('check_%s' % self.bound_name)
+		self.to_c_func = apply_api_prefix('to_c_%s' % self.bound_name)
+		self.from_c_func = apply_api_prefix('from_c_%s' % self.bound_name)
 
 	def get_operator(self, op):
 		for arithmetic_op in self.arithmetic_ops:
@@ -328,7 +335,6 @@ def format_list_for_comment(lst):
 class FABGen:
 	def __init__(self):
 		self.verbose = True
-		self.api_prefix = 'gen'
 		self.check_self_type_in_ops = False
 
 	def get_language(self):
@@ -888,7 +894,7 @@ class FABGen:
 
 		if bound_name is None:
 			bound_name = get_symbol_default_bound_name(name)
-		proxy_name = '%s_%s' % (self.api_prefix, bound_name)
+		proxy_name = apply_api_prefix(bound_name)
 
 		self.__bind_proxy(proxy_name, None, protos, 'function %s' % bound_name, expr_eval, 'function')
 		self._bound_functions.append({'name': name, 'bound_name': bound_name, 'proxy_name': proxy_name, 'protos': protos})
@@ -902,7 +908,7 @@ class FABGen:
 		expr_eval = lambda args: 'new %s(%s);' % (type, ', '.join(args))
 
 		protos = [(type, args[0], args[1]) for args in proto_args]
-		proxy_name = '%s_construct_%s' % (self.api_prefix, conv.bound_name)
+		proxy_name = apply_api_prefix('construct_%s' % conv.bound_name)
 
 		self.__bind_proxy(proxy_name, conv, protos, '%s constructor' % conv.bound_name, expr_eval, 'constructor')
 		conv.constructor = {'proxy_name': proxy_name, 'protos': protos}
@@ -916,7 +922,7 @@ class FABGen:
 
 		if bound_name is None:
 			bound_name = get_symbol_default_bound_name(name)
-		proxy_name = '%s_method_%s_of_%s' % (self.api_prefix, bound_name, conv.bound_name)
+		proxy_name = apply_api_prefix('method_%s_of_%s' % (bound_name, conv.bound_name))
 
 		self.__bind_proxy(proxy_name, conv, protos, 'method %s of %s' % (bound_name, conv.bound_name), expr_eval, 'method')
 		conv.methods.append({'name': name, 'bound_name': bound_name, 'proxy_name': proxy_name, 'protos': protos})
@@ -930,7 +936,7 @@ class FABGen:
 
 		if bound_name is None:
 			bound_name = get_symbol_default_bound_name(name)
-		proxy_name = '%s_static_method_%s_of_%s' % (self.api_prefix, bound_name, conv.bound_name)
+		proxy_name = apply_api_prefix('static_method_%s_of_%s' % (bound_name, conv.bound_name))
 
 		self.__bind_proxy(proxy_name, conv, protos, 'static method %s of %s' % (bound_name, conv.bound_name), expr_eval, 'static_method')
 		conv.static_methods.append({'name': name, 'bound_name': bound_name, 'proxy_name': proxy_name, 'protos': protos})
@@ -951,7 +957,7 @@ class FABGen:
 		expr_eval = lambda args: '_self->%s;' % arg.name
 		arg_ctype = arg.ctype if is_bitfield else arg.ctype.add_ref('&')
 		getter_protos = [(repr(arg_ctype), [], features)]
-		getter_proxy_name = '%s_get_%s_of_%s' % (self.api_prefix, get_symbol_default_bound_name(arg.name), conv.bound_name)
+		getter_proxy_name = apply_api_prefix('get_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name))
 
 		self.__bind_proxy(getter_proxy_name, conv, getter_protos, 'get member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'getter', 0)
 
@@ -960,7 +966,7 @@ class FABGen:
 			expr_eval = lambda args: '_self->%s = %s;' % (arg.name, args[0])
 
 			setter_protos = [('void', [member], features)]
-			setter_proxy_name = '%s_set_%s_of_%s' % (self.api_prefix, get_symbol_default_bound_name(arg.name), conv.bound_name)
+			setter_proxy_name = apply_api_prefix('set_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name))
 
 			self.__bind_proxy(setter_proxy_name, conv, setter_protos, 'set member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'setter', 1)
 		else:
@@ -980,7 +986,7 @@ class FABGen:
 			expr_eval = lambda args: '&%s::%s;' % (conv.ctype, arg.name)
 
 		getter_protos = [(repr(arg.ctype.add_ref('*')), [], features)]
-		getter_proxy_name = '%s_get_%s_of_%s' % (self.api_prefix, get_symbol_default_bound_name(arg.name), conv.bound_name)
+		getter_proxy_name = apply_api_prefix('get_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name))
 		
 		self.__bind_proxy(getter_proxy_name, None, getter_protos, 'get static member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'getter', 0)
 
@@ -989,7 +995,7 @@ class FABGen:
 			expr_eval = lambda args: '%s::%s = %s;' % (conv.ctype, arg.name, args[0])
 
 			setter_protos = [('void', [member], features)]
-			setter_proxy_name = '%s_set_%s_of_%s' % (self.api_prefix, get_symbol_default_bound_name(arg.name), conv.bound_name)
+			setter_proxy_name = apply_api_prefix('set_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name))
 
 			self.__bind_proxy(setter_proxy_name, None, setter_protos, 'set static member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'setter', 1)
 		else:
@@ -1009,7 +1015,7 @@ class FABGen:
 		assert op in ['-', '+', '*', '/'], 'Unsupported arithmetic operator ' + op
 
 		expr_eval = lambda args: '*_self %s %s;' % (op, ', '.join(args))
-		proxy_name = '%s_%s_operator_of_%s' % (self.api_prefix, get_clean_symbol_name(op), conv.bound_name)
+		proxy_name = apply_api_prefix('%s_operator_of_%s' % (get_clean_symbol_name(op), conv.bound_name))
 
 		self.__bind_proxy(proxy_name, conv, protos, '%s operator of %s' % (op, conv.bound_name), expr_eval, 'arithmetic_op', 1)
 		conv.arithmetic_ops.append({'op': op, 'proxy_name': proxy_name})
@@ -1030,7 +1036,7 @@ class FABGen:
 		assert op in ['-=', '+=', '*=', '/='], 'Unsupported inplace arithmetic operator ' + op
 
 		expr_eval = lambda args: '*_self %s %s;' % (op, ', '.join(args))
-		proxy_name = '%s_%s_operator_of_%s' % (self.api_prefix, get_clean_symbol_name(op), conv.bound_name)
+		proxy_name = apply_api_prefix('%s_operator_of_%s' % (get_clean_symbol_name(op), conv.bound_name))
 		protos = [('void', arg[0], arg[1]) for arg in args]
 
 		self.__bind_proxy(proxy_name, conv, protos, '%s operator of %s' % (op, conv.bound_name), expr_eval, 'inplace_arithmetic_op', 1)
@@ -1052,7 +1058,7 @@ class FABGen:
 		assert op in ['<', '<=', '==', '!=', '>', '>='], 'Unsupported comparison operator ' + op
 
 		expr_eval = lambda args: '*_self %s %s;' % (op, ', '.join(args))
-		proxy_name = '%s_%s_operator_of_%s' % (self.api_prefix, get_clean_symbol_name(op), conv.bound_name)
+		proxy_name = apply_api_prefix('%s_operator_of_%s' % (get_clean_symbol_name(op), conv.bound_name))
 		protos = [('bool', arg[0], arg[1]) for arg in args]
 
 		self.__bind_proxy(proxy_name, conv, protos, '%s operator of %s' % (op, conv.bound_name), expr_eval, 'comparison_op', 1)
