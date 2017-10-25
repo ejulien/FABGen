@@ -379,8 +379,8 @@ class FABGen:
 		self.output_includes()
 
 		self._source += 'enum OwnershipPolicy { NonOwning, Copy, Owning };\n\n'
-		self._source += 'bool _type_tag_can_cast(const char *in_type_tag, const char *out_type_tag);\n'
-		self._source += 'void *_type_tag_cast(void *in_T0, const char *in_type_tag, const char *out_type_tag);\n\n'
+		self._source += 'static bool _type_tag_can_cast(const char *in_type_tag, const char *out_type_tag);\n'
+		self._source += 'static void *_type_tag_cast(void *in_T0, const char *in_type_tag, const char *out_type_tag);\n\n'
 
 	def add_include(self, path, is_system=False):
 		if is_system:
@@ -1110,7 +1110,7 @@ class FABGen:
 
 		# can cast
 		out += '''\
-bool _type_tag_can_cast(const char *in_type_tag, const char *out_type_tag) {
+static bool _type_tag_can_cast(const char *in_type_tag, const char *out_type_tag) {
 	if (out_type_tag == in_type_tag)
 		return true;
 
@@ -1120,7 +1120,7 @@ bool _type_tag_can_cast(const char *in_type_tag, const char *out_type_tag) {
 
 		# cast
 		out += '''\
-void *_type_tag_cast(void *in_ptr, const char *in_type_tag, const char *out_type_tag) {
+static void *_type_tag_cast(void *in_ptr, const char *in_type_tag, const char *out_type_tag) {
 	if (out_type_tag == in_type_tag)
 		return in_ptr;
 

@@ -90,7 +90,7 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 		gen.add_include('string', True)
 
 		def build_index_map(name, values, filter, gen_output):
-			out = 'std::map<std::string, int (*)(lua_State *)> %s = {' % name
+			out = 'static std::map<std::string, int (*)(lua_State *)> %s = {' % name
 			if len(values) > 0:
 				entries = [gen_output(v) for v in values if filter(v)]
 				out += '\n' + ',\n'.join(entries) + '\n'
@@ -255,7 +255,7 @@ static int __default_Lua_eq_%s(lua_State *L) {
 		out += '	{NULL, NULL}};\n\n'
 
 		# type registration
-		out += 'void register_%s(lua_State *L) {' % self.bound_name
+		out += 'static void register_%s(lua_State *L) {' % self.bound_name
 		if self._inline:
 			out += '	assert(sizeof(%s) <= 16);\n\n' % self.ctype
 		out += '''\

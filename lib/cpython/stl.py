@@ -37,7 +37,7 @@ class PySequenceToStdVectorConverter(lang.cpython.PythonTypeConverterCommon):
 	for (int i = 0; i < size; ++i) {
 		PyObject *itm = PySequence_GetItem(o, i);
 		%s v;
-		to_c_%s(itm, &v);
+		%s(itm, &v);
 		(*sv)[i] = %s;
 		Py_DECREF(itm);
 	}
