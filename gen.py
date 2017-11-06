@@ -457,10 +457,10 @@ class FABGen:
 
 	#
 	def bind_named_enum(self, name, symbols, storage_type='int', bound_name=None, prefix='', namespace=None):
-		self.typedef(name, storage_type)
-
 		if bound_name is None:
 			bound_name = get_symbol_default_bound_name(name)
+
+		self.typedef(name, storage_type, bound_name=bound_name)
 
 		if namespace is None:
 			namespace = name
@@ -976,7 +976,7 @@ class FABGen:
 		else:
 			setter_proxy_name = None
 
-		conv.members.append({'name': arg.name, 'getter': getter_proxy_name, 'setter': setter_proxy_name})
+		conv.members.append({'name': arg.name, 'ctype': arg.ctype, 'getter': getter_proxy_name, 'setter': setter_proxy_name})
 
 	#
 	def bind_static_member(self, conv, member, features=[]):
@@ -1005,7 +1005,7 @@ class FABGen:
 		else:
 			setter_proxy_name = None
 
-		conv.static_members.append({'name': arg.name, 'getter': getter_proxy_name, 'setter': setter_proxy_name})
+		conv.static_members.append({'name': arg.name, 'ctype': arg.ctype, 'getter': getter_proxy_name, 'setter': setter_proxy_name})
 
 	def bind_static_members(self, conv, members, features=[]):
 		for member in members:
@@ -1022,7 +1022,7 @@ class FABGen:
 		proxy_name = apply_api_prefix('%s_operator_of_%s' % (get_clean_symbol_name(op), conv.bound_name))
 
 		self.__bind_proxy(proxy_name, conv, protos, '%s operator of %s' % (op, conv.bound_name), expr_eval, 'arithmetic_op', 1)
-		conv.arithmetic_ops.append({'op': op, 'proxy_name': proxy_name})
+		conv.arithmetic_ops.append({'op': op, 'proxy_name': proxy_name, 'protos': protos})
 
 	def bind_arithmetic_ops(self, conv, ops, rval, args, features=[]):
 		for op in ops:
@@ -1044,7 +1044,7 @@ class FABGen:
 		protos = [('void', arg[0], arg[1]) for arg in args]
 
 		self.__bind_proxy(proxy_name, conv, protos, '%s operator of %s' % (op, conv.bound_name), expr_eval, 'inplace_arithmetic_op', 1)
-		conv.arithmetic_ops.append({'op': op, 'proxy_name': proxy_name})
+		conv.arithmetic_ops.append({'op': op, 'proxy_name': proxy_name, 'protos': protos})
 
 	def bind_inplace_arithmetic_ops(self, conv, ops, args, features=[]):
 		for op in ops:
@@ -1066,7 +1066,7 @@ class FABGen:
 		protos = [('bool', arg[0], arg[1]) for arg in args]
 
 		self.__bind_proxy(proxy_name, conv, protos, '%s operator of %s' % (op, conv.bound_name), expr_eval, 'comparison_op', 1)
-		conv.comparison_ops.append({'op': op, 'proxy_name': proxy_name})
+		conv.comparison_ops.append({'op': op, 'proxy_name': proxy_name, 'protos': protos})
 
 	def bind_comparison_ops(self, conv, ops, args, features=[]):
 		for op in ops:
@@ -1178,3 +1178,6 @@ static void *_type_tag_cast(void *in_ptr, const char *in_type_tag, const char *o
 
 	def get_output(self):
 		return self._header, self._source
+
+	def _build_protos(self, protos):
+		return self.__prepare_protos(self.__expand_protos(protos))
