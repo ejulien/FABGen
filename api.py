@@ -138,7 +138,7 @@ class APIGenerator(gen.FABGen):
         
         # enum
         for bound_name, enum in self._enums.items():
-            xml += '<enum name="%s" uid="%s">\n' % (bound_name, bound_name)
+            xml += '<enum global="1" name="%s" uid="%s">\n' % (bound_name, bound_name)
             for name, value in enum.items():
                 xml += '<entry name="%s"/>\n' % name
             xml +=  '</enum>\n'
