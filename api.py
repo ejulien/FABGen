@@ -97,18 +97,20 @@ class APIGenerator(gen.FABGen):
     def output_binding_api(self):
         return '', ''
 
-    def extract_method(self, classname, method, static=False, name=None, bound_name=None):
+    def extract_method(self, classname, method, static=False, name=None, bound_name=None, is_global=False):
         xml = ""
         if bound_name is None:
             bound_name = method['bound_name']
         if name is None:
             name = bound_name
+        uid = classname + '_' + bound_name if classname else bound_name
         protos = self._build_protos(method['protos'])
         for proto in protos:
-            retval = 'val'
+            retval = 'void'
             if proto['rval']['conv']:
                 retval = proto['rval']['conv'].bound_name
-            xml += '<function name="%s" returns="%s" uid="%s_%s"' % (name, retval, classname, bound_name)
+            xml += '<function name="%s" returns="%s" uid="%s"' % (name, retval, uid)
+            if is_global: xml += ' global="1"'
             if static: xml += ' static="1"'
             if len(proto['args']):
                 xml += '>\n'
@@ -160,13 +162,18 @@ class APIGenerator(gen.FABGen):
                 for method in conv.methods:
                     xml += self.extract_method(conv.bound_name, method)
                 xml += '</class>\n'
-        
+
         # enum
         for bound_name, enum in self._enums.items():
             xml += '<enum global="1" name="%s" uid="%s">\n' % (bound_name, bound_name)
-            for name, value in enum.items():
+            for name in enum.keys():
                 xml += '<entry name="%s"/>\n' % name
             xml +=  '</enum>\n'
+
+        # functions
+        for func in self._bound_functions:
+            xml += self.extract_method('', func, is_global=True)
+
         xml += '</api>\n'
         return xml
 
