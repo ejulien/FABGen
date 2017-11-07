@@ -34,13 +34,38 @@ class APIGenerator(gen.FABGen):
         self.check_self_type_in_ops = True
 
     def get_language(self):
-        return "CPython" # little hack :/
+        return "Api"
 
     def output_includes(self):
         pass
 
     def start(self, module_name):
         super().start(module_name)
+        # std
+        self.bind_type(DummyTypeConverterCommon('bool'))
+        self.bind_type(DummyTypeConverterCommon('char'))
+        self.bind_type(DummyTypeConverterCommon('short'))
+        self.bind_type(DummyTypeConverterCommon('int'))
+        self.bind_type(DummyTypeConverterCommon('long'))
+        self.bind_type(DummyTypeConverterCommon('int8_t', bound_name='Int8'))
+        self.bind_type(DummyTypeConverterCommon('int16_t', bound_name='Int16'))
+        self.bind_type(DummyTypeConverterCommon('int32_t', bound_name='Int32'))
+        self.bind_type(DummyTypeConverterCommon('int64_t', bound_name='Int64'))
+        self.bind_type(DummyTypeConverterCommon('char16_t', bound_name='Char16'))
+        self.bind_type(DummyTypeConverterCommon('char32_t', bound_name='Char32'))
+        self.bind_type(DummyTypeConverterCommon('unsigned char'))
+        self.bind_type(DummyTypeConverterCommon('unsigned short'))
+        self.bind_type(DummyTypeConverterCommon('unsigned int'))
+        self.bind_type(DummyTypeConverterCommon('unsigned long'))
+        self.bind_type(DummyTypeConverterCommon('uint8_t', bound_name='UInt8'))
+        self.bind_type(DummyTypeConverterCommon('uint16_t', bound_name='UInt16'))
+        self.bind_type(DummyTypeConverterCommon('uint32_t', bound_name='UInt32'))
+        self.bind_type(DummyTypeConverterCommon('uint64_t', bound_name='UInt64'))
+        self.bind_type(DummyTypeConverterCommon('size_t'))
+        self.bind_type(DummyTypeConverterCommon('float'))
+        self.bind_type(DummyTypeConverterCommon('double'))
+        self.bind_type(DummyTypeConverterCommon('const char *', bound_name="string"))
+        self.bind_type(DummyTypeConverterCommon('std::string'))
 
     def set_error(self, type, reason):
         return ''
@@ -160,6 +185,7 @@ if __name__ == '__main__':
     script = importlib.import_module(mod)
 
     api_gen = APIGenerator()
+    
     script.bind(api_gen)
     xml = api_gen.output_xml_api()
     api_path = os.path.join(args.out, 'api.xml')
