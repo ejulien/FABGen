@@ -115,7 +115,10 @@ class APIGenerator(gen.FABGen):
             if len(proto['args']):
                 xml += '>\n'
                 for argin in proto['argsin']:
-                    xml += '<parm name="%s" type="%s"/>\n' % (argin['carg'].name, argin['conv'].bound_name)
+                    arg_bound_name = argin['conv'].bound_name
+                    if arg_bound_name.endswith('_nobind') and argin['conv'].nobind:
+                        arg_bound_name = arg_bound_name[:-len('_nobind')]
+                    xml += '<parm name="%s" type="%s"/>\n' % (argin['carg'].name, arg_bound_name)
                 if 'arg_out' in proto['features']:
                     i = 0
                     for arg in proto['args']:
