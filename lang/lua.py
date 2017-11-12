@@ -378,6 +378,8 @@ class LuaGenerator(gen.FABGen):
 	def start(self, module_name):
 		super().start(module_name)
 
+		self._header += 'struct lua_State;\n\n'
+
 		self._source += '''\
 typedef struct {
 	uint32_t magic_u32; // wrapped_Object marker
