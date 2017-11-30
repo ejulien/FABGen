@@ -338,6 +338,9 @@ class FABGen:
 		self.embedded = False
 		self.check_self_type_in_ops = False
 
+	def apply_api_prefix(self, symbol):
+		return apply_api_prefix(symbol)
+
 	def get_language(self):
 		assert 'not implemented in this generator'
 
