@@ -419,6 +419,9 @@ static int wrapped_Object_gc(lua_State *L) {
 }
 \n'''
 
+		self._source += self.get_binding_api_declaration()
+		self._header += self.get_binding_api_declaration()
+
 	#
 	def set_error(self, type, reason):
 		return 'return luaL_error(L, "%s");\n' % reason
@@ -460,9 +463,10 @@ static int wrapped_Object_gc(lua_State *L) {
 		return ''  #'return rval_count;\n'
 
 	#
-	def output_binding_api(self):
+	def get_binding_api_declaration(self):
 		type_info_name = gen.apply_api_prefix('type_info')
-		type_info_decl = '''\
+
+		out = '''\
 struct %s {
 	const char *type_tag;
 	const char *c_type;
@@ -473,11 +477,21 @@ struct %s {
 };\n
 ''' % type_info_name
 
-		self._header += type_info_decl
-		self._source += type_info_decl
+		out += '// return a type info from its type tag\n'
+		out += '%s *%s(const char *type_tag);\n' % (type_info_name, gen.apply_api_prefix('get_type_tag_info'))
+
+		out += '// return a type info from its type name\n'
+		out += '%s *%s(const char *type);\n' % (type_info_name, gen.apply_api_prefix('get_type_info'))
+
+		out += '// returns the typetag of a userdata object on the stack, nullptr if not a Fabgen object\n'
+		out += 'const char *%s(lua_State *L, int idx);\n\n' % gen.apply_api_prefix('get_wrapped_object_type_tag')
+
+		return out
+
+	def output_binding_api(self):
+		type_info_name = gen.apply_api_prefix('type_info')
 
 		self._source += '// Note: Types using a storage class for conversion are not listed here.\n'
-
 		self._source += 'static std::map<const char *, %s> __type_tag_infos;\n\n' % type_info_name
 
 		self._source += 'static void __initialize_type_tag_infos() {\n'
@@ -485,9 +499,6 @@ struct %s {
 			if not type.c_storage_class:
 				self._source += '	__type_tag_infos[%s] = {%s, "%s", %s, %s, %s};\n' % (type.type_tag, type.type_tag, str(type.ctype), type.check_func, type.to_c_func, type.from_c_func)
 		self._source += '};\n\n'
-
-		self._header += '// return a type info from its type tag\n'
-		self._header += '%s *%s(const char *type_tag);\n' % (type_info_name, gen.apply_api_prefix('get_type_tag_info'))
 
 		self._source += '''\
 %s *%s(const char *type_tag) {
@@ -503,25 +514,17 @@ struct %s {
 				self._source += '	__type_infos["%s"] = {%s, "%s", %s, %s, %s};\n' % (str(type.ctype), type.type_tag, str(type.ctype), type.check_func, type.to_c_func, type.from_c_func)
 		self._source += '};\n\n'
 
-		self._header += '// return a type info from its type name\n'
-		self._header += '%s *%s(const char *type);\n' % (type_info_name, gen.apply_api_prefix('get_type_info'))
-
 		self._source += '''
 %s *%s(const char *type) {
 	auto i = __type_infos.find(type);
 	return i == __type_infos.end() ? nullptr : &i->second;
 }\n\n''' % (type_info_name, gen.apply_api_prefix('get_type_info'))
 
-		get_obj_type_tag_func = gen.apply_api_prefix('get_wrapped_object_type_tag')
-
-		self._header += '// returns the typetag of a userdata object on the stack, nullptr if not a Fabgen object\n'
-		self._header += 'const char *%s(lua_State *L, int idx);\n\n' % get_obj_type_tag_func
-
 		self._source += '''\
 const char *%s(lua_State *L, int idx) {
 	auto o = cast_to_wrapped_Object_safe(L, idx);
 	return o ? o->type_tag : nullptr;
-}\n\n''' % get_obj_type_tag_func
+}\n\n''' % gen.apply_api_prefix('get_wrapped_object_type_tag')
 
 	def finalize(self):
 		super().finalize()
