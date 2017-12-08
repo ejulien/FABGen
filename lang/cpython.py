@@ -571,6 +571,13 @@ static inline bool CheckArgsTuple(PyObject *args) {
 				if not conv.nobind:
 					self._source += conv.finalize_type()
 
+		# module variables
+		if len(self._bound_variables) > 0:
+			self._source += '	// global variables\n'
+			for var in self._bound_variables:
+				self._source += '	PyModule_AddObject(m, "%s", %s(nullptr, nullptr));\n' % (var['name'], var['getter'])
+			self._source += '\n'
+
 		self._source += '''\
 	return m;
 }
