@@ -34,6 +34,16 @@ class LuaTypeConverterCommon(gen.TypeConverter):
 
 
 #
+def build_index_map(name, values, filter, gen_output):
+	out = 'static std::map<std::string, int (*)(lua_State *)> %s = {' % name
+	if len(values) > 0:
+		entries = [gen_output(v) for v in values if filter(v)]
+		out += '\n' + ',\n'.join(entries) + '\n'
+	out += '};\n\n'
+	return out
+
+
+#
 class LuaClassTypeConverter(LuaTypeConverterCommon):
 	def get_type_glue(self, gen, module_name):
 		out = ''
@@ -88,14 +98,6 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 		# type metatable maps
 		gen.add_include('map', True)
 		gen.add_include('string', True)
-
-		def build_index_map(name, values, filter, gen_output):
-			out = 'static std::map<std::string, int (*)(lua_State *)> %s = {' % name
-			if len(values) > 0:
-				entries = [gen_output(v) for v in values if filter(v)]
-				out += '\n' + ',\n'.join(entries) + '\n'
-			out += '};\n\n'
-			return out
 
 		out += build_index_map('__index_member_map_%s' % self.bound_name, self.get_all_members() + self.get_all_static_members(), lambda v: True, lambda v: '	{"%s", %s}' % (v['name'], v['getter']))
 		out += build_index_map('__index_static_member_map_%s' % self.bound_name, self.get_all_static_members(), lambda v: True, lambda v: '	{"%s", %s}' % (v['name'], v['getter']))
@@ -551,6 +553,44 @@ const char *%s(lua_State *L, int idx) {
 	lua_setfield(L, idx, name);
 }\n\n'''
 
+		# variable lookup map
+		self._source += build_index_map('__index_%s_var_map' % self._name, self._bound_variables, lambda v: True, lambda v: '	{"%s", %s}' % (v['name'], v['getter']))
+		self._source += build_index_map('__newindex_%s_var_map' % self._name, self._bound_variables, lambda v: v['setter'], lambda v: '	{"%s", %s}' % (v['name'], v['setter']))
+
+		self._source += '''\
+static int __index_%s_var(lua_State *L) {
+	if (lua_isstring(L, -1)) {
+		std::string key = lua_tostring(L, -1);
+		lua_pop(L, 1);
+
+		auto i = __index_%s_var_map.find(key); // variable lookup
+		if (i != __index_%s_var_map.end())
+			return i->second(L);
+	}
+	return 0; // lookup failed
+}\n\n''' % (self._name, self._name, self._name)
+
+		self._source += '''\
+static int __newindex_%s_var(lua_State *L) {
+	if (lua_isstring(L, -2)) {
+		std::string key = lua_tostring(L, -2);
+		lua_remove(L, -2);
+
+		auto i = __newindex_%s_var_map.find(key);
+		if (i != __newindex_%s_var_map.end())
+			return i->second(L);
+	}
+	return 0; // lookup failed
+}\n\n''' % (self._name, self._name, self._name)
+
+		self._source += '''\
+static const luaL_Reg %s_module_meta[] = {
+	{"__index", __index_%s_var},
+	{"__newindex", __newindex_%s_var},
+	{NULL, NULL}
+};\n\n''' % (self._name, self._name, self._name)
+
+		#
 		if self.embedded:
 			create_module_func = gen.apply_api_prefix('create_%s' % self._name)
 			bind_module_func = gen.apply_api_prefix('bind_%s' % self._name)
@@ -572,10 +612,17 @@ const char *%s(lua_State *L, int idx) {
 		self._source += '	// custom initialization code\n'
 		self._source += self._custom_init_code
 
+		# create the module table
 		self._source += '	// new module table\n'
 		self._source += '	lua_newtable(L);\n'
 		self._source += '\n'
 
+		# module metatable
+		self._source += '	lua_newtable(L);\n'
+		self._source += '	luaL_setfuncs(L, %s_module_meta, 0);\n' % self._name
+		self._source += '	lua_setmetatable(L, -2);\n'
+
+		# enums
 		if len(self._enums) > 0:
 			for name, enum in self._enums.items():
 				self._source += '	// enumeration %s\n' % name

@@ -360,6 +360,7 @@ class FABGen:
 
 	def output_includes(self):
 		self.add_include('cstdint', True)
+		self.add_include('map', True)
 
 		self._source += '{{{__WRAPPER_INCLUDES__}}}\n'
 
@@ -373,10 +374,11 @@ class FABGen:
 
 		self._bound_types = []  # list of bound types
 		self._bound_functions = []  # list of bound functions
+		self._bound_variables = []  # list of bound variables
+		self._enums = {}  # list of bound enumerations
 
 		self._custom_init_code = ""
 		self._custom_free_code = ""
-		self._enums = {}
 
 		self.output_header()
 		self.output_includes()
@@ -1013,6 +1015,35 @@ class FABGen:
 	def bind_static_members(self, conv, members, features=[]):
 		for member in members:
 			self.bind_static_member(conv, member, features)
+
+	#
+	def bind_variable(self, var, features=[]):
+		arg = parse(var, _CArg)
+
+		# getter
+		expr_eval = lambda args: '&%s;' % arg.name
+
+		getter_protos = [(repr(arg.ctype.add_ref('*')), [], features)]
+		getter_proxy_name = apply_api_prefix('get_%s_variable' % get_symbol_default_bound_name(arg.name))
+
+		self.__bind_proxy(getter_proxy_name, None, getter_protos, 'get variable %s' % arg.name, expr_eval, 'getter', 0)
+
+		# setter
+		if not arg.ctype.is_const():
+			expr_eval = lambda args: '%s = %s;' % (arg.name, args[0])
+
+			setter_protos = [('void', [var], features)]
+			setter_proxy_name = apply_api_prefix('set_%s_variable' % get_symbol_default_bound_name(arg.name))
+
+			self.__bind_proxy(setter_proxy_name, None, setter_protos, 'set variable %s' % arg.name, expr_eval, 'setter', 1)
+		else:
+			setter_proxy_name = None
+
+		self._bound_variables.append({'name': arg.name, 'ctype': arg.ctype, 'getter': getter_proxy_name, 'setter': setter_proxy_name})
+
+	def bind_variables(self, vars, features=[]):
+		for var in vars:
+			self.bind_variable(var, features)
 
 	#
 	def bind_arithmetic_op(self, conv, op, rval, args, features=[]):
