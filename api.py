@@ -42,30 +42,30 @@ class APIGenerator(gen.FABGen):
     def start(self, module_name):
         super().start(module_name)
         # std
-        self.bind_type(DummyTypeConverterCommon('bool'))
-        self.bind_type(DummyTypeConverterCommon('char'))
-        self.bind_type(DummyTypeConverterCommon('short'))
-        self.bind_type(DummyTypeConverterCommon('int'))
-        self.bind_type(DummyTypeConverterCommon('long'))
-        self.bind_type(DummyTypeConverterCommon('int8_t', bound_name='Int8'))
-        self.bind_type(DummyTypeConverterCommon('int16_t', bound_name='Int16'))
-        self.bind_type(DummyTypeConverterCommon('int32_t', bound_name='Int32'))
-        self.bind_type(DummyTypeConverterCommon('int64_t', bound_name='Int64'))
-        self.bind_type(DummyTypeConverterCommon('char16_t', bound_name='Char16'))
-        self.bind_type(DummyTypeConverterCommon('char32_t', bound_name='Char32'))
-        self.bind_type(DummyTypeConverterCommon('unsigned char'))
-        self.bind_type(DummyTypeConverterCommon('unsigned short'))
-        self.bind_type(DummyTypeConverterCommon('unsigned int'))
-        self.bind_type(DummyTypeConverterCommon('unsigned long'))
-        self.bind_type(DummyTypeConverterCommon('uint8_t', bound_name='UInt8'))
-        self.bind_type(DummyTypeConverterCommon('uint16_t', bound_name='UInt16'))
-        self.bind_type(DummyTypeConverterCommon('uint32_t', bound_name='UInt32'))
-        self.bind_type(DummyTypeConverterCommon('uint64_t', bound_name='UInt64'))
-        self.bind_type(DummyTypeConverterCommon('size_t'))
-        self.bind_type(DummyTypeConverterCommon('float'))
-        self.bind_type(DummyTypeConverterCommon('double'))
-        self.bind_type(DummyTypeConverterCommon('const char *', bound_name="string"))
-        self.bind_type(DummyTypeConverterCommon('std::string'))
+        self.bind_type(DummyTypeConverterCommon('bool')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('char')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('short')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('int')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('long')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('int8_t', bound_name='Int8')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('int16_t', bound_name='Int16')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('int32_t', bound_name='Int32')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('int64_t', bound_name='Int64')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('char16_t', bound_name='Char16')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('char32_t', bound_name='Char32')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('unsigned char')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('unsigned short')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('unsigned int')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('unsigned long')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('uint8_t', bound_name='UInt8')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('uint16_t', bound_name='UInt16')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('uint32_t', bound_name='UInt32')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('uint64_t', bound_name='UInt64')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('size_t')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('float')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('double')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('const char *', bound_name="string")).nobind = True
+        self.bind_type(DummyTypeConverterCommon('std::string')).nobind = True
 
     def set_error(self, type, reason):
         return ''
@@ -134,10 +134,10 @@ class APIGenerator(gen.FABGen):
         xml = '<?xml version="1.0" ?>\n<api>\n'
         for conv in self._bound_types:
             if conv.nobind:
-                pass
+                continue
             
+            xml += '<class name="%s" uid="%s">\n' % (conv.bound_name, conv.bound_name)
             if conv.methods or conv.members:
-                xml += '<class name="%s" uid="%s">\n' % (conv.bound_name, conv.bound_name)
                 # base
                 for base in conv._bases:
                     xml += '<inherits uid="%s"/>\n' % base.bound_name
@@ -164,7 +164,7 @@ class APIGenerator(gen.FABGen):
                 # methods
                 for method in conv.methods:
                     xml += self.extract_method(conv.bound_name, method)
-                xml += '</class>\n'
+            xml += '</class>\n'
 
         # enum
         for bound_name, enum in self._enums.items():
