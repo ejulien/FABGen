@@ -611,16 +611,12 @@ static const luaL_Reg %s_module_meta[] = {
 
 		self._source += '	// custom initialization code\n'
 		self._source += self._custom_init_code
+		self._source += '\n'
 
 		# create the module table
 		self._source += '	// new module table\n'
 		self._source += '	lua_newtable(L);\n'
 		self._source += '\n'
-
-		# module metatable
-		self._source += '	lua_newtable(L);\n'
-		self._source += '	luaL_setfuncs(L, %s_module_meta, 0);\n' % self._name
-		self._source += '	lua_setmetatable(L, -2);\n'
 
 		# enums
 		if len(self._enums) > 0:
@@ -640,6 +636,13 @@ static const luaL_Reg %s_module_meta[] = {
 
 		self._source += '	// register global functions\n'
 		self._source += '	luaL_setfuncs(L, %s_global_functions, 0);\n' % self._name
+		self._source += '\n'
+
+		# module metatable
+		self._source += '	// setup module metatable\n'
+		self._source += '	lua_newtable(L);\n'
+		self._source += '	luaL_setfuncs(L, %s_module_meta, 0);\n' % self._name
+		self._source += '	lua_setmetatable(L, -2);\n'
 
 		self._source += '	return 1;\n'
 		self._source += '}\n\n'
