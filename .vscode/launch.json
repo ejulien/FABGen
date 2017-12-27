@@ -60,7 +60,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--sdkbase", "D:/harfang/sdk", "--x64"],
+			"args": ["--sdkbase", "D:/harfang/sdk"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
@@ -77,7 +77,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--sdkbase", "D:/harfang/sdk", "--debug", "basic_type_exchange"],
+			"args": ["--sdkbase", "D:/harfang/sdk", "--debug", "variable_access"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
@@ -111,7 +111,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--pybase", "C:/Pythons/36-64", "--sdkbase", "D:/harfang/sdk", "--x64"],
+			"args": ["--pybase", "C:/Pythons/35-32", "--sdkbase", "D:/harfang/sdk"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [

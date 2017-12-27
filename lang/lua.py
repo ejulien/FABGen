@@ -207,13 +207,13 @@ static int __default_Lua_eq_%s(lua_State *L) {
 	}
 ''' % self.bound_name
 
-		if self._inline:
+		if self._supports_deep_compare:
 			out += '''
-	if (!(*(%s *)w1->inline_obj == *(%s *)w2->inline_obj)) {
+	if (!(*(%s *)w1->obj == *(%s *)w2->obj)) {
 		lua_pushboolean(L, 0);
 		return 1;
 	}
-''' % (self.ctype, self.ctype)
+'''
 		else:
 			out += '''
 	if (!(w1->obj == w2->obj)) {

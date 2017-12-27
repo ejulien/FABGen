@@ -163,9 +163,9 @@ static PyObject *%s_default_Py_%s(PyObject *o1, PyObject *o2) {
 	}
 ''' % (self.bound_name, name)
 
-			if self._inline:
+			if self._supports_deep_compare:
 				out += '''
-	if (!(*(%s *)w1->inline_obj %s *(%s *)w2->inline_obj)) {
+	if (!(*(%s *)w1->obj %s *(%s *)w2->obj)) {
 		Py_RETURN_FALSE;
 	}
 ''' % (self.ctype, op, self.ctype)
