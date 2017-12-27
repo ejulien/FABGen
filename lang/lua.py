@@ -213,7 +213,7 @@ static int __default_Lua_eq_%s(lua_State *L) {
 		lua_pushboolean(L, 0);
 		return 1;
 	}
-'''
+''' % (self.ctype, self.ctype)
 		else:
 			out += '''
 	if (!(w1->obj == w2->obj)) {
