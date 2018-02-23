@@ -228,6 +228,37 @@ static int __default_Lua_eq_%s(lua_State *L) {
 }
 '''
 
+		# Visual Code debugger userdata inspection
+		debug_members = self.get_all_members()  # + self.get_all_static_members()
+		has___debugger_extand = len(debug_members) > 0
+
+		if has___debugger_extand:
+			out += '\
+static int __debugger_extand_%s_class(lua_State *L) {\n' % self.bound_name
+			out += gen._prepare_c_arg_self(self, 'obj', 'getter', self._features)
+
+			out += '\n	lua_newtable(L);\n'
+
+			out += '\n	// dict\n'
+			for i, member in enumerate(debug_members):
+				out += '	lua_pushstring(L, "%s");\n' % member['name']
+				out += '	lua_seti(L, -2, %d);\n' % (i + 1)
+
+			out += '\n	// values\n'
+			for i, member in enumerate(debug_members):
+				if member['is_bitfield']:
+					out += '	lua_pushinteger(L, obj->%s);\n' % (member['name'])
+				else:
+					conv = gen.select_ctype_conv(member['ctype'])
+					if isinstance(conv, LuaClassTypeConverter):
+						continue  # FIXME I cannot get this to work with the Lua debugger API...
+					out += '	' + conv.from_c_call(-1, '&obj->%s' % member['name'], 'NonOwning')
+				out += '	lua_setfield(L, -2, "%s");\n' % member['name']
+
+			out += '''\
+	return 1;
+}\n\n'''
+
 		# type instance metatable
 		comp_op_to_metaevent = {'<': '__lt', '<=': '__le', '==': '__eq' }
 		arit_op_to_metaevent = {'+': '__add', '-': '__sub', '*': '__mul', '/': '__div' }
@@ -236,6 +267,9 @@ static int __default_Lua_eq_%s(lua_State *L) {
 		out += '	{"__gc", wrapped_Object_gc},\n'
 		out += '	{"__index", __index_%s_instance},\n' % self.bound_name
 		out += '	{"__newindex", __newindex_%s_instance},\n' % self.bound_name
+
+		if has___debugger_extand:
+			out += '	{"__debugger_extand", __debugger_extand_%s_class},\n' % self.bound_name  # support for Visual Code Lua Debugger userdata inspection
 
 		has_eq_op = False
 		for i, ops in enumerate(self.comparison_ops):
@@ -257,7 +291,7 @@ static int __default_Lua_eq_%s(lua_State *L) {
 		out += '	{NULL, NULL}};\n\n'
 
 		# type registration
-		out += 'static void register_%s(lua_State *L) {' % self.bound_name
+		out += 'static void register_%s(lua_State *L) {\n' % self.bound_name
 		if self._inline:
 			out += '	assert(sizeof(%s) <= 16);\n\n' % self.ctype
 		out += '''\

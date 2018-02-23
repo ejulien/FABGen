@@ -985,7 +985,7 @@ class FABGen:
 		else:
 			setter_proxy_name = None
 
-		conv.members.append({'name': arg.name, 'ctype': arg.ctype, 'getter': getter_proxy_name, 'setter': setter_proxy_name})
+		conv.members.append({'name': arg.name, 'ctype': arg.ctype, 'getter': getter_proxy_name, 'setter': setter_proxy_name, 'is_bitfield': is_bitfield})
 
 	#
 	def bind_static_member(self, conv, member, features=[]):
