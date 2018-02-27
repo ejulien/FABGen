@@ -32,9 +32,9 @@ class PySequenceToStdVectorConverter(lang.cpython.PythonTypeConverterCommon):
 		out += '''void %s(PyObject *o, void *obj) {
 	std::vector<%s> *sv = (std::vector<%s> *)obj;
 
-	int size = PySequence_Length(o);
+	Py_ssize_t size = PySequence_Length(o);
 	sv->resize(size);
-	for (int i = 0; i < size; ++i) {
+	for (Py_ssize_t i = 0; i < size; ++i) {
 		PyObject *itm = PySequence_GetItem(o, i);
 		%s v;
 		%s(itm, &v);

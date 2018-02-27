@@ -446,13 +446,13 @@ static inline bool CheckArgsTuple(PyObject *args) {
 			out += 'static PyObject *%s(PyObject *self, PyObject *args) {\n' % name
 			out += '''	if (!CheckArgsTuple(args))
 		return NULL;
-	int arg_count = PyTuple_Size(args);
+	Py_ssize_t arg_count = PyTuple_Size(args);
 \n'''
 
 			if max_arg_count > 0:
 				out += '\
 	PyObject *arg_pyobj[%d];\n\
-	for (int _i = 0; _i < arg_count && _i < %d; ++_i)\n\
+	for (Py_ssize_t _i = 0; _i < arg_count && _i < %d; ++_i)\n\
 		arg_pyobj[_i] = PyTuple_GetItem(args, _i);\n\
 \n' % (max_arg_count, max_arg_count)
 
