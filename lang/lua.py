@@ -71,7 +71,7 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 			out += gen._prepare_c_arg(0, gen.get_conv('int'), 'idx', 'getter')
 			out += gen.decl_var(seq.wrapped_conv.ctype, 'rval')
 			out += '	bool error = false;\n'
-			out += seq.get_item('_self', 'idx', 'rval', 'error')
+			out += seq.get_item('_self', 'idx-1', 'rval', 'error')  # Lua index starts at 1
 			out += '''	if (error)
 		return luaL_error(L, "invalid lookup");
 '''
@@ -88,7 +88,7 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 			out += gen._prepare_c_arg(0, gen.get_conv('int'), 'idx', 'setter')
 			out += gen._prepare_c_arg(1, seq.wrapped_conv, 'cval', 'setter')
 			out += '	bool error = false;\n'
-			out += seq.set_item('_self', 'idx', 'cval', 'error')
+			out += seq.set_item('_self', 'idx-1', 'cval', 'error')  # Lua index starts at 1
 			out += '''	if (error)
 		return luaL_error(L, "invalid assignation");
 '''
