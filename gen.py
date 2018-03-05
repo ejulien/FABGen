@@ -1170,6 +1170,22 @@ static void *_type_tag_cast(void *in_ptr, const char *in_type_tag, const char *o
 
 		return out
 
+	def bind_cast_functions(self):
+		upcasts = {}
+		for conv in self._bound_types:
+			if not conv.nobind:
+				if conv not in upcasts:
+					upcasts[conv] = []
+				for cast in conv._casts:
+					if not cast[0].nobind and cast[0] not in upcasts[conv]:
+						upcasts[conv].append(cast[0])
+
+		for conv, casts in upcasts.items():
+			for cast in casts:
+				name = '_Cast%sTo%s' % (cast.bound_name, conv.bound_name)
+				self.insert_binding_code('static %s *%s(%s *o) { return (%s *)o; }' % (repr(conv.ctype), name, repr(cast.ctype), repr(conv.ctype)))
+				self.bind_function(name, repr(conv.ctype) + ' *', [repr(cast.ctype) + ' *o'], [], name[1:])
+
 	def __get_stats(self):
 		out = 'Module statistics:\n'
 
@@ -1209,6 +1225,7 @@ static void *_type_tag_cast(void *in_ptr, const char *in_type_tag, const char *o
 
 		# cast to
 		self._source += self.get_type_tag_cast_function()
+		self.bind_cast_functions()
 
 		# statistics
 		if self.verbose:
