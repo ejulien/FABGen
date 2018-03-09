@@ -1,6 +1,7 @@
 import os
 import sys
 import importlib
+import time
 
 import argparse
 
@@ -23,6 +24,8 @@ args = parser.parse_args()
 
 
 def output_binding(gen):
+	t_start = time.perf_counter()
+
 	if args.embedded:
 		print("Generating embedded binding code")
 		gen.embedded = args.embedded
@@ -40,6 +43,7 @@ def output_binding(gen):
 		f.write(src)
 
 	print('Files written as %s and %s' % (hdr_path, cpp_path))
+	print('Done in %f sec.' % (time.perf_counter() - t_start))
 
 
 # load binding script
