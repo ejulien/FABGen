@@ -416,6 +416,9 @@ static inline bool CheckArgsTuple(PyObject *args) {
 }
 \n'''
 
+		self._source += self.get_binding_api_declaration()
+		self._header += self.get_binding_api_declaration()
+
 	#
 	def set_error(self, type, reason):
 		return 'PyErr_SetString(PyExc_RuntimeError, "%s");\n' % reason
@@ -549,6 +552,11 @@ static inline bool CheckArgsTuple(PyObject *args) {
 		self._source += '	// custom initialization code\n'
 		self._source += self._custom_init_code
 
+		self._source += '	// initialize type info structures\n'
+		self._source += '	__initialize_type_tag_infos();\n'
+		self._source += '	__initialize_type_infos();\n'
+		self._source += '\n'
+
 		self._source += '''
 	PyObject *m = PyModule_Create(&%s);
 	if (m == NULL)
@@ -583,6 +591,71 @@ static inline bool CheckArgsTuple(PyObject *args) {
 }
 \n'''
 
+	#
+	def get_binding_api_declaration(self):
+		type_info_name = gen.apply_api_prefix('type_info')
+
+		out = '''\
+struct %s {
+	const char *type_tag;
+	const char *c_type;
+
+	bool (*check)(PyObject *o);
+	void (*to_c)(PyObject *o, void *out);
+	PyObject *(*from_c)(void *obj, OwnershipPolicy policy);
+};\n
+''' % type_info_name
+
+		out += '// return a type info from its type tag\n'
+		out += '%s *%s(const char *type_tag);\n' % (type_info_name, gen.apply_api_prefix('get_type_tag_info'))
+
+		out += '// return a type info from its type name\n'
+		out += '%s *%s(const char *type);\n' % (type_info_name, gen.apply_api_prefix('get_type_info'))
+
+		out += '// returns the typetag of a Python object, nullptr if not a Fabgen object\n'
+		out += 'const char *%s(PyObject *o);\n\n' % gen.apply_api_prefix('get_wrapped_object_type_tag')
+
+		return out
+
+	def output_binding_api(self):
+		type_info_name = gen.apply_api_prefix('type_info')
+
+		self._source += '// Note: Types using a storage class for conversion are not listed here.\n'
+		self._source += 'static std::map<const char *, %s> __type_tag_infos;\n\n' % type_info_name
+
+		self._source += 'static void __initialize_type_tag_infos() {\n'
+		entries = []
+		for type in self._bound_types:
+			if not type.c_storage_class:
+				self._source += '	__type_tag_infos[%s] = {%s, "%s", %s, %s, %s};\n' % (type.type_tag, type.type_tag, str(type.ctype), type.check_func, type.to_c_func, type.from_c_func)
+		self._source += '};\n\n'
+
+		self._source += '''\
+%s *%s(const char *type_tag) {
+	auto i = __type_tag_infos.find(type_tag);
+	return i == __type_tag_infos.end() ? nullptr : &i->second;
+}\n\n''' % (type_info_name, gen.apply_api_prefix('get_type_tag_info'))
+
+		self._source += 'static std::map<std::string, %s> __type_infos;\n\n' % type_info_name
+
+		self._source += 'static void __initialize_type_infos() {\n'
+		for type in self._bound_types:
+			if not type.c_storage_class:
+				self._source += '	__type_infos["%s"] = {%s, "%s", %s, %s, %s};\n' % (str(type.ctype), type.type_tag, str(type.ctype), type.check_func, type.to_c_func, type.from_c_func)
+		self._source += '};\n\n'
+
+		self._source += '''
+%s *%s(const char *type) {
+	auto i = __type_infos.find(type);
+	return i == __type_infos.end() ? nullptr : &i->second;
+}\n\n''' % (type_info_name, gen.apply_api_prefix('get_type_info'))
+
+		self._source += '''\
+const char *%s(PyObject *o) {
+	auto w = cast_to_wrapped_Object_safe(o);
+	return w ? w->type_tag : nullptr;
+}\n\n''' % gen.apply_api_prefix('get_wrapped_object_type_tag')
+
 	def finalize(self):
 		self._source += '// Module definitions starts here.\n\n'
 
@@ -591,26 +664,8 @@ static inline bool CheckArgsTuple(PyObject *args) {
 		methods_table = self.output_module_functions_table()
 		module_def = self.output_module_definition(methods_table)
 
-		# typetag info structure
-		self._source += '// Note: Types using a storage class for conversion are not listed here.\n'
-		self._source += 'static type_tag_info type_tag_infos[] = {\n'
-		entries = []
-		for type in self._bound_types:
-			if not type.c_storage_class:
-				entries.append('	{%s, "%s", %s, %s, %s}' % (type.type_tag, str(type.ctype), type.check_func, type.to_c_func, type.from_c_func))
-		entries.append('	{nullptr, nullptr, nullptr, nullptr, nullptr}')
-		self._source += ',\n'.join(entries) + '\n'
-		self._source += '};\n\n'
-
-		self._source += '''
-static type_tag_info *get_type_tag_info(const char *type_tag) {
-	for (type_tag_info *info = type_tag_infos; info->type_tag != nullptr; ++info)
-		if (info->type_tag == type_tag)
-			return info;
-	return NULL;
-}\n\n'''
-
 		# generic finalization
 		super().finalize()
 
+		self.output_binding_api()
 		self.output_module_init_function(module_def)
