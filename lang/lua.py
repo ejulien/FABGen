@@ -566,6 +566,13 @@ const char *%s(lua_State *L, int idx) {
 	return o ? o->type_tag : nullptr;
 }\n\n''' % gen.apply_api_prefix('get_wrapped_object_type_tag')
 
+	def output_module_free(self):
+		self._source += 'static int LuaFree_%s(lua_State *L) {\n' % self._name
+		self._source += '	// custom free code\n'
+		self._source += self._custom_free_code
+		self._source += '   return 0;\n'
+		self._source += '}\n\n'
+
 	def finalize(self):
 		super().finalize()
 
@@ -621,12 +628,15 @@ static int __newindex_%s_var(lua_State *L) {
 	return 0; // lookup failed
 }\n\n''' % (self._name, self._name, self._name)
 
+		self.output_module_free()
+
 		self._source += '''\
 static const luaL_Reg %s_module_meta[] = {
+	{"__gc", LuaFree_%s},
 	{"__index", __index_%s_var},
 	{"__newindex", __newindex_%s_var},
 	{NULL, NULL}
-};\n\n''' % (self._name, self._name, self._name)
+};\n\n''' % (self._name, self._name, self._name, self._name)
 
 		#
 		if self.embedded:
