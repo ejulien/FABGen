@@ -567,7 +567,7 @@ const char *%s(lua_State *L, int idx) {
 }\n\n''' % gen.apply_api_prefix('get_wrapped_object_type_tag')
 
 	def output_module_free(self):
-		self._source += 'static int LuaFree_%s(lua_State *L) {\n' % self._name
+		self._source += 'static int __gc_%s(lua_State *L) {\n' % self._name
 		self._source += '	// custom free code\n'
 		self._source += self._custom_free_code
 		self._source += '   return 0;\n'
@@ -632,7 +632,7 @@ static int __newindex_%s_var(lua_State *L) {
 
 		self._source += '''\
 static const luaL_Reg %s_module_meta[] = {
-	{"__gc", LuaFree_%s},
+	{"__gc", __gc_%s},
 	{"__index", __index_%s_var},
 	{"__newindex", __newindex_%s_var},
 	{NULL, NULL}
