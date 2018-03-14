@@ -287,6 +287,8 @@ static void delete_inline_%s(void *o) {
 	init_wrapped_Object(pyobj, %s, obj);
 	if (own != NonOwning)
 		%s
+
+	_IncModuleRefCount();
 	return (PyObject *)pyobj;
 }
 \n''' % (self.from_c_func, self.bound_name, copy_code, self.type_tag, delete_code)
@@ -353,6 +355,23 @@ class CPythonGenerator(gen.FABGen):
 		super().start(module_name)
 
 		self._source += '''\
+static int64_t _obj_alive_count = 0; // used to prevent the module object from being GCed before an object it created
+static PyObject *_module_py_object = NULL;
+
+static inline void _IncModuleRefCount() {
+	if (_obj_alive_count == 0)
+		Py_INCREF(_module_py_object);
+	++_obj_alive_count;
+}
+
+static inline void _DecModuleRefCount() {
+	--_obj_alive_count;
+	if (_obj_alive_count == 0)
+		Py_DECREF(_module_py_object);
+}
+\n'''
+
+		self._source += '''\
 struct type_tag_info {
 	const char *type_tag;
 	const char *c_type;
@@ -387,22 +406,24 @@ static void init_wrapped_Object(wrapped_Object *o, const char *type_tag, void *o
 	o->on_delete = NULL;
 }
 
-static wrapped_Object *cast_to_wrapped_Object_safe(PyObject *o) {
+static inline wrapped_Object *cast_to_wrapped_Object_safe(PyObject *o) {
 	wrapped_Object *w = (wrapped_Object *)o;
 	if (w->magic_u32 != 0x46414221)
 		return NULL;
 	return w;
 }
 
-static wrapped_Object *cast_to_wrapped_Object_unsafe(PyObject *o) { return (wrapped_Object *)o; }
+static inline wrapped_Object *cast_to_wrapped_Object_unsafe(PyObject *o) { return (wrapped_Object *)o; }
 
 static void wrapped_Object_tp_dealloc(PyObject *self) {
-	wrapped_Object *w = (wrapped_Object *)self;
+	wrapped_Object *w = cast_to_wrapped_Object_unsafe(self);
 
 	if (w->on_delete)
 		w->on_delete(w->obj);
 
 	PyObject_Del(self); // tp_free should be used but PyType_GetSlot is 3.4+
+
+	_DecModuleRefCount();
 }
 \n'''
 
@@ -562,6 +583,7 @@ static inline bool CheckArgsTuple(PyObject *args) {
 	if (m == NULL)
 		return NULL;
 
+	_module_py_object = m;
 ''' % module_def
 
 		# module constants
