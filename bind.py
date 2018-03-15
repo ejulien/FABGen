@@ -14,12 +14,13 @@ import lib
 
 
 parser = argparse.ArgumentParser(description='FabGen binding script')
-parser.add_argument("script", nargs=1)
-parser.add_argument('--lua', help='Bind to Lua 5.2+', action="store_true")
-parser.add_argument('--cpython', help='Bind to CPython', action="store_true")
+parser.add_argument('script', nargs=1)
+parser.add_argument('--lua', help='Bind to Lua 5.2+', action='store_true')
+parser.add_argument('--cpython', help='Bind to CPython', action='store_true')
 parser.add_argument('--out', help='Path to output generated files', required=True)
 parser.add_argument('--prefix', help='Prefix to append to all public symbols')
-parser.add_argument('--embedded', help='Specify that the generated binding is for embedding and not expanding the target language', action="store_true")
+parser.add_argument('--embedded', help='Specify that the generated binding is for embedding and not expanding the target language', action='store_true')
+parser.add_argument('--doc_md_folder', type=str, help='Retrieve symbol documentation using its bound name from a folder containing an MD file for each documented symbol')
 args = parser.parse_args()
 
 
@@ -61,9 +62,27 @@ if args.prefix:
 	gen.api_prefix = args.prefix
 
 
+# setup documentation hook
+def setup_gen(gen):
+	if args.doc_md_folder:
+		def md_doc_hook(name):
+			symbol_md_path = os.path.join(args.doc_md_folder, name + '.md')
+
+			try:
+				with open(symbol_md_path, 'r') as file:
+					lines = file.readlines()
+					return '\n'.join(lines)
+			except IOError:
+				return ""
+
+		gen.get_symbol_doc_hook = md_doc_hook
+
+	return gen
+
+
 # execute through generators
 if args.cpython:
-	output_binding(lang.cpython.CPythonGenerator())
+	output_binding(setup_gen(lang.cpython.CPythonGenerator()))
 
 if args.lua:
-	output_binding(lang.lua.LuaGenerator())
+	output_binding(setup_gen(lang.lua.LuaGenerator()))

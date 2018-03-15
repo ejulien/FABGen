@@ -124,7 +124,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 			setter = member['setter']
 			if setter is None:
 				setter = 'NULL'
-			out += '	{"%s", (getter)%s, (setter)%s, "TODO doc"},\n' % (member['name'], member['getter'], setter)
+			out += '	{"%s", (getter)%s, (setter)%s, "%s"},\n' % (member['name'], member['getter'], setter, gen.get_symbol_doc(member['name']))
 		out += '	{NULL} /* Sentinel */\n'
 		out += '};\n\n'
 
@@ -204,7 +204,7 @@ static PyObject *%s_default_Py_%s(PyObject *o1, PyObject *o2) {
 
 		out += 'static PyType_Slot %s_slots[] = {\n' % self.bound_name
 		out += '	{Py_tp_new, (void *)&%s_tp_new},\n' % self.bound_name
-		out += '	{Py_tp_doc, (void *)"TODO doc"},\n'
+		out += '	{Py_tp_doc, (void *)"%s"},\n' % gen.get_symbol_doc(self.bound_name)
 		out += '	{Py_tp_dealloc, (void *)&wrapped_Object_tp_dealloc},\n'
 		out += '	{Py_tp_getset, (void *)&%s_tp_getset},\n' % self.bound_name
 		out += '	{Py_tp_methods, (void *)&%s_tp_methods},\n' % self.bound_name
@@ -537,7 +537,7 @@ static inline bool CheckArgsTuple(PyObject *args) {
 
 		rows = []
 		for f in self._bound_functions:
-			rows.append('	{"%s", %s, METH_VARARGS, "TODO doc"}' % (f['bound_name'], f['proxy_name']))
+			rows.append('	{"%s", %s, METH_VARARGS, "%s"}' % (f['bound_name'], f['proxy_name'], self.get_symbol_doc(f['bound_name'])))
 		rows.append('	{NULL, NULL, 0, NULL} /* Sentinel */')
 
 		self._source += ',\n'.join(rows) + '\n'
@@ -557,7 +557,7 @@ static inline bool CheckArgsTuple(PyObject *args) {
 		self._source += 'static struct PyModuleDef %s = {\n' % def_name
 		self._source += '	PyModuleDef_HEAD_INIT,\n'
 		self._source += '	"%s", /* name of module */\n' % self._name
-		self._source += '	"TODO doc", /* module documentation, may be NULL */\n'
+		self._source += '	"%s", /* module documentation, may be NULL */\n' % self.get_symbol_doc(self._name)
 		self._source += '	-1, /* size of per-interpreter state of the module, or -1 if the module keeps state in global variables. */\n'
 		self._source += '	%s,\n' % methods_table
 		self._source += '	NULL, /* m_slots */\n'
