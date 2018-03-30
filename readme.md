@@ -50,7 +50,15 @@ Contributions are welcome. Please submit merge requests with working unit test t
 
 ## Basic usage
 
-TODO
+Generate binding for CPython 3
+
+`bind.py api_binding_script.py --cpython --out d:\`
+
+Generate binding for Lua 5.3
+
+`bind.py api_binding_script.py --lua --out d:\`
+
+Refer to the provided example and the tests for how to write your own API binding script.
 
 ## Extending through feature
 
