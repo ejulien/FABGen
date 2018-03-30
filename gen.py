@@ -349,6 +349,7 @@ class FABGen:
 		return parse(type, _CType)
 
 	def parse_carg(self, type):
+		type = type.replace('* *', '**')
 		return parse(type, _CArg)
 
 	get_symbol_doc_hook = lambda gen, name: ""
@@ -369,6 +370,7 @@ class FABGen:
 
 	def output_includes(self):
 		self.add_include('cstdint', True)
+		self.add_include('cassert', True)
 		self.add_include('map', True)
 
 		self._source += '{{{__WRAPPER_INCLUDES__}}}\n'
@@ -436,7 +438,7 @@ class FABGen:
 		self._source += conv.get_type_api(self._name)
 
 		conv.nobind = nobind
-		conv._features = features
+		conv._features = copy.deepcopy(features)
 
 		self._bound_types.append(conv)
 		self.__type_convs[repr(conv.ctype)] = conv
@@ -624,7 +626,7 @@ class FABGen:
 
 			for arg in args:
 				assert ',' not in arg, "malformed argument, a comma was found in an argument when it should be a separate list entry"
-				carg = parse(arg, _CArg)
+				carg = self.parse_carg(arg)
 				conv = self.select_ctype_conv(carg.ctype)
 				_proto['args'].append({'carg': carg, 'conv': conv, 'check_var': None})
 
