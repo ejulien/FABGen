@@ -1,3 +1,6 @@
+# FABGen - The FABulous binding Generator for CPython and Lua
+#	Copyright (C) 2018 Emmanuel Julien
+
 import os
 import sys
 import importlib
@@ -12,8 +15,12 @@ import lib.std
 import lib.stl
 import lib
 
+print('''FABGen Copyright (C) 2018 Emmanuel Julien
+This program comes with ABSOLUTELY NO WARRANTY.
+This is free software, and you are welcome to redistribute it
+under certain conditions.''')
 
-parser = argparse.ArgumentParser(description='FabGen binding script')
+parser = argparse.ArgumentParser(description='FABGen')
 parser.add_argument('script', nargs=1)
 parser.add_argument('--lua', help='Bind to Lua 5.2+', action='store_true')
 parser.add_argument('--cpython', help='Bind to CPython', action='store_true')

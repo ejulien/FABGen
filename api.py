@@ -1,3 +1,6 @@
+# FABGen - The FABulous binding Generator for CPython and Lua
+#	Copyright (C) 2018 Emmanuel Julien
+
 import os
 import sys
 import importlib
@@ -5,6 +8,7 @@ import importlib
 import argparse
 
 import gen
+
 
 class DummyTypeConverterCommon(gen.TypeConverter):
     def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None, needs_c_storage_class=False):
@@ -24,6 +28,7 @@ class DummyTypeConverterCommon(gen.TypeConverter):
 
     def get_type_glue(self, gen, module_name):
         return ''
+
 
 class APIGenerator(gen.FABGen):
     default_ptr_converter = DummyTypeConverterCommon
@@ -179,6 +184,7 @@ class APIGenerator(gen.FABGen):
 
         xml += '</api>\n'
         return xml
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='API generation script')

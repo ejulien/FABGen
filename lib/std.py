@@ -1,3 +1,6 @@
+# FABGen - The FABulous binding Generator for CPython and Lua
+#	Copyright (C) 2018 Emmanuel Julien
+
 class VectorSequenceFeature:
 	def __init__(self, wrapped_conv):
 		self.wrapped_conv = wrapped_conv

@@ -1,3 +1,6 @@
+# FABGen - The FABulous binding Generator for CPython and Lua
+#	Copyright (C) 2018 Emmanuel Julien
+
 def bind_defaults(gen):
 	if gen.get_language() == 'CPython':
 		import lib.cpython.std
