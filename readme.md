@@ -29,8 +29,8 @@ Fabgen is licensed under the GPLv3.
 
 - Generated code has no dependencies and is human readable.
 - Generator input is a Python script.
-- Customizable type conversion from C/C++ and back.
-- Can bind many C/C++ construct (function/data members, static function/data members, exceptions, etc...).
+- Customizable type conversion from C++ and back.
+- Can bind many C++ construct (function/data members, static function/data members, exceptions, etc...).
 - User specifiable bound name.
 - Types can be hidden from the generated binding interface.
 - Feature mechanism to extend types and prototypes such as:
