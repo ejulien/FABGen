@@ -99,19 +99,19 @@ assert(v:at(1) == 1)
 assert(v:at(2) == 9)
 assert(v:at(0) == 5)
 
-assert(v[1] == 1)
-assert(v[2] == 9)
-assert(v[0] == 5)
+assert(v[2] == 1)
+assert(v[3] == 9)
+assert(v[1] == 5)
 
-v[1] = 16
+v[2] = 16
 
-assert(v[2] == 9)
-assert(v[0] == 5)
-assert(v[1] == 16)
+assert(v[3] == 9)
+assert(v[1] == 5)
+assert(v[2] == 16)
 
-v[0] = v[0] * 4
+v[1] = v[1] * 4
 
-assert(v[0] == 20)
+assert(v[1] == 20)
 
 assert(my_test.consume_pointer_to_int(v:data()) == 16)
 
