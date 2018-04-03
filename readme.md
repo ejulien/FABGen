@@ -11,6 +11,8 @@ Fabgen is written and maintained by Emmanuel Julien for the Harfang Multimedia F
 
 Fabgen is licensed under the GPLv3.
 
+**Fabgen output does not fall under the GPLv3, you are free to license it as you please.**
+
 ## Goals
 
 1. Support multiple target language.
