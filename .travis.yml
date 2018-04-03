@@ -11,5 +11,6 @@ install:
   - pip install pypeg2
 
 script:
+  - cmake --version
   - python3 tests.py --pybase /home/travis/virtualenv/python3.2.6/lib/python3.2 --x64
 
