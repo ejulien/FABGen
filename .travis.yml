@@ -5,7 +5,7 @@ python:
 
 before_install:
   - sudo apt-get -qq update
-  - sudo apt-get install -y cmake
+  - sudo apt-get install -y cmake3
 
 install:
   - pip install pypeg2
