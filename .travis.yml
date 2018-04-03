@@ -3,9 +3,8 @@ language: python
 python:
   - "3.2"
 
-env:
-  global:
-    - LUA=lua5.3
-
 install:
   - pip install pypeg2
+
+script:
+  - python3	tests.py --pybase  /home/travis/virtualenv/python3.2.6/lib/python3.2

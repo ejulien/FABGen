@@ -17,8 +17,8 @@ import lang.lua
 start_path = os.path.dirname(__file__)
 
 parser = argparse.ArgumentParser(description='Run generator unit tests.')
-parser.add_argument('--pybase', dest='python_base_path', help='Specify the base path of the Python interpreter location')
-parser.add_argument('--sdkbase', dest='sdk_base_path', help='Specify the base path of the Harfang SDK')
+parser.add_argument('--pybase', dest='python_base_path', help='Path to the Python interpreter')
+parser.add_argument('--luabase', dest='lua_base_path', help='Path to the Lua interpreter')
 parser.add_argument('--debug', dest='debug_test', help='Generate a working solution to debug a test')
 parser.add_argument('--x64', dest='x64', help='Build for 64 bit architecture', action='store_true', default=False)
 
@@ -241,7 +241,7 @@ def build_and_deploy_lua_extension(work_path, build_path):
 
 class LuaTestBed:
 	def build_and_test_extension(self, work_path, module):
-		create_lua_cmake_file("test", work_path, args.sdk_base_path)
+		create_lua_cmake_file("test", work_path, args.lua_base_path)
 		create_clang_format_file(work_path)
 
 		build_path = os.path.join(work_path, 'build')
@@ -299,7 +299,7 @@ if args.python_base_path:
 	gen.verbose = False
 	run_tests(gen, test_names, CPythonTestBed())
 
-if args.sdk_base_path:
+if args.lua_base_path:
 	gen = lang.lua.LuaGenerator()
 	gen.verbose = False
 	run_tests(gen, test_names, LuaTestBed())
