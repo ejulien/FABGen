@@ -1,5 +1,11 @@
 language: python
+
 python:
   - "3.2"
+
+env:
+  global:
+    - LUA=lua5.3
+
 install:
   - pip install pypeg2
