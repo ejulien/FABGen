@@ -3,8 +3,13 @@ language: python
 python:
   - "3.2"
 
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y cmake
+
 install:
   - pip install pypeg2
 
 script:
-  - python3 tests.py --pybase /home/travis/virtualenv/python3.2.6/lib/python3.2
+  - python3 tests.py --pybase /home/travis/virtualenv/python3.2.6/lib/python3.2 --x64
+
