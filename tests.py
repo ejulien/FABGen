@@ -21,6 +21,7 @@ parser.add_argument('--pybase', dest='python_base_path', help='Path to the Pytho
 parser.add_argument('--luabase', dest='lua_base_path', help='Path to the Lua interpreter')
 parser.add_argument('--debug', dest='debug_test', help='Generate a working solution to debug a test')
 parser.add_argument('--x64', dest='x64', help='Build for 64 bit architecture', action='store_true', default=False)
+parser.add_argument('--linux', dest='linux', help='Build on Linux', action='store_true', default=False)
 
 args = parser.parse_args()
 
@@ -294,7 +295,7 @@ else:
 	test_names = [file[:-3] for file in os.listdir('./tests') if file.endswith('.py')]
 
 
-if args.python_base_path:
+if args.linux or args.python_base_path:
 	gen = lang.cpython.CPythonGenerator()
 	gen.verbose = False
 	run_tests(gen, test_names, CPythonTestBed())
