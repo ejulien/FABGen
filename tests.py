@@ -156,6 +156,8 @@ def build_and_deploy_cpython_extension(work_path, build_path, python_interpreter
 
 class CPythonTestBed:
 	def build_and_test_extension(self, work_path, module):
+		global python_interpreter
+
 		test_path = os.path.join(work_path, 'test.py')
 		with open(test_path, 'w') as file:
 			file.write(module.test_python)
@@ -164,8 +166,6 @@ class CPythonTestBed:
 
 		if args.linux:
 			os.chdir(work_path)
-
-			import subprocess
 
 			cflags = subprocess.check_output('python3-config --cflags', shell=True).decode('utf-8').strip()
 			cflags = cflags.replace('\n', ' ')
@@ -248,8 +248,8 @@ def build_and_deploy_lua_extension(work_path, build_path):
 		return False
 
 	# deploy Lua runtime from the SDK to the work folder
-	shutil.copyfile(args.sdk_base_path + '/bin/Debug/lua.exe', os.path.join(work_path, 'lua.exe'))
-	shutil.copyfile(args.sdk_base_path + '/bin/Debug/lua53.dll', os.path.join(work_path, 'lua53.dll'))
+	shutil.copyfile(args.lua_base_path + '/bin/Debug/lua.exe', os.path.join(work_path, 'lua.exe'))
+	shutil.copyfile(args.lua_base_path + '/bin/Debug/lua53.dll', os.path.join(work_path, 'lua53.dll'))
 
 	if args.debug_test:
 		with open(os.path.join(build_path, 'my_test.vcxproj.user'), 'w') as file:

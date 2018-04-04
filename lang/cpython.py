@@ -41,8 +41,8 @@ class PythonTypeConverterCommon(gen.TypeConverter):
 
 #
 class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
-	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):
-		super().__init__(type, arg_storage_type, bound_name, rval_storage_type)
+	def is_type_class(self):
+		return True
 
 	def get_type_glue(self, gen, module_name):
 		out = ''
@@ -532,6 +532,11 @@ static inline bool CheckArgsTuple(PyObject *args) {
 				out += 'return PyTuple_Pack(%d, %s);\n' % (rval_count, ', '.join(rvals))
 
 		return out
+
+	def rval_assign_arg_in_out(self, out_var, arg_in_out):
+		src = '%s = %s;\n' % (out_var, arg_in_out)
+		src += 'Py_INCREF(%s);\n' % out_var
+		return src
 
 	#
 	def output_module_functions_table(self):

@@ -286,6 +286,9 @@ class TypeConverter:
 		self.to_c_func = apply_api_prefix('to_c_%s' % self.bound_name)
 		self.from_c_func = apply_api_prefix('from_c_%s' % self.bound_name)
 
+	def is_type_class(self):
+		return False
+
 	def get_operator(self, op):
 		for arithmetic_op in self.arithmetic_ops:
 			if arithmetic_op['op'] == op:
@@ -576,6 +579,9 @@ class FABGen:
 	def commit_rvals(self, rval, ctx):
 		assert 'not implemented in this generator'
 
+	def rval_assign_arg_in_out(self, out_var, arg_in_out):
+		assert 'not implemented in this generator'
+
 	#
 	def proxy_call_error(self, msg, ctx):
 		assert 'not implemented in this generator'
@@ -673,19 +679,22 @@ class FABGen:
 	def declare_rval(self, out_var):
 		return ''
 
-	def prepare_c_rval(self, conv, ctype, var, ownership=None):
-		if ownership is None:
-			ownership = self.__ctype_to_ownership_policy(ctype)
+	def prepare_c_rval(self, rval):
+		if rval['ownership'] is None:
+			rval['ownership'] = self.__ctype_to_ownership_policy(rval['ctype'])
 
 		# transform from {T&, T*, T**, ...} to T* where T is conv.ctype
-		expr = transform_var_ref_to(var, ctype.get_ref(), conv.ctype.add_ref('*').get_ref())
+		expr = transform_var_ref_to(rval['var'], rval['ctype'].get_ref(), rval['conv'].ctype.add_ref('*').get_ref())
 
-		out_var = var + '_out'
+		out_var = rval['var'] + '_out'
 		src = self.declare_rval(out_var)
-		if 'rval_transform' in conv._features:
-			src += conv._features['rval_transform'](self, conv, expr, out_var, ownership)
+		if 'rval_transform' in rval['conv']._features:
+			src += rval['conv']._features['rval_transform'](self, rval['conv'], expr, out_var, rval['ownership'])
 		else:
-			src += self.rval_from_c_ptr(conv, out_var, expr, ownership)
+			if rval['conv'].is_type_class() and rval['is_arg_in_out']:  # if an object is used as arg_out then reuse the input argument directly 
+				src += self.rval_assign_arg_in_out(out_var, self.get_arg(rval['arg_idx'], rval['ctx']))
+			else:
+				src += self.rval_from_c_ptr(rval['conv'], out_var, expr, rval['ownership'])
 
 		return src
 
@@ -756,7 +765,7 @@ class FABGen:
 				self._source += self.decl_var(rval_storage_ctype, 'rval', ' = ')
 				self._source += 'new %s(%s);\n' % (rval_conv.ctype, ', '.join(c_call_args))
 
-			rvals_prepare_args.append((rval_conv, rval_storage_ctype, 'rval', 'Owning'))  # constructor output is always owned by VM
+			rvals_prepare_args.append({'conv': rval_conv, 'ctype': rval_storage_ctype, 'var': 'rval', 'is_arg_in_out': False, 'ctx': ctx, 'ownership': 'Owning'})  # constructor output is always owned by VM
 			rvals.append('rval')
 		else:
 			rval_conv = proto['rval']['conv']
@@ -778,7 +787,7 @@ class FABGen:
 				if 'new_obj' in features:
 					ownership = 'Owning'  # force ownership when the prototype is flagged to return a new object
 
-				rvals_prepare_args.append((rval_conv, rval_storage_ctype, 'rval', ownership))
+				rvals_prepare_args.append({'conv': rval_conv, 'ctype': rval_storage_ctype, 'var': 'rval', 'is_arg_in_out': False, 'ctx': ctx, 'ownership': ownership})
 				rvals.append('rval')
 
 		# process arg_out
@@ -787,12 +796,14 @@ class FABGen:
 
 			for idx, arg in enumerate(args):
 				if arg['carg'].name in arg_out:
-					if arg['carg'].name in arg_in_out:  # is arg_in_out
+					is_arg_in_out = arg['carg'].name in arg_in_out
+
+					if is_arg_in_out:
 						arg_ctype = arg['conv'].arg_storage_ctype
 					else:
 						arg_ctype = arg['conv'].ctype
 
-					rvals_prepare_args.append((arg['conv'], arg_ctype, 'arg%d' % idx))
+					rvals_prepare_args.append({'conv': arg['conv'], 'ctype': arg_ctype, 'var': 'arg%d' % idx, 'is_arg_in_out': is_arg_in_out, 'arg_idx': idx, 'ctx': ctx, 'ownership': None})
 					rvals.append('arg%d' % idx)
 
 		# check return values
@@ -800,8 +811,8 @@ class FABGen:
 			self._source += features['check_rval'](rvals, ctx)
 
 		# prepare return values ([EJ] once check is done so we don't leak)
-		for prepare_args in rvals_prepare_args:
-			self._source += self.prepare_c_rval(*prepare_args)
+		for rval in rvals_prepare_args:
+			self._source += self.prepare_c_rval(rval)
 
 		self._source += self.commit_rvals(rvals, ctx)
 
