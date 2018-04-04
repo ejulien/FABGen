@@ -34,14 +34,15 @@ if args.python_base_path:
 
 
 # -- CMake generator
-if args.x64:
-	cmake_generator = 'Visual Studio 15 2017 Win64'
-else:
-	cmake_generator = 'Visual Studio 15 2017'
+if not args.linux:
+	if args.x64:
+		cmake_generator = 'Visual Studio 15 2017 Win64'
+	else:
+		cmake_generator = 'Visual Studio 15 2017'
 
-print("Using CMake generator: %s" % cmake_generator)
+	print("Using CMake generator: %s" % cmake_generator)
 
-msvc_arch = 'x64' if args.x64 else 'Win32'
+	msvc_arch = 'x64' if args.x64 else 'Win32'
 
 
 # --
@@ -162,7 +163,7 @@ class CPythonTestBed:
 		with open(test_path, 'w') as file:
 			file.write(module.test_python)
 
-		print("build extensions")
+		print("Building extension...")
 
 		if args.linux:
 			os.chdir(work_path)
