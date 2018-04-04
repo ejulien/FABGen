@@ -85,7 +85,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	PyErr_Format(PyExc_IndexError, "invalid lookup");
 	return NULL;
 }\n'''
-			out += gen.prepare_c_rval(seq.wrapped_conv, seq.wrapped_conv.ctype, 'rval')
+			out += gen.prepare_c_rval({'conv': seq.wrapped_conv, 'ctype': seq.wrapped_conv.ctype, 'var': 'rval', 'is_arg_in_out': False, 'ownership': None})
 			out += gen.commit_rvals(['rval'])
 			out += '}\n\n'
 
