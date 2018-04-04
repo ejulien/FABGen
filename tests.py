@@ -76,7 +76,10 @@ def run_test(gen, name, testbed):
 		failed_test_list.append(name)
 
 	if args.debug_test:
-		subprocess.Popen('explorer "%s"' % work_path)
+		if args.linux:
+			subprocess.Popen('xdg-open "%s"' % work_path, shell=True)
+		else:
+			subprocess.Popen('explorer "%s"' % work_path)
 	else:
 		shutil.rmtree(work_path, ignore_errors=True)
 
@@ -121,6 +124,7 @@ target_link_libraries(my_test "%s")
 
 def build_and_deploy_cpython_extension(work_path, build_path, python_interpreter):
 	print("Generating build system...")
+
 	try:
 		subprocess.check_output('cmake .. -G "%s"' % cmake_generator)
 	except subprocess.CalledProcessError as e:
@@ -152,19 +156,49 @@ def build_and_deploy_cpython_extension(work_path, build_path, python_interpreter
 
 class CPythonTestBed:
 	def build_and_test_extension(self, work_path, module):
-		create_cpython_cmake_file("test", work_path, python_site_package, python_include_dir, python_library)
-		create_clang_format_file(work_path)
-
-		build_path = os.path.join(work_path, 'build')
-		os.mkdir(build_path)
-		os.chdir(build_path)
-
 		test_path = os.path.join(work_path, 'test.py')
 		with open(test_path, 'w') as file:
 			file.write(module.test_python)
 
-		if not build_and_deploy_cpython_extension(work_path, build_path, python_interpreter):
-			return False
+		print("build extensions")
+
+		if args.linux:
+			os.chdir(work_path)
+
+			import subprocess
+
+			cflags = subprocess.check_output('python3-config --cflags', shell=True).decode('utf-8').strip()
+			cflags = cflags.replace('\n', ' ')
+
+			build_cmd = 'gcc ' + cflags + ' -g -O0 -fPIC -std=c++11 -c test_module.cpp -o my_test.o'
+
+			try:
+				subprocess.check_output(build_cmd, shell=True, stderr=subprocess.STDOUT)
+			except subprocess.CalledProcessError as e:
+				print("Build error: ", e.output.decode('utf-8'))
+
+			ldflags = subprocess.check_output('python3-config --ldflags', shell=True).decode('utf-8').strip()
+			ldflags = ldflags.replace('\n', ' ')
+
+			user_site = subprocess.check_output('python3 -m site --user-site', shell=True).decode('utf-8').strip()
+			link_cmd = 'g++ -shared my_test.o ' + ldflags + ' -o ' + user_site + '/my_test.so'
+
+			try:
+				subprocess.check_output(link_cmd, shell=True, stderr=subprocess.STDOUT)
+			except subprocess.CalledProcessError as e:
+				print("Link error: ", e.output.decode('utf-8'))
+
+			python_interpreter = 'python3'
+		else:
+			build_path = os.path.join(work_path, 'build')
+			os.mkdir(build_path)
+			os.chdir(build_path)
+
+			create_cpython_cmake_file("test", work_path, python_site_package, python_include_dir, python_library)
+			create_clang_format_file(work_path)
+
+			if not build_and_deploy_cpython_extension(work_path, build_path, python_interpreter):
+				return False
 
 		# run test to assert extension correctness
 		print("Executing Python test...")
@@ -172,7 +206,7 @@ class CPythonTestBed:
 
 		success = True
 		try:
-			subprocess.check_output('%s -m test' % python_interpreter)
+			subprocess.check_output('%s -m test' % python_interpreter, shell=True)
 		except subprocess.CalledProcessError as e:
 			print(e.output.decode('utf-8'))
 			success = False
