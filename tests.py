@@ -177,20 +177,19 @@ class CPythonTestBed:
 				subprocess.check_output(build_cmd, shell=True, stderr=subprocess.STDOUT)
 			except subprocess.CalledProcessError as e:
 				print("Build error: ", e.output.decode('utf-8'))
+				return False
 
 			ldflags = subprocess.check_output('python3-config --ldflags', shell=True).decode('utf-8').strip()
 			ldflags = ldflags.replace('\n', ' ')
 
-			_site = subprocess.check_output('python3 -m site', shell=True).decode('utf-8').strip()
-			print("site: ", _site)
-
 			user_site = subprocess.check_output('python3 -m site --user-site', shell=True).decode('utf-8').strip()
-			link_cmd = 'g++ -shared my_test.o ' + ldflags + ' -o ' + user_site + '/my_test.so'
+			link_cmd = 'sudo g++ -shared my_test.o ' + ldflags + ' -o ' + user_site + '/my_test.so'
 
 			try:
 				subprocess.check_output(link_cmd, shell=True, stderr=subprocess.STDOUT)
 			except subprocess.CalledProcessError as e:
 				print("Link error: ", e.output.decode('utf-8'))
+				return False
 
 			python_interpreter = 'python3'
 		else:
