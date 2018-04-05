@@ -48,6 +48,9 @@ def build_index_map(name, values, filter, gen_output):
 
 #
 class LuaClassTypeConverter(LuaTypeConverterCommon):
+	def is_type_class(self):
+		return True
+
 	def get_type_glue(self, gen, module_name):
 		out = ''
 
@@ -504,6 +507,11 @@ static int wrapped_Object_gc(lua_State *L) {
 
 	def commit_rvals(self, rvals, ctx='default'):
 		return ''  #'return rval_count;\n'
+
+	def rval_assign_arg_in_out(self, out_var, arg_in_out):
+		out = 'lua_pushvalue(L, %s);\n' % arg_in_out
+		out += 'rval_count += 1;\n'
+		return out
 
 	#
 	def get_binding_api_declaration(self):

@@ -2,6 +2,40 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
+			"name": "CPython: Tests --linux",
+			"type": "python",
+			"request": "launch",
+			"stopOnEntry": false,
+			"pythonPath": "${config:python.pythonPath}",
+			"program": "${workspaceRoot}/tests.py",
+			"cwd": "${workspaceRoot}",
+			"args": ["--linux", "--x64"],
+			"env": null,
+			"envFile": "${workspaceRoot}/.env",
+			"debugOptions": [
+				"WaitOnAbnormalExit",
+				"WaitOnNormalExit",
+				"RedirectOutput"
+			]
+		},
+		{
+			"name": "CPython: Tests --debug --linux",
+			"type": "python",
+			"request": "launch",
+			"stopOnEntry": false,
+			"pythonPath": "${config:python.pythonPath}",
+			"program": "${workspaceRoot}/tests.py",
+			"cwd": "${workspaceRoot}",
+			"args": ["--linux", "--x64", "--debug", "arg_out"],
+			"env": null,
+			"envFile": "${workspaceRoot}/.env",
+			"debugOptions": [
+				"WaitOnAbnormalExit",
+				"WaitOnNormalExit",
+				"RedirectOutput"
+			]
+		},
+		{
 			"name": "CPython: Tests",
 			"type": "python",
 			"request": "launch",
@@ -26,7 +60,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--pybase", "C:/Pythons/35-32", "--debug", "variable_access"],
+			"args": ["--pybase", "C:/Pythons/35-32", "--debug", "arg_out"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
@@ -60,7 +94,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--sdkbase", "D:/harfang/sdk", "--x64"],
+			"args": ["--luabase", "D:/harfang/sdk", "--x64"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
@@ -77,7 +111,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--sdkbase", "D:/harfang/sdk", "--debug", "variable_access", "--x64"],
+			"args": ["--luabase", "D:/harfang/sdk", "--debug", "arg_out", "--x64"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [

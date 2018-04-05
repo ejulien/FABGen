@@ -1,0 +1,18 @@
+language: python
+
+python:
+  - "3.4"
+
+virtualenv:
+  system_site_packages: true
+
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y cmake3
+
+install:
+  - pip install pypeg2
+
+script:
+  - cmake --version
+  - python3 tests.py --x64 --linux
