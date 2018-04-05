@@ -78,7 +78,7 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 			out += '''	if (error)
 		return luaL_error(L, "invalid lookup");
 '''
-			out += gen.prepare_c_rval(seq.wrapped_conv, seq.wrapped_conv.ctype, 'rval')
+			out += gen.prepare_c_rval({'conv': seq.wrapped_conv, 'ctype': seq.wrapped_conv.ctype, 'var': 'rval', 'is_arg_in_out': False, 'ownership': None})
 			out += gen.commit_rvals(['rval'])
 			out += '	return rval_count;\n'
 			out += '}\n\n'
