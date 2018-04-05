@@ -17,10 +17,11 @@ import lang.lua
 start_path = os.path.dirname(__file__)
 
 parser = argparse.ArgumentParser(description='Run generator unit tests.')
-parser.add_argument('--pybase', dest='python_base_path', help='Specify the base path of the Python interpreter location')
-parser.add_argument('--sdkbase', dest='sdk_base_path', help='Specify the base path of the Harfang SDK')
+parser.add_argument('--pybase', dest='python_base_path', help='Path to the Python interpreter')
+parser.add_argument('--luabase', dest='lua_base_path', help='Path to the Lua interpreter')
 parser.add_argument('--debug', dest='debug_test', help='Generate a working solution to debug a test')
 parser.add_argument('--x64', dest='x64', help='Build for 64 bit architecture', action='store_true', default=False)
+parser.add_argument('--linux', dest='linux', help='Build on Linux', action='store_true', default=False)
 
 args = parser.parse_args()
 
@@ -33,14 +34,15 @@ if args.python_base_path:
 
 
 # -- CMake generator
-if args.x64:
-	cmake_generator = 'Visual Studio 15 2017 Win64'
-else:
-	cmake_generator = 'Visual Studio 15 2017'
+if not args.linux:
+	if args.x64:
+		cmake_generator = 'Visual Studio 15 2017 Win64'
+	else:
+		cmake_generator = 'Visual Studio 15 2017'
 
-print("Using CMake generator: %s" % cmake_generator)
+	print("Using CMake generator: %s" % cmake_generator)
 
-msvc_arch = 'x64' if args.x64 else 'Win32'
+	msvc_arch = 'x64' if args.x64 else 'Win32'
 
 
 # --
@@ -75,7 +77,10 @@ def run_test(gen, name, testbed):
 		failed_test_list.append(name)
 
 	if args.debug_test:
-		subprocess.Popen('explorer "%s"' % work_path)
+		if args.linux:
+			subprocess.Popen('xdg-open "%s"' % work_path, shell=True)
+		else:
+			subprocess.Popen('explorer "%s"' % work_path)
 	else:
 		shutil.rmtree(work_path, ignore_errors=True)
 
@@ -88,7 +93,9 @@ def run_tests(gen, names, testbed):
 
 	for i, name in enumerate(names):
 		print('[%d/%d] Running test "%s"' % (i+1, test_count, name))
+		cwd = os.getcwd()
 		run_test(gen, name, testbed)
+		os.chdir(cwd)
 		print('')
 
 	run_test_count = len(run_test_list)
@@ -120,6 +127,7 @@ target_link_libraries(my_test "%s")
 
 def build_and_deploy_cpython_extension(work_path, build_path, python_interpreter):
 	print("Generating build system...")
+
 	try:
 		subprocess.check_output('cmake .. -G "%s"' % cmake_generator)
 	except subprocess.CalledProcessError as e:
@@ -151,19 +159,53 @@ def build_and_deploy_cpython_extension(work_path, build_path, python_interpreter
 
 class CPythonTestBed:
 	def build_and_test_extension(self, work_path, module):
-		create_cpython_cmake_file("test", work_path, python_site_package, python_include_dir, python_library)
-		create_clang_format_file(work_path)
-
-		build_path = os.path.join(work_path, 'build')
-		os.mkdir(build_path)
-		os.chdir(build_path)
+		global python_interpreter
 
 		test_path = os.path.join(work_path, 'test.py')
 		with open(test_path, 'w') as file:
 			file.write(module.test_python)
 
-		if not build_and_deploy_cpython_extension(work_path, build_path, python_interpreter):
-			return False
+		print("Building extension...")
+
+		if args.linux:
+			os.chdir(work_path)
+
+			cflags = subprocess.check_output('python3-config --cflags', shell=True).decode('utf-8').strip()
+			cflags = cflags.replace('\n', ' ')
+
+			build_cmd = 'gcc ' + cflags + ' -g -O0 -fPIC -std=c++11 -c test_module.cpp -o my_test.o'
+
+			try:
+				subprocess.check_output(build_cmd, shell=True, stderr=subprocess.STDOUT)
+			except subprocess.CalledProcessError as e:
+				print("Build error: ", e.output.decode('utf-8'))
+				return False
+
+			ldflags = subprocess.check_output('python3-config --ldflags', shell=True).decode('utf-8').strip()
+			ldflags = ldflags.replace('\n', ' ')
+
+			user_site = subprocess.check_output('python3 -m site --user-site', shell=True).decode('utf-8').strip()
+			os.makedirs(user_site, exist_ok=True)  # make sure site-packages exists
+
+			link_cmd = 'g++ -shared my_test.o ' + ldflags + ' -o ' + user_site + '/my_test.so'
+
+			try:
+				subprocess.check_output(link_cmd, shell=True, stderr=subprocess.STDOUT)
+			except subprocess.CalledProcessError as e:
+				print("Link error: ", e.output.decode('utf-8'))
+				return False
+
+			python_interpreter = 'python3'
+		else:
+			build_path = os.path.join(work_path, 'build')
+			os.mkdir(build_path)
+			os.chdir(build_path)
+
+			create_cpython_cmake_file("test", work_path, python_site_package, python_include_dir, python_library)
+			create_clang_format_file(work_path)
+
+			if not build_and_deploy_cpython_extension(work_path, build_path, python_interpreter):
+				return False
 
 		# run test to assert extension correctness
 		print("Executing Python test...")
@@ -171,7 +213,7 @@ class CPythonTestBed:
 
 		success = True
 		try:
-			subprocess.check_output('%s -m test' % python_interpreter)
+			subprocess.check_output('%s -m test' % python_interpreter, shell=True)
 		except subprocess.CalledProcessError as e:
 			print(e.output.decode('utf-8'))
 			success = False
@@ -213,8 +255,8 @@ def build_and_deploy_lua_extension(work_path, build_path):
 		return False
 
 	# deploy Lua runtime from the SDK to the work folder
-	shutil.copyfile(args.sdk_base_path + '/bin/Debug/lua.exe', os.path.join(work_path, 'lua.exe'))
-	shutil.copyfile(args.sdk_base_path + '/bin/Debug/lua53.dll', os.path.join(work_path, 'lua53.dll'))
+	shutil.copyfile(args.lua_base_path + '/bin/Debug/lua.exe', os.path.join(work_path, 'lua.exe'))
+	shutil.copyfile(args.lua_base_path + '/bin/Debug/lua53.dll', os.path.join(work_path, 'lua53.dll'))
 
 	if args.debug_test:
 		with open(os.path.join(build_path, 'my_test.vcxproj.user'), 'w') as file:
@@ -241,7 +283,7 @@ def build_and_deploy_lua_extension(work_path, build_path):
 
 class LuaTestBed:
 	def build_and_test_extension(self, work_path, module):
-		create_lua_cmake_file("test", work_path, args.sdk_base_path)
+		create_lua_cmake_file("test", work_path, args.lua_base_path)
 		create_clang_format_file(work_path)
 
 		build_path = os.path.join(work_path, 'build')
@@ -294,12 +336,12 @@ else:
 	test_names = [file[:-3] for file in os.listdir('./tests') if file.endswith('.py')]
 
 
-if args.python_base_path:
+if args.linux or args.python_base_path:
 	gen = lang.cpython.CPythonGenerator()
 	gen.verbose = False
 	run_tests(gen, test_names, CPythonTestBed())
 
-if args.sdk_base_path:
+if args.lua_base_path:
 	gen = lang.lua.LuaGenerator()
 	gen.verbose = False
 	run_tests(gen, test_names, LuaTestBed())
