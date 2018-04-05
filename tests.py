@@ -185,7 +185,7 @@ class CPythonTestBed:
 			user_site = subprocess.check_output('python3 -m site --user-site', shell=True).decode('utf-8').strip()
 			link_cmd = 'sudo g++ -shared my_test.o ' + ldflags + ' -o ' + user_site + '/my_test.so'
 
-			_ls = subprocess.check_output('ls: ' + user_site, shell=True).decode('utf-8').strip()
+			_ls = subprocess.check_output('ls ' + user_site, shell=True).decode('utf-8').strip()
 			print("LS site-package: ", _ls)
 
 			try:
