@@ -182,7 +182,7 @@ class CPythonTestBed:
 			ldflags = ldflags.replace('\n', ' ')
 
 			_site = subprocess.check_output('python3 -m site', shell=True).decode('utf-8').strip()
-			print("site: ", site)
+			print("site: ", _site)
 
 			user_site = subprocess.check_output('python3 -m site --user-site', shell=True).decode('utf-8').strip()
 			link_cmd = 'g++ -shared my_test.o ' + ldflags + ' -o ' + user_site + '/my_test.so'
