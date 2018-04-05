@@ -93,7 +93,9 @@ def run_tests(gen, names, testbed):
 
 	for i, name in enumerate(names):
 		print('[%d/%d] Running test "%s"' % (i+1, test_count, name))
+		cwd = os.getcwd()
 		run_test(gen, name, testbed)
+		os.chdir(cwd)
 		print('')
 
 	run_test_count = len(run_test_list)
@@ -183,9 +185,9 @@ class CPythonTestBed:
 			ldflags = ldflags.replace('\n', ' ')
 
 			user_site = subprocess.check_output('python3 -m site --user-site', shell=True).decode('utf-8').strip()
-			os.makedirs(user_site, exist_ok=True)
+			os.makedirs(user_site, exist_ok=True)  # make sure site-packages exists
 
-			link_cmd = 'sudo g++ -shared my_test.o ' + ldflags + ' -o ' + user_site + '/my_test.so'
+			link_cmd = 'g++ -shared my_test.o ' + ldflags + ' -o ' + user_site + '/my_test.so'
 
 			try:
 				subprocess.check_output(link_cmd, shell=True, stderr=subprocess.STDOUT)
