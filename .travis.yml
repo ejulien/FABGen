@@ -12,7 +12,11 @@ before_install:
 
 install:
   - pip install pypeg2
+  - pip install pytest-cov
 
 script:
   - cmake --version
   - python3 tests.py --x64 --linux
+
+after_success:
+  - coveralls
