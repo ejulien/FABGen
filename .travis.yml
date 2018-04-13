@@ -12,7 +12,12 @@ before_install:
 
 install:
   - pip install pypeg2
+  - pip install coverage
+  - pip install python-coveralls
 
 script:
   - cmake --version
-  - python3 tests.py --x64 --linux
+  - python3 -m coverage run tests.py --x64 --linux
+
+after_success:
+  - coveralls

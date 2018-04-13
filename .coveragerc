@@ -1,0 +1,5 @@
+[run]
+omit =
+	*/python?.?/*
+	tests/*
+	tests.py
