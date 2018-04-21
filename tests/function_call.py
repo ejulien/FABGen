@@ -14,6 +14,11 @@ int get() { return 0; }
 int get(int v) { return v / 2; }
 int get(int v, int k) { return v * k; }
 int get(int v, int k, int b) { return v * k + b; }
+
+static int global_int = 0;
+
+void set_global_int() { global_int = 8; }
+int get_global_int() { return global_int; }
 ''', True, False)
 
 	gen.bind_function('get_int', 'int', [])
@@ -24,6 +29,9 @@ int get(int v, int k, int b) { return v * k + b; }
 		('int', ['int v', 'int k', 'int b'], [])
 	])
 
+	gen.bind_function('set_global_int', 'void', [])
+	gen.bind_function('get_global_int', 'int', [])
+
 	gen.finalize()
 	return gen.get_output()
 
@@ -32,6 +40,10 @@ test_python = '''\
 import my_test
 
 assert my_test.get_int() == 8
+
+assert my_test.get_global_int() == 0
+my_test.set_global_int()
+assert my_test.get_global_int() == 8
 
 # overload
 assert my_test.get() == 0
@@ -44,6 +56,10 @@ test_lua = '''\
 my_test = require "my_test"
 
 assert(my_test.get_int() == 8)
+
+assert(my_test.get_global_int() == 0)
+my_test.set_global_int()
+assert(my_test.get_global_int() == 8)
 
 -- overload
 assert(my_test.get() == 0)
