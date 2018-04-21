@@ -104,6 +104,15 @@ class StdSharedPtrProxyFeature:
 
 Provide native access for the target language to values stored in a container type.
 
+- 'repr': def get_repr(var_self, var_repr)
+
+Provide a custom representation for a type.
+
+```python
+def get_repr(var_self, var_repr):
+    return '%s = "custom_repr";\n' % var_repr  # C++ code to evaluate at runtime and assign to the repr string
+```
+
 ### Extending function prototype with feature
 
 - 'route': def router(var, args)

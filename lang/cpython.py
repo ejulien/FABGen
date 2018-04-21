@@ -56,7 +56,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 			out += 'static PyObject *%s_tp_repr(PyObject *self) {\n' % self.bound_name
 			out += '	std::string repr;\n'
 			out += gen._prepare_c_arg_self(self, '_self')
-			out += repr.get_repr('_self', 'repr')
+			out += repr('_self', 'repr')
 			out += '	return PyUnicode_FromString(repr.c_str());\n'
 			out += '}\n\n'
 
