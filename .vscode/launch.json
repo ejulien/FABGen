@@ -60,7 +60,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--pybase", "C:/Pythons/35-32", "--debug", "arg_out"],
+			"args": ["--pybase", "C:/Pythons/35-32", "--debug", "std_future"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [

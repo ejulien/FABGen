@@ -7,8 +7,7 @@ virtualenv:
   system_site_packages: true
 
 before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y cmake3
+  - source .travis/setup_lua.sh
 
 install:
   - pip install pypeg2
