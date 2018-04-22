@@ -178,13 +178,6 @@ _CType.grammar = flag("const", K("const")), optional(flag("signed", K("signed"))
 
 
 #
-def _prepare_ctypes(ctypes, template):
-	if not type(ctypes) is type([]):
-		ctypes = [ctypes]
-	return [parse(type, template) for type in ctypes]
-
-
-#
 class _CArg:
 	def __repr__(self):
 		out = repr(self.ctype)
