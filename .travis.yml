@@ -7,8 +7,7 @@ virtualenv:
   system_site_packages: true
 
 before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y cmake3
+  - source .travis/setup_lua.sh
 
 install:
   - pip install pypeg2
@@ -16,8 +15,7 @@ install:
   - pip install python-coveralls
 
 script:
-  - cmake --version
-  - python3 -m coverage run tests.py --x64 --linux
+  - python3 -m coverage run tests.py --x64 --linux --luabase $LUA_HOME_DIR
 
 after_success:
   - coveralls
