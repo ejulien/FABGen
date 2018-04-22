@@ -689,8 +689,6 @@ const char *%s(PyObject *o) {
 	def finalize(self):
 		self._source += '// Module definitions starts here.\n\n'
 
-		# self.output_summary()
-
 		methods_table = self.output_module_functions_table()
 		module_def = self.output_module_definition(methods_table)
 

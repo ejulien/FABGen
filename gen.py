@@ -70,10 +70,6 @@ def get_ctype_default_bound_name(ctype):
 	return get_clean_ctype_name(ctype)
 
 
-def ctypes_to_string(ctypes):
-	return ','.join([repr(ctype) for ctype in ctypes])
-
-
 #
 symbol_clean_rules = OrderedDict()
 
@@ -145,8 +141,7 @@ class _CType:
 		return t
 
 	def is_pointer(self):
-		ref = self.get_ref()
-		return ref == '*'
+		return self.get_ref() == '*'
 
 	def is_const(self):
 		if self.get_ref() == '':
@@ -166,7 +161,7 @@ class _CType:
 				delattr(t, 'ref')
 		return t
 
-	def ref_stripped(self):
+	def ref_stripped(self):  # pragma: no cover
 		t = copy.deepcopy(self)
 		if hasattr(t, 'ref'):
 			delattr(t, 'ref')
@@ -179,7 +174,7 @@ _CType.grammar = flag("const", K("const")), optional(flag("signed", K("signed"))
 
 #
 class _CArg:
-	def __repr__(self):
+	def __repr__(self):  # pragma: no cover
 		out = repr(self.ctype)
 		if hasattr(self, 'name'):
 			out += ' ' + str(self.name)
@@ -1129,12 +1124,6 @@ class FABGen:
 			self.bind_comparison_op_overloads(conv, op, protos)
 
 	#
-	def output_summary(self):
-		self._source += '// Bound %d global functions:\n' % len(self._bound_functions)
-		for f in self._bound_functions:
-			self._source += '//	- %s bound as %s\n' % (f['name'], f['bound_name'])
-		self._source += '\n'
-
 	def get_type_tag_cast_function(self):
 		out = '// type_tag based cast system\n'
 
@@ -1200,7 +1189,7 @@ static void *_type_tag_cast(void *in_ptr, const char *in_type_tag, const char *o
 				self.insert_binding_code('static %s *%s(%s *o) { return (%s *)o; }' % (repr(conv.ctype), name, repr(cast.ctype), repr(conv.ctype)))
 				self.bind_function(name, repr(conv.ctype) + ' *', [repr(cast.ctype) + ' *o'], [], name[1:])
 
-	def __get_stats(self):
+	def __get_stats(self):  # pragma: no cover
 		out = 'Module statistics:\n'
 
 		out += ' - %d types\n' % len(self.__type_convs)
@@ -1222,7 +1211,7 @@ static void *_type_tag_cast(void *in_ptr, const char *in_type_tag, const char *o
 
 		return out
 
-	def __print_stats(self):
+	def __print_stats(self):  # pragma: no cover
 		print(self.__get_stats())
 
 	def finalize(self):
@@ -1242,7 +1231,7 @@ static void *_type_tag_cast(void *in_ptr, const char *in_type_tag, const char *o
 		self.bind_cast_functions()
 
 		# statistics
-		if self.verbose:
+		if self.verbose:  # pragma: no cover
 			self.__print_stats()
 
 	def get_output(self):

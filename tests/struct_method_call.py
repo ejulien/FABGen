@@ -20,6 +20,8 @@ struct simple_struct {
 
 	int get_a() { return a; }
 
+	static int get_static_int() { return 4; }
+
 	int a;
 };
 ''', True, False)
@@ -31,6 +33,7 @@ struct simple_struct {
 		('bool', ['int v0', 'int v1'], [])
 	])
 	gen.bind_method(simple_struct, 'get_a', 'int', [])
+	gen.bind_static_method(simple_struct, 'get_static_int', 'int', [])
 	gen.end_class(simple_struct)
 
 	gen.finalize()
@@ -49,6 +52,8 @@ assert s.get_a() == 10
 
 assert s.set_a(9) == 9
 assert s.get_a() == 9
+
+assert s.get_static_int() == 4
 '''
 
 test_lua = '''\
@@ -63,4 +68,6 @@ assert(s:get_a() == 10)
 
 assert(s:set_a(9) == 9)
 assert(s:get_a() == 9)
+
+assert(s.get_static_int() == 4)
 '''
