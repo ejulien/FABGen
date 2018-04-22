@@ -102,7 +102,7 @@ def run_tests(gen, names, testbed):
 	failed_test_count = len(failed_test_list)
 
 	print("[Test summary: %d run, %d failed]" % (run_test_count, failed_test_count))
-	print("Done with fabgen generator %s" % gen.get_language())
+	print("Done with fabgen generator %s\n" % gen.get_language())
 
 
 # CPython test bed
@@ -295,15 +295,39 @@ class LuaTestBed:
 		with open(test_path, 'w') as file:
 			file.write(module.test_lua)
 
-		if not build_and_deploy_lua_extension(work_path, build_path):
-			return False
+		lua_interpreter = 'lua.exe'
+
+		if args.linux:
+			os.chdir(work_path)
+			shutil.copy(os.path.join(args.lua_base_path, 'bin', 'lua'), work_path)
+
+			build_cmd = 'gcc -I' + os.path.join(args.lua_base_path, 'include') + ' -g -O0 -fPIC -std=c++11 -c test_module.cpp -o my_test.o'
+
+			try:
+				subprocess.check_output(build_cmd, shell=True, stderr=subprocess.STDOUT)
+			except subprocess.CalledProcessError as e:
+				print("Build error: ", e.output.decode('utf-8'))
+				return False
+
+			link_cmd = 'g++ -shared my_test.o -L' + os.path.join(args.lua_base_path, 'lib') + ' -o my_test.so -pthread'
+
+			try:
+				subprocess.check_output(link_cmd, shell=True, stderr=subprocess.STDOUT)
+			except subprocess.CalledProcessError as e:
+				print("Link error: ", e.output.decode('utf-8'))
+				return False
+
+			lua_interpreter = './lua'
+		else:
+			if not build_and_deploy_lua_extension(work_path, build_path):
+				return False
 
 		print("Executing Lua test...")
 		os.chdir(work_path)
 
 		success = True
 		try:
-			subprocess.check_output('lua.exe test.lua', stderr=subprocess.STDOUT)
+			subprocess.check_output(lua_interpreter + ' test.lua', shell=True, stderr=subprocess.STDOUT)
 		except subprocess.CalledProcessError as e:
 			print(e.output.decode('utf-8'))
 			success = False

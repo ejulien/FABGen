@@ -155,6 +155,23 @@
 			]
 		},
 		{
+			"name": "All: Tests --linux",
+			"type": "python",
+			"request": "launch",
+			"stopOnEntry": false,
+			"pythonPath": "${config:python.pythonPath}",
+			"program": "${workspaceRoot}/tests.py",
+			"cwd": "${workspaceRoot}",
+			"args": ["--linux", "--x64", "--luabase", "/home/ejulien/Code/lua"],
+			"env": null,
+			"envFile": "${workspaceRoot}/.env",
+			"debugOptions": [
+				"WaitOnAbnormalExit",
+				"WaitOnNormalExit",
+				"RedirectOutput"
+			]
+		},
+		{
 			"name": "All: Bind Harfang",
 			"type": "python",
 			"request": "launch",
