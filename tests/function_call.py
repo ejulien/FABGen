@@ -19,6 +19,8 @@ static int global_int = 0;
 
 void set_global_int() { global_int = 8; }
 int get_global_int() { return global_int; }
+
+int get_global_int_multiplied(int k = 5) { return 3 * k; }
 ''', True, False)
 
 	gen.bind_function('get_int', 'int', [])
@@ -31,6 +33,8 @@ int get_global_int() { return global_int; }
 
 	gen.bind_function('set_global_int', 'void', [])
 	gen.bind_function('get_global_int', 'int', [])
+
+	gen.bind_function('get_global_int_multiplied', 'int', ['?int k'])
 
 	gen.finalize()
 	return gen.get_output()
@@ -50,6 +54,10 @@ assert my_test.get() == 0
 assert my_test.get(2) == 1
 assert my_test.get(4, 3) == 12
 assert my_test.get(4, 3, 2) == 14
+
+# optional argument
+assert my_test.get_global_int_multiplied() == 15
+assert my_test.get_global_int_multiplied(2) == 6
 '''
 
 test_lua = '''\
@@ -66,4 +74,8 @@ assert(my_test.get() == 0)
 assert(my_test.get(2) == 1)
 assert(my_test.get(4, 3) == 12)
 assert(my_test.get(4, 3, 2) == 14)
+
+-- optional argument
+assert(my_test.get_global_int_multiplied() == 15)
+assert(my_test.get_global_int_multiplied(2) == 6)
 '''
