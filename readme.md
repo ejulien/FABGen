@@ -1,7 +1,7 @@
 # Fabgen - The fabulous generator
 
 [![Build Status](https://travis-ci.org/ejulien/FABGen.svg?branch=master)](https://travis-ci.org/ejulien/FABGen)
-[![Coverage Status](https://coveralls.io/repos/github/ejulien/FABGen/badge.svg?branch=master)](https://coveralls.io/github/ejulien/FABGen)
+[![Coverage Status](https://coveralls.io/repos/github/ejulien/FABGen/badge.svg)](https://coveralls.io/github/ejulien/FABGen)
 
 Fabgen is a set of Python scripts to generate C++ binding code to different languages.  
 It was written as a SWIG replacement for the Harfang Multimedia Framework (http://www.harfang3d.com).
