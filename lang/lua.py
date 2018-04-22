@@ -650,7 +650,7 @@ static const luaL_Reg %s_module_meta[] = {
 };\n\n''' % (self._name, self._name, self._name, self._name)
 
 		#
-		if self.embedded:
+		if self.embedded:  # pragma: no cover
 			create_module_func = gen.apply_api_prefix('create_%s' % self._name)
 			bind_module_func = gen.apply_api_prefix('bind_%s' % self._name)
 
@@ -707,7 +707,7 @@ static const luaL_Reg %s_module_meta[] = {
 		self._source += '}\n\n'
 
 		#
-		if self.embedded:
+		if self.embedded:  # pragma: no cover
 			self._source += '''\
 bool %s(lua_State *L, const char *symbol) {
 	if (%s(L) != 1)
