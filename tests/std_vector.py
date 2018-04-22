@@ -1,4 +1,5 @@
 import lib.std
+import lib.stl
 import lib
 
 
@@ -19,11 +20,21 @@ int consume_pointer_to_int(const int *p) {
 ''', True, False)
 
 	int_ptr = gen.bind_ptr('int *', bound_name='IntPointer')
+	int_conv = gen.get_conv('int')
 
 	gen.add_include('vector', is_system=True)
 
-	std_vector_int = gen.begin_class('std::vector<int>', features={'sequence': lib.std.VectorSequenceFeature(gen.get_conv('int'))})
-	gen.bind_constructor(std_vector_int, [])
+	if gen.get_language() == 'CPython':
+		gen.bind_type(lib.cpython.stl.PySequenceToStdVectorConverter('PySequenceOfInt', int_conv))
+	elif gen.get_language() == 'Lua':
+		gen.bind_type(lib.lua.stl.LuaTableToStdVectorConverter('LuaTableOfInt', int_conv))
+
+	std_vector_int = gen.begin_class('std::vector<int>', features={'sequence': lib.std.VectorSequenceFeature(int_conv)})
+
+	if gen.get_language() == 'CPython':
+		gen.bind_constructor(std_vector_int, ['?PySequenceOfInt sequence'])
+	elif gen.get_language() == 'Lua':
+		gen.bind_constructor(std_vector_int, ['?LuaTableOfInt sequence'])
 
 	gen.bind_method(std_vector_int, 'size', 'int', [])
 	gen.bind_method(std_vector_int, 'push_back', 'void', ['int v'])
@@ -78,6 +89,13 @@ assert my_test.consume_pointer_to_int(v.data()) == 16
 
 # implicit cast to const int *
 assert my_test.consume_pointer_to_int(v) == 16
+
+# construct from PySequence
+w = my_test.vector_of_int([5, 2, 8])
+
+assert w[0] == 5
+assert w[1] == 2
+assert w[2] == 8
 '''
 
 test_lua = '''\
@@ -117,4 +135,11 @@ assert(my_test.consume_pointer_to_int(v:data()) == 16)
 
 -- implicit cast to const int *
 assert(my_test.consume_pointer_to_int(v) == 16)
+
+-- construct from table of int
+w = my_test.vector_of_int({5, 2, 8})
+
+assert(w[1] == 5)
+assert(w[2] == 2)
+assert(w[3] == 8)
 '''

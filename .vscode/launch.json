@@ -60,7 +60,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--pybase", "C:/Pythons/35-32", "--debug", "std_future"],
+			"args": ["--pybase", "C:/Pythons/35-32", "--debug", "std_vector"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
@@ -111,7 +111,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--luabase", "D:/harfang/sdk", "--debug", "arg_out", "--x64"],
+			"args": ["--luabase", "D:/harfang/sdk", "--debug", "std_vector"],
 			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
