@@ -689,11 +689,11 @@ const char *%s(PyObject *o) {
 	def finalize(self):
 		self._source += '// Module definitions starts here.\n\n'
 
-		methods_table = self.output_module_functions_table()
-		module_def = self.output_module_definition(methods_table)
-
 		# generic finalization
 		super().finalize()
+
+		methods_table = self.output_module_functions_table()
+		module_def = self.output_module_definition(methods_table)
 
 		self.output_binding_api()
 		self.output_module_init_function(module_def)
