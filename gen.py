@@ -24,7 +24,8 @@ def get_fully_qualified_ctype_name(ctype):
 		out += 'unsigned '
 	out += ctype.name
 	if hasattr(ctype, 'template'):
-		out += '<%s>' % ctype.template[0]
+		args = [str(arg) for arg in ctype.template]
+		out += '<%s>' % ', '.join(args)
 	if ctype.const_ref:
 		out += ' const '
 	if hasattr(ctype, 'ref'):

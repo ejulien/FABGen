@@ -17,7 +17,7 @@ def bind_std(gen):
 
 	class LuaIntConverter(lang.lua.LuaTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
-			return 'bool %s(lua_State *L, int idx) { return lua_isnumber(L, idx) ? true : false; }\n' % self.check_func +\
+			return 'bool %s(lua_State *L, int idx) { return lua_type(L, idx) == LUA_TNUMBER; }\n' % self.check_func +\
 			'void %s(lua_State *L, int idx, void *obj) { *((%s*)obj) = (%s)lua_tonumber(L, idx); }\n' % (self.to_c_func, self.ctype, self.ctype) +\
 			'int %s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushinteger(L, *((%s*)obj)); return 1; }\n' % (self.from_c_func, self.ctype)
 
@@ -43,7 +43,7 @@ def bind_std(gen):
 
 	class LuaDoubleConverter(lang.lua.LuaTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
-			return 'bool %s(lua_State *L, int idx) { return lua_isnumber(L, idx) ? true : false; }\n' % self.check_func +\
+			return 'bool %s(lua_State *L, int idx) { return lua_type(L, idx) == LUA_TNUMBER; }\n' % self.check_func +\
 			'void %s(lua_State *L, int idx, void *obj) { *((%s*)obj) = (%s)lua_tonumber(L, idx); }\n' % (self.to_c_func, self.ctype, self.ctype) +\
 			'int %s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushnumber(L, *((%s*)obj)); return 1; }\n' % (self.from_c_func, self.ctype)
 
@@ -56,7 +56,7 @@ def bind_std(gen):
 
 		def get_type_glue(self, gen, module_name):
 			return 'struct %s { std::string s; };\n' % self.c_storage_class +\
-			'bool %s(lua_State *L, int idx) { return lua_isstring(L, idx) ? true : false; }\n' % self.check_func +\
+			'bool %s(lua_State *L, int idx) { return lua_type(L, idx) == LUA_TSTRING; }\n' % self.check_func +\
 			'''void %s(lua_State *L, int idx, void *obj, %s &storage) {
 	storage.s = lua_tostring(L, idx);
 	*((%s*)obj) = storage.s.data();
