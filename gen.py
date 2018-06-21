@@ -659,11 +659,18 @@ class FABGen:
 	def _declare_c_arg(self, ctype, var):
 		return self.decl_var(ctype, var)
 
-	def _convert_c_arg(self, idx, conv, var, ctx='default'):
-		return conv.to_c_call(self.get_arg(idx, ctx), '&%s' % var)
+	def _convert_c_arg(self, idx, conv, var, ctx='default', features=[]):
+		out = conv.to_c_call(self.get_arg(idx, ctx), '&%s' % var)
 
-	def _prepare_c_arg(self, idx, conv, var, ctx='default'):
-		return self._declare_c_arg(conv.arg_storage_ctype, var) + self._convert_c_arg(idx, conv, var, ctx)
+		if 'validate_arg_in' in features:
+			validator = features['validate_arg_in'][idx]
+			if validator is not None:
+				out += validator(self, var, ctx)
+
+		return out
+
+	def _prepare_c_arg(self, idx, conv, var, ctx='default', features=[]):
+		return self._declare_c_arg(conv.arg_storage_ctype, var) + self._convert_c_arg(idx, conv, var, ctx, features)
 
 	def declare_rval(self, out_var):
 		return ''
@@ -720,7 +727,7 @@ class FABGen:
 			else:
 				arg_ctype = conv.arg_storage_ctype
 				self._source += self._declare_c_arg(conv.arg_storage_ctype, var)
-				self._source += self._convert_c_arg(argin_idx, conv, var, ctx)
+				self._source += self._convert_c_arg(argin_idx, conv, var, ctx, features)
 				argin_idx += 1
 
 			c_call_args.append(transform_var_ref_to(var, arg_ctype.get_ref(), arg['carg'].ctype.get_ref()))
