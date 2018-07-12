@@ -28,6 +28,7 @@ parser.add_argument('--out', help='Path to output generated files', required=Tru
 parser.add_argument('--prefix', help='Prefix to append to all public symbols')
 parser.add_argument('--embedded', help='Specify that the generated binding is for embedding and not expanding the target language', action='store_true')
 parser.add_argument('--doc_md_folder', type=str, help='Retrieve symbol documentation using its bound name from a folder containing an MD file for each documented symbol')
+parser.add_argument('--no_fabgen_api', help='Do not generate the fabgen.h API file', action='store_true')
 args = parser.parse_args()
 
 
@@ -51,6 +52,20 @@ def output_binding(gen):
 		f.write(src)
 
 	print('Files written as %s and %s' % (hdr_path, cpp_path))
+
+	if args.no_fabgen_api:
+		cmn_path = os.path.join(args.out, 'fabgen.h')
+
+		with open(cmn_path, mode='w', encoding='utf-8') as f:
+			f.write('''\
+// FABgen .h
+
+#pragma once
+
+enum OwnershipPolicy { NonOwning, Copy, Owning };
+''')
+		print('FABgen API written as %s' % cmn_path)
+
 	print('Done in %f sec.' % (time.perf_counter() - t_start))
 
 
