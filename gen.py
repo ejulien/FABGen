@@ -429,7 +429,7 @@ class FABGen:
 		self._header += conv.get_type_api(self._name)
 
 		self._source += '// %s type tag\n' % conv.ctype
-		self._source += 'static uint32_t %s = "%s";\n\n' % (conv.type_tag, zlib.crc32(conv.bound_name.encode()) & 0xffffffff)
+		self._source += 'static uint32_t %s = %s;\n\n' % (conv.type_tag, hex(zlib.crc32(conv.bound_name.encode()) & 0xffffffff))
 
 		self._source += conv.get_type_api(self._name)
 

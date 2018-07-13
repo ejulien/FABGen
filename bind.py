@@ -53,7 +53,7 @@ def output_binding(gen):
 
 	print('Files written as %s and %s' % (hdr_path, cpp_path))
 
-	if args.no_fabgen_api:
+	if not args.no_fabgen_api:
 		cmn_path = os.path.join(args.out, 'fabgen.h')
 
 		with open(cmn_path, mode='w', encoding='utf-8') as f:
@@ -65,6 +65,8 @@ def output_binding(gen):
 enum OwnershipPolicy { NonOwning, Copy, Owning };
 ''')
 		print('FABgen API written as %s' % cmn_path)
+	else:
+		print('FABgen API (fabgen.h) not written')
 
 	print('Done in %f sec.' % (time.perf_counter() - t_start))
 
