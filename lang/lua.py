@@ -529,10 +529,10 @@ struct %s {
 ''' % type_info_name
 
 		out += '// return a type info from its type tag\n'
-		out += '%s *%s(uint32_t type_tag);\n' % (type_info_name, gen.apply_api_prefix('get_type_tag_info'))
+		out += '%s *%s(uint32_t type_tag);\n' % (type_info_name, gen.apply_api_prefix('get_bound_type_info'))
 
 		out += '// return a type info from its type name\n'
-		out += '%s *%s(const char *type);\n' % (type_info_name, gen.apply_api_prefix('get_type_info'))
+		out += '%s *%s(const char *type);\n' % (type_info_name, gen.apply_api_prefix('get_c_type_info'))
 
 		out += '// returns the typetag of a userdata object on the stack, nullptr if not a Fabgen object\n'
 		out += 'uint32_t %s(lua_State *L, int idx);\n\n' % gen.apply_api_prefix('get_wrapped_object_type_tag')
@@ -543,19 +543,19 @@ struct %s {
 		type_info_name = gen.apply_api_prefix('type_info')
 
 		self._source += '// Note: Types using a storage class for conversion are not listed here.\n'
-		self._source += 'static std::map<const char *, %s> __type_tag_infos;\n\n' % type_info_name
+		self._source += 'static std::map<std::string, %s> __type_tag_infos;\n\n' % type_info_name
 
 		self._source += 'static void __initialize_type_tag_infos() {\n'
 		for type in self._bound_types:
 			if not type.c_storage_class:
-				self._source += '	__type_tag_infos[%s] = {%s, "%s", %s, %s, %s};\n' % (type.type_tag, type.type_tag, str(type.ctype), type.check_func, type.to_c_func, type.from_c_func)
+				self._source += '	__type_tag_infos["%s"] = {%s, "%s", %s, %s, %s};\n' % (type.bound_name, type.type_tag, str(type.ctype), type.check_func, type.to_c_func, type.from_c_func)
 		self._source += '};\n\n'
 
 		self._source += '''\
-%s *%s(uint32_t type_tag) {
+%s *%s(const char *type_tag) {
 	auto i = __type_tag_infos.find(type_tag);
 	return i == __type_tag_infos.end() ? nullptr : &i->second;
-}\n\n''' % (type_info_name, gen.apply_api_prefix('get_type_tag_info'))
+}\n\n''' % (type_info_name, gen.apply_api_prefix('get_bound_type_info'))
 
 		self._source += 'static std::map<std::string, %s> __type_infos;\n\n' % type_info_name
 
@@ -569,12 +569,12 @@ struct %s {
 %s *%s(const char *type) {
 	auto i = __type_infos.find(type);
 	return i == __type_infos.end() ? nullptr : &i->second;
-}\n\n''' % (type_info_name, gen.apply_api_prefix('get_type_info'))
+}\n\n''' % (type_info_name, gen.apply_api_prefix('get_c_type_info'))
 
 		self._source += '''\
 uint32_t %s(lua_State *L, int idx) {
 	auto o = cast_to_wrapped_Object_safe(L, idx);
-	return o ? o->type_tag : nullptr;
+	return o ? o->type_tag : 0;
 }\n\n''' % gen.apply_api_prefix('get_wrapped_object_type_tag')
 
 	def output_module_free(self):
