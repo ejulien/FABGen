@@ -376,7 +376,7 @@ static inline void _DecModuleRefCount() {
 
 		self._source += '''\
 struct type_tag_info {
-	const char *type_tag;
+	uint32_t type_tag;
 	const char *c_type;
 
 	bool (*check)(PyObject *o);
@@ -385,14 +385,14 @@ struct type_tag_info {
 };
 \n'''
 
-		self._source += 'static type_tag_info *get_type_tag_info(const char *type_tag);\n\n'
+		self._source += 'static type_tag_info *get_type_tag_info(uint32_t type_tag);\n\n'
 
 		self._source += '''\
 typedef struct {
 	PyObject_HEAD;
 
 	uint32_t magic_u32; // wrapped_Object marker
-	const char *type_tag; // wrapped pointer type tag
+	uint32_t type_tag; // wrapped pointer type tag
 
 	void *obj;
 	char inline_obj[16]; // storage for inline objects
@@ -400,7 +400,7 @@ typedef struct {
 	void (*on_delete)(void *);
 } wrapped_Object;
 
-static void init_wrapped_Object(wrapped_Object *o, const char *type_tag, void *obj) {
+static void init_wrapped_Object(wrapped_Object *o, uint32_t type_tag, void *obj) {
 	o->magic_u32 = 0x46414221;
 	o->type_tag = type_tag;
 
@@ -627,7 +627,7 @@ static inline bool CheckArgsTuple(PyObject *args) {
 
 		out = '''\
 struct %s {
-	const char *type_tag;
+	uint32_t type_tag;
 	const char *c_type;
 
 	bool (*check)(PyObject *o);
@@ -637,13 +637,13 @@ struct %s {
 ''' % type_info_name
 
 		out += '// return a type info from its type tag\n'
-		out += '%s *%s(const char *type_tag);\n' % (type_info_name, gen.apply_api_prefix('get_type_tag_info'))
+		out += '%s *%s(uint32_t type_tag);\n' % (type_info_name, gen.apply_api_prefix('get_type_tag_info'))
 
 		out += '// return a type info from its type name\n'
 		out += '%s *%s(const char *type);\n' % (type_info_name, gen.apply_api_prefix('get_type_info'))
 
 		out += '// returns the typetag of a Python object, nullptr if not a Fabgen object\n'
-		out += 'const char *%s(PyObject *o);\n\n' % gen.apply_api_prefix('get_wrapped_object_type_tag')
+		out += 'uint32_t %s(PyObject *o);\n\n' % gen.apply_api_prefix('get_wrapped_object_type_tag')
 
 		return out
 
@@ -651,7 +651,7 @@ struct %s {
 		type_info_name = gen.apply_api_prefix('type_info')
 
 		self._source += '// Note: Types using a storage class for conversion are not listed here.\n'
-		self._source += 'static std::map<const char *, %s> __type_tag_infos;\n\n' % type_info_name
+		self._source += 'static std::map<uint32_t, %s> __type_tag_infos;\n\n' % type_info_name
 
 		self._source += 'static void __initialize_type_tag_infos() {\n'
 		entries = []
@@ -661,7 +661,7 @@ struct %s {
 		self._source += '};\n\n'
 
 		self._source += '''\
-%s *%s(const char *type_tag) {
+%s *%s(uint32_t type_tag) {
 	auto i = __type_tag_infos.find(type_tag);
 	return i == __type_tag_infos.end() ? nullptr : &i->second;
 }\n\n''' % (type_info_name, gen.apply_api_prefix('get_type_tag_info'))
