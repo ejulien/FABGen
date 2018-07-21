@@ -128,7 +128,7 @@ class APIGenerator(gen.FABGen):
                     i = 0
                     for arg in proto['args']:
                         if arg['carg'].name in proto['features']['arg_out']:
-                            xml += '<param name="OUTPUT%d" type="%s"/>\n' % (i, arg['conv'].bound_name)
+                            xml += '<parm name="OUTPUT%d" type="%s"/>\n' % (i, arg['conv'].bound_name)
                             i += 1
                 xml += '</function>\n'
             else:
