@@ -610,8 +610,8 @@ const char *%s(lua_State *L, int idx) {
 }\n\n'''
 
 		# variable lookup map
-		self._source += build_index_map('__index_%s_var_map' % self._name, self._bound_variables, lambda v: True, lambda v: '	{"%s", %s}' % (v['name'], v['getter']))
-		self._source += build_index_map('__newindex_%s_var_map' % self._name, self._bound_variables, lambda v: v['setter'], lambda v: '	{"%s", %s}' % (v['name'], v['setter']))
+		self._source += build_index_map('__index_%s_var_map' % self._name, self._bound_variables, lambda v: True, lambda v: '	{"%s", %s}' % (v['bound_name'], v['getter']))
+		self._source += build_index_map('__newindex_%s_var_map' % self._name, self._bound_variables, lambda v: v['setter'], lambda v: '	{"%s", %s}' % (v['bound_name'], v['setter']))
 
 		self._source += '''\
 static int __index_%s_var(lua_State *L) {

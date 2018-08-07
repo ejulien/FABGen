@@ -15,6 +15,10 @@ struct simple_struct {
 };
 
 simple_struct s;
+
+namespace ns {
+	int v{14};
+}
 ''', True, False)
 
 	simple_struct = gen.begin_class('simple_struct')
@@ -22,6 +26,7 @@ simple_struct s;
 	gen.end_class(simple_struct)
 
 	gen.bind_variables(['int v', 'simple_struct s'])
+	gen.bind_variable('int ns::v', bound_name='w')
 
 	gen.finalize()
 	return gen.get_output()
@@ -37,6 +42,8 @@ assert my_test.v == 5
 assert my_test.s.v == 4
 my_test.s.v = 9
 assert my_test.s.v == 9
+
+assert my_test.w == 14
 '''
 
 test_lua = '''\
@@ -49,4 +56,6 @@ assert(my_test.v == 5)
 assert(my_test.s.v == 4)
 my_test.s.v = 9
 assert(my_test.s.v == 9)
+
+assert(my_test.w == 14)
 '''

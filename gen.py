@@ -186,6 +186,18 @@ _CArg.grammar = attr("ctype", _CType), optional(name())
 
 
 #
+class _CVar:
+	def __repr__(self):  # pragma: no cover
+		out = repr(self.ctype)
+		if hasattr(self, 'name'):
+			out += ' ' + str(self.name)
+		return out
+
+
+_CVar.grammar = attr("ctype", _CType), optional(attr("name", typename))
+
+
+#
 def ctype_ref_to(src_ref, dst_ref):
 	i = 0
 	while i < len(src_ref) and i < len(dst_ref):
@@ -1038,14 +1050,17 @@ class FABGen:
 			self.bind_static_member(conv, member, features)
 
 	#
-	def bind_variable(self, var, features=[]):
-		arg = parse(var, _CArg)
+	def bind_variable(self, var, features=[], bound_name=None):
+		arg = parse(var, _CVar)
+
+		if bound_name == None:
+			bound_name = get_symbol_default_bound_name(arg.name)
 
 		# getter
 		expr_eval = lambda args: '&%s;' % arg.name
 
 		getter_protos = [(repr(arg.ctype.add_ref('*')), [], features)]
-		getter_proxy_name = apply_api_prefix('get_%s_variable' % get_symbol_default_bound_name(arg.name))
+		getter_proxy_name = apply_api_prefix('get_%s_variable' % bound_name)
 
 		self.__bind_proxy(getter_proxy_name, None, getter_protos, 'get variable %s' % arg.name, expr_eval, 'getter', 0)
 
@@ -1053,14 +1068,14 @@ class FABGen:
 		if not arg.ctype.is_const():
 			expr_eval = lambda args: '%s = %s;' % (arg.name, args[0])
 
-			setter_protos = [('void', [var], features)]
-			setter_proxy_name = apply_api_prefix('set_%s_variable' % get_symbol_default_bound_name(arg.name))
+			setter_protos = [('void', ["%s %s" % (str(arg.ctype), bound_name)], features)]
+			setter_proxy_name = apply_api_prefix('set_%s_variable' % bound_name)
 
 			self.__bind_proxy(setter_proxy_name, None, setter_protos, 'set variable %s' % arg.name, expr_eval, 'setter', 1)
 		else:
 			setter_proxy_name = None
 
-		self._bound_variables.append({'name': arg.name, 'ctype': arg.ctype, 'getter': getter_proxy_name, 'setter': setter_proxy_name})
+		self._bound_variables.append({'name': arg.name, 'bound_name': bound_name, 'ctype': arg.ctype, 'getter': getter_proxy_name, 'setter': setter_proxy_name})
 
 	def bind_variables(self, vars, features=[]):
 		for var in vars:
