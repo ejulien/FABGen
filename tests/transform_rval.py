@@ -13,6 +13,7 @@ def bind_test(gen):
 	gen.insert_binding_code('''\
 struct A {
 	virtual std::string GetType() const = 0;
+	int GetBaseValue() const { return 12; }
 };
 
 struct B : A {
@@ -44,6 +45,7 @@ A *get_c() { return c.get(); }
 	A = gen.begin_class('A', noncopyable=True)
 	A.add_feature('rval_transform', A_rval_transform)
 	gen.bind_method(A, 'GetType', 'std::string', [])
+	gen.bind_method(A, 'GetBaseValue', 'int', [])
 	gen.end_class(A)
 
 	B = gen.begin_class('B')
@@ -68,9 +70,11 @@ import my_test
 
 B = my_test.get_b()
 assert B.b == 3
+assert B.GetBaseValue() == 12
 
 C = my_test.get_c()
 assert C.c == 7
+assert C.GetBaseValue() == 12
 '''
 
 test_lua = '''\
@@ -78,7 +82,9 @@ my_test = require "my_test"
 
 B = my_test.get_b()
 assert(B.b == 3)
+assert(B:GetBaseValue() == 12)
 
 C = my_test.get_c()
 assert(C.c == 7)
+assert(C:GetBaseValue() == 12)
 '''
