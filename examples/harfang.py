@@ -457,7 +457,7 @@ void %s(PyObject *o, void *obj) {
 		int_conv.check_func, int_conv.to_c_func,
 		float_conv.check_func, float_conv.to_c_func,
 		string_conv.check_func, string_conv.to_c_func,
-		gen.apply_api_prefix('get_type_tag_info'))
+		gen.apply_api_prefix('get_bound_type_info'))
 
 				from_c = '''\
 PyObject *%s(void *obj, OwnershipPolicy policy) {
@@ -492,7 +492,7 @@ PyObject *%s(void *obj, OwnershipPolicy policy) {
 		int_conv.from_c_func,
 		float_conv.from_c_func,
 		string_conv.from_c_func,
-		gen.apply_api_prefix('get_type_info'))
+		gen.apply_api_prefix('get_c_type_info'))
 
 				return check + to_c + from_c
 
@@ -556,7 +556,7 @@ void %s(lua_State *L, int idx, void *obj) {
 		__ASSERT_ALWAYS__("Unsupported value type (from Lua)");
 	}
 }
-''' % (self.to_c_func, gen.apply_api_prefix('get_wrapped_object_type_tag'), gen.apply_api_prefix('get_type_tag_info'))
+''' % (self.to_c_func, gen.apply_api_prefix('get_wrapped_object_type_tag'), gen.apply_api_prefix('get_bound_type_info'))
 
 				from_c = '''\
 int %s(lua_State *L, void *obj, OwnershipPolicy) {
@@ -593,7 +593,7 @@ int %s(lua_State *L, void *obj, OwnershipPolicy) {
 	}
 	return 1;
 }
-''' % (self.from_c_func, gen.apply_api_prefix('get_type_info'))
+''' % (self.from_c_func, gen.apply_api_prefix('get_c_type_info'))
 
 				return check + to_c + from_c
 
