@@ -41,7 +41,7 @@ def output_binding(gen):
 
 	script.bind(gen)
 
-	hdr, src = gen.get_output()
+	hdr, src, api = gen.get_output()
 
 	hdr_path = os.path.join(args.out, 'bind_%s.h' % gen.get_language())
 	cpp_path = os.path.join(args.out, 'bind_%s.cpp' % gen.get_language())
@@ -54,17 +54,12 @@ def output_binding(gen):
 	print('Files written as %s and %s' % (hdr_path, cpp_path))
 
 	if not args.no_fabgen_api:
-		cmn_path = os.path.join(args.out, 'fabgen.h')
+		api_path = os.path.join(args.out, 'fabgen.h')
 
-		with open(cmn_path, mode='w', encoding='utf-8') as f:
-			f.write('''\
-// FABgen .h
+		with open(api_path, mode='w', encoding='utf-8') as f:
+			f.write(api)
 
-#pragma once
-
-enum OwnershipPolicy { NonOwning, Copy, Owning };
-''')
-		print('FABgen API written as %s' % cmn_path)
+		print('FABgen API written as %s' % api_path)
 	else:
 		print('FABgen API (fabgen.h) not written')
 

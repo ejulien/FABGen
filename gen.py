@@ -1243,8 +1243,17 @@ static void *_type_tag_cast(void *in_ptr, uint32_t in_type_tag, uint32_t out_typ
 		if self.verbose:  # pragma: no cover
 			self.__print_stats()
 
+	def __get_api(self):
+		return '''\
+// FABgen .h
+
+#pragma once
+
+enum OwnershipPolicy { NonOwning, Copy, Owning };
+'''
+
 	def get_output(self):
-		return self._header, self._source
+		return self._header, self._source, self.__get_api()
 
 	def _build_protos(self, protos):
 		return self.__prepare_protos(self.__expand_protos(protos))

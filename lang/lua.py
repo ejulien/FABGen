@@ -521,6 +521,7 @@ static int wrapped_Object_gc(lua_State *L) {
 struct %s {
 	uint32_t type_tag;
 	const char *c_type;
+	const char *bound_name;
 
 	bool (*check)(lua_State *L, int index);
 	void (*to_c)(lua_State *L, int index, void *out);
@@ -543,16 +544,16 @@ struct %s {
 		type_info_name = gen.apply_api_prefix('type_info')
 
 		self._source += '// Note: Types using a storage class for conversion are not listed here.\n'
-		self._source += 'static std::map<std::string, %s> __type_tag_infos;\n\n' % type_info_name
+		self._source += 'static std::map<uint32_t, %s> __type_tag_infos;\n\n' % type_info_name
 
 		self._source += 'static void __initialize_type_tag_infos() {\n'
 		for type in self._bound_types:
 			if not type.c_storage_class:
-				self._source += '	__type_tag_infos["%s"] = {%s, "%s", %s, %s, %s};\n' % (type.bound_name, type.type_tag, str(type.ctype), type.check_func, type.to_c_func, type.from_c_func)
+				self._source += '	__type_tag_infos[%s] = {%s, "%s", "%s", %s, %s, %s};\n' % (type.type_tag, type.type_tag, str(type.ctype), type.bound_name, type.check_func, type.to_c_func, type.from_c_func)
 		self._source += '};\n\n'
 
 		self._source += '''\
-%s *%s(const char *type_tag) {
+%s *%s(uint32_t type_tag) {
 	auto i = __type_tag_infos.find(type_tag);
 	return i == __type_tag_infos.end() ? nullptr : &i->second;
 }\n\n''' % (type_info_name, gen.apply_api_prefix('get_bound_type_info'))
@@ -562,7 +563,7 @@ struct %s {
 		self._source += 'static void __initialize_type_infos() {\n'
 		for type in self._bound_types:
 			if not type.c_storage_class:
-				self._source += '	__type_infos["%s"] = {%s, "%s", %s, %s, %s};\n' % (str(type.ctype), type.type_tag, str(type.ctype), type.check_func, type.to_c_func, type.from_c_func)
+				self._source += '	__type_infos["%s"] = {%s, "%s", "%s", %s, %s, %s};\n' % (str(type.ctype), type.type_tag, str(type.ctype), type.bound_name, type.check_func, type.to_c_func, type.from_c_func)
 		self._source += '};\n\n'
 
 		self._source += '''
