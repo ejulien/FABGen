@@ -762,6 +762,8 @@ class FABGen:
 			rval_conv = proto['rval']['conv']
 			rval_storage_ctype = proto['rval']['storage_ctype'].add_ref('*')  # constructor returns a pointer
 
+			ownership = 'Owning'  # constructor output is always owned by the VM
+
 			if enable_proxy:
 				proxy = rval_conv._features['proxy']
 
@@ -771,10 +773,21 @@ class FABGen:
 				self._source += self.decl_var(rval_storage_ctype, 'rval')
 				self._source += proxy.wrap('rval_raw', 'rval')
 			else:
-				self._source += self.decl_var(rval_storage_ctype, 'rval', ' = ')
-				self._source += 'new %s(%s);\n' % (rval_conv.ctype, ', '.join(c_call_args))
+				if rval_conv._inline:
+					if len(c_call_args) > 0:
+						self._source += '%s _new_obj(%s);\n' % (rval_conv.ctype, ', '.join(c_call_args))  # construct new inline object on the stack
+					else:
+						self._source += '%s _new_obj;\n' % rval_conv.ctype
+					ownership = 'Copy'  # inline objects are constructed on the heap then copy constructed to the VM memory block
 
-			rvals_prepare_args.append({'conv': rval_conv, 'ctype': rval_storage_ctype, 'var': 'rval', 'is_arg_in_out': False, 'ctx': ctx, 'ownership': 'Owning'})  # constructor output is always owned by VM
+				self._source += self.decl_var(rval_storage_ctype, 'rval', ' = ')
+
+				if rval_conv._inline:
+					self._source += '&_new_obj;\n'
+				else:
+					self._source += 'new %s(%s);\n' % (rval_conv.ctype, ', '.join(c_call_args))
+
+			rvals_prepare_args.append({'conv': rval_conv, 'ctype': rval_storage_ctype, 'var': 'rval', 'is_arg_in_out': False, 'ctx': ctx, 'ownership': ownership})
 			rvals.append('rval')
 		else:
 			rval_conv = proto['rval']['conv']
@@ -948,7 +961,7 @@ class FABGen:
 
 	def bind_constructor_overloads(self, conv, proto_args):
 		type = repr(conv.ctype)
-		expr_eval = lambda args: 'new %s(%s);' % (type, ', '.join(args))
+		expr_eval = None  # unused for constructors
 
 		protos = [(type, args[0], args[1]) for args in proto_args]
 		proxy_name = apply_api_prefix('construct_%s' % conv.bound_name)
