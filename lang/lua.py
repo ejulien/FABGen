@@ -401,9 +401,45 @@ class LuaPtrTypeConverter(LuaTypeConverterCommon):
 
 
 #
+class LuaExternTypeConverter(LuaTypeConverterCommon):
+	def get_type_api(self, module_name):
+		return ''
+
+	def to_c_call(self, in_var, out_var_p):
+		out = ''
+		if self.c_storage_class:
+			c_storage_var = 'storage_%s' % out_var_p.replace('&', '_')
+			out += '%s %s;\n' % (self.c_storage_class, c_storage_var)
+			out += '(*%s)(L, %s, (void *)%s, %s);\n' % (self.to_c_func, in_var, out_var_p, c_storage_var)
+		else:
+			out += '(*%s)(L, %s, %s);\n' % (self.to_c_func, in_var, out_var_p)
+		return out
+
+	def from_c_call(self, out_var, expr, ownership):
+		return "(*%s)(L, (void *)%s, %s);\n" % (self.from_c_func, expr, ownership)
+
+	def check_call(self, in_var):
+		return "(*%s)(L, %s)" % (self.check_func, in_var)
+
+	def get_type_glue(self, gen, module_name):
+		out = '// extern type API for %s\n' % self.ctype
+		if self.c_storage_class:
+			out += 'struct %s;\n' % self.c_storage_class
+		out += 'bool (*%s)(lua_State *L, int idx) = nullptr;\n' % self.check_func
+		if self.c_storage_class:
+			out += 'void (*%s)(lua_State *L, int idx, void *obj, %s &storage) = nullptr;\n' % (self.to_c_func, self.c_storage_class)
+		else:
+			out += 'void (*%s)(lua_State *L, int idx, void *obj) = nullptr;\n' % self.to_c_func
+		out += 'int (*%s)(lua_State *L, void *obj, OwnershipPolicy) = nullptr;\n' % self.from_c_func
+		out += '\n'
+		return out
+
+
+#
 class LuaGenerator(gen.FABGen):
 	default_ptr_converter = LuaPtrTypeConverter
 	default_class_converter = LuaClassTypeConverter
+	default_extern_converter = LuaExternTypeConverter
 
 	def __init__(self):
 		super().__init__()

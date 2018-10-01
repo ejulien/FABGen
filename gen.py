@@ -396,6 +396,8 @@ class FABGen:
 		self._bound_variables = []  # list of bound variables
 		self._enums = {}  # list of bound enumerations
 
+		self._extern_types = []  # list of extern types
+
 		self._custom_init_code = ""
 		self._custom_free_code = ""
 
@@ -512,6 +514,28 @@ class FABGen:
 	def end_class(self, conv):
 		"""End a class declaration."""
 		self.end_type(conv)
+
+	#
+	def bind_extern_type(self, type):
+		"""Bind an external type."""
+		if type in self.__type_convs:
+			return self.__type_convs[type]  # type already declared
+
+		default_storage_type = type + '*'
+
+		conv = self.default_extern_converter(type, default_storage_type, None)
+
+		if self.verbose:
+			print('Binding extern type %s (%s)' % (conv.bound_name, conv.ctype))
+
+		self._header += conv.get_type_api(self._name)
+		self._source += conv.get_type_api(self._name)
+
+		self._extern_types.append(conv)
+		self.__type_convs[repr(conv.ctype)] = conv
+
+		self._source += conv.get_type_glue(self, self._name) + '\n'
+		return conv
 
 	#
 	def bind_ptr(self, type, converter_class=None, bound_name=None, features={}):
