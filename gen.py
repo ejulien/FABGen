@@ -375,6 +375,7 @@ class FABGen:
 		self._header += '// FABgen output .h\n'
 		self._header += common
 		self._header += '#pragma once\n\n'
+		self._header += '#include <cstdint>\n\n'
 
 	def output_includes(self):
 		self.add_include('cstdint', True)
@@ -1255,6 +1256,7 @@ static void *_type_tag_cast(void *in_ptr, uint32_t in_type_tag, uint32_t out_typ
 		out += ' - %d types\n' % len(self.__type_convs)
 		out += ' - %d functions\n' % len(self._bound_functions)
 		out += ' - %d enums\n' % len(self._enums)
+		out += ' - %d extern types\n' % len(self._extern_types)
 
 		method_count, static_method_count, member_count, static_member_count = 0, 0, 0, 0
 
