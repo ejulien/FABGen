@@ -401,9 +401,45 @@ class LuaPtrTypeConverter(LuaTypeConverterCommon):
 
 
 #
+class LuaExternTypeConverter(LuaTypeConverterCommon):
+	def get_type_api(self, module_name):
+		return ''
+
+	def to_c_call(self, in_var, out_var_p):
+		out = ''
+		if self.c_storage_class:
+			c_storage_var = 'storage_%s' % out_var_p.replace('&', '_')
+			out += '%s %s;\n' % (self.c_storage_class, c_storage_var)
+			out += '(*%s)(L, %s, (void *)%s, %s);\n' % (self.to_c_func, in_var, out_var_p, c_storage_var)
+		else:
+			out += '(*%s)(L, %s, %s);\n' % (self.to_c_func, in_var, out_var_p)
+		return out
+
+	def from_c_call(self, out_var, expr, ownership):
+		return "(*%s)(L, (void *)%s, %s);\n" % (self.from_c_func, expr, ownership)
+
+	def check_call(self, in_var):
+		return "(*%s)(L, %s)" % (self.check_func, in_var)
+
+	def get_type_glue(self, gen, module_name):
+		out = '// extern type API for %s\n' % self.ctype
+		if self.c_storage_class:
+			out += 'struct %s;\n' % self.c_storage_class
+		out += 'bool (*%s)(lua_State *L, int idx) = nullptr;\n' % self.check_func
+		if self.c_storage_class:
+			out += 'void (*%s)(lua_State *L, int idx, void *obj, %s &storage) = nullptr;\n' % (self.to_c_func, self.c_storage_class)
+		else:
+			out += 'void (*%s)(lua_State *L, int idx, void *obj) = nullptr;\n' % self.to_c_func
+		out += 'int (*%s)(lua_State *L, void *obj, OwnershipPolicy) = nullptr;\n' % self.from_c_func
+		out += '\n'
+		return out
+
+
+#
 class LuaGenerator(gen.FABGen):
 	default_ptr_converter = LuaPtrTypeConverter
 	default_class_converter = LuaClassTypeConverter
+	default_extern_converter = LuaExternTypeConverter
 
 	def __init__(self):
 		super().__init__()
@@ -585,10 +621,55 @@ uint32_t %s(lua_State *L, int idx) {
 		self._source += '   return 0;\n'
 		self._source += '}\n\n'
 
+	def output_linker_api(self):
+		link_func = gen.apply_api_prefix('link_binding')
+
+		self._header += '''\
+/*
+	pass the get_c_type_info function from another binding to this function to resolve external types declared in this binding.
+	you will need to write a wrapper to cast the type_info * pointer to the correct type if you are using a binding prefix.
+	this function returns the number of unresolved external symbols.
+*/
+size_t %s(%s *(*get_c_type_info)(const char *));\n
+''' % (link_func, gen.apply_api_prefix('type_info'))
+
+		self._source += '''\
+size_t %s(%s *(*get_c_type_info)(const char *type)) {
+	size_t unresolved = 0;\n
+''' % (link_func, gen.apply_api_prefix('type_info'))
+
+		for extern_type in self._extern_types:
+			self._source += '''\
+	if (%s == nullptr) {
+		if (%s *info = (*get_c_type_info)("%s")) {
+			%s = info->check;
+			%s = info->to_c;
+			%s = info->from_c;
+		} else {
+			++unresolved;
+		}
+	}
+
+''' % (
+		extern_type.check_func,
+		gen.apply_api_prefix('type_info'),
+		extern_type.ctype,
+		extern_type.check_func,
+		extern_type.to_c_func,
+		extern_type.from_c_func
+	)
+
+		self._source += '''\
+	return unresolved;
+}
+
+'''
+
 	def finalize(self):
 		super().finalize()
 
 		self.output_binding_api()
+		self.output_linker_api()
 
 		# output module functions table
 		self._source += 'static const luaL_Reg %s_global_functions[] = {\n' % self._name
