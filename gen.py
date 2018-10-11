@@ -517,14 +517,14 @@ class FABGen:
 		self.end_type(conv)
 
 	#
-	def bind_extern_type(self, type):
+	def bind_extern_type(self, type, bound_name=None, module=None):
 		"""Bind an external type."""
 		if type in self.__type_convs:
 			return self.__type_convs[type]  # type already declared
 
 		default_storage_type = type + '*'
 
-		conv = self.default_extern_converter(type, default_storage_type, None)
+		conv = self.default_extern_converter(type, default_storage_type, bound_name, module)
 
 		if self.verbose:
 			print('Binding extern type %s (%s)' % (conv.bound_name, conv.ctype))
