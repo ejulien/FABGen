@@ -66,6 +66,7 @@ class APIGenerator(gen.FABGen):
         self.bind_type(DummyTypeConverterCommon('uint16_t', bound_name='UInt16')).nobind = True
         self.bind_type(DummyTypeConverterCommon('uint32_t', bound_name='UInt32')).nobind = True
         self.bind_type(DummyTypeConverterCommon('uint64_t', bound_name='UInt64')).nobind = True
+        self.bind_type(DummyTypeConverterCommon('intptr_t', bound_name='Intptr')).nobind = True
         self.bind_type(DummyTypeConverterCommon('size_t')).nobind = True
         self.bind_type(DummyTypeConverterCommon('float')).nobind = True
         self.bind_type(DummyTypeConverterCommon('double')).nobind = True

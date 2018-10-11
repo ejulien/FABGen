@@ -60,6 +60,7 @@ def bind_std(gen):
 			'PyObject *%s(void *obj, OwnershipPolicy) { return PyLong_FromUnsignedLongLong(*((%s*)obj)); }\n' % (self.from_c_func, self.ctype)
 
 	gen.bind_type(PythonUnsignedInt64Converter('uint64_t'))
+	gen.bind_type(PythonUnsignedInt64Converter('intptr_t'))
 
 	class PythonSize_tConverter(lang.cpython.PythonTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
