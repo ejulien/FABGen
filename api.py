@@ -36,9 +36,6 @@ class DummyExternTypeConverter(gen.TypeConverter):
 
 		self.module = module  # store module
 
-		if module is not None:
-			self.bound_name = module + '.' + self.bound_name
-
 	def get_type_api(self, module_name):
 		return ''
 
