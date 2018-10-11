@@ -4,5 +4,5 @@
 	"files.associations": {
 		"xkeycheck.h": "c"
 	},
-	"python.pythonPath": "/usr/bin/python3"
+	"python.pythonPath": "C:\\Python35-32\\python.exe"
 }

@@ -129,7 +129,22 @@
 			"program": "${workspaceRoot}/bind.py",
 			"cwd": "${workspaceRoot}",
 			"args": ["d:/gs/binding/bind_harfang.py", "--lua", "--out", "d:/", "--embedded"],
-			"env": null,
+			"envFile": "${workspaceRoot}/.env",
+			"debugOptions": [
+				"WaitOnAbnormalExit",
+				"WaitOnNormalExit",
+				"RedirectOutput"
+			]
+		},
+		{
+			"name": "Lua53: Bind Assemble",
+			"type": "python",
+			"request": "launch",
+			"stopOnEntry": false,
+			"pythonPath": "${config:python.pythonPath}",
+			"program": "${workspaceRoot}/bind.py",
+			"cwd": "${workspaceRoot}",
+			"args": ["d:/gs/assemble/core/bind_assemble.py", "--lua", "--out", "d:/", "--embedded"],
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
 				"WaitOnAbnormalExit",
@@ -145,8 +160,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--pybase", "C:/Pythons/35", "--sdkbase", "D:/harfang/sdk", "--x64"],
-			"env": null,
+			"args": ["--pybase", "C:/Pythons/35", "--luabase", "D:/harfang/sdk", "--x64"],
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
 				"WaitOnAbnormalExit",
@@ -163,7 +177,6 @@
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
 			"args": ["--linux", "--x64", "--luabase", "/home/ejulien/Code/lua"],
-			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
 				"WaitOnAbnormalExit",
@@ -180,7 +193,6 @@
 			"program": "${workspaceRoot}/bind.py",
 			"cwd": "${workspaceRoot}",
 			"args": ["d:/gs-fabgen/bind_harfang.py", "--lua", "--cpython", "--out", "d:/gs-fabgen/"],
-			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
 				"WaitOnAbnormalExit",
