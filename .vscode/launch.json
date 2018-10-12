@@ -43,8 +43,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--pybase", "C:/Pythons/36-64", "--x64"],
-			"env": null,
+			"args": ["--pybase", "C:/Pythons/36", "--x64"],
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
 				"WaitOnAbnormalExit",
@@ -60,8 +59,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--pybase", "C:/Pythons/35-32", "--debug", "transform_rval"],
-			"env": null,
+			"args": ["--pybase", "C:/Pythons/36", "--debug", "extern_type", "--x64"],
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
 				"WaitOnAbnormalExit",
