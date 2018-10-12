@@ -39,6 +39,7 @@ def bind_std(gen):
 	gen.bind_type(LuaIntConverter('uint16_t'))
 	gen.bind_type(LuaIntConverter('uint32_t'))
 	gen.bind_type(LuaIntConverter('uint64_t'))
+	gen.bind_type(LuaIntConverter('intptr_t'))
 	gen.bind_type(LuaIntConverter('size_t'))
 
 	class LuaDoubleConverter(lang.lua.LuaTypeConverterCommon):

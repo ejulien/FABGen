@@ -61,6 +61,14 @@ def bind_std(gen):
 
 	gen.bind_type(PythonUnsignedInt64Converter('uint64_t'))
 
+	class PythonVoidPtrConverter(lang.cpython.PythonTypeConverterCommon):
+		def get_type_glue(self, gen, module_name):
+			return 'bool %s(PyObject *o) { return PyLong_CheckExact(o) ? true : false; }\n' % self.check_func +\
+			'void %s(PyObject *o, void *obj) { *((%s*)obj) = (%s)PyLong_AsVoidPtr(o); }\n' % (self.to_c_func, self.ctype, self.ctype) +\
+			'PyObject *%s(void *obj, OwnershipPolicy) { return PyLong_FromVoidPtr((void *)(*((%s*)obj))); }\n' % (self.from_c_func, self.ctype)
+
+	gen.bind_type(PythonVoidPtrConverter('intptr_t'))
+
 	class PythonSize_tConverter(lang.cpython.PythonTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
 			return 'bool %s(PyObject *o) { return PyLong_CheckExact(o) ? true : false; }\n' % self.check_func +\
