@@ -335,10 +335,45 @@ class PythonPtrTypeDefaultConverter(PythonTypeConverterCommon):
 		return out
 
 
+class PythonExternTypeConverter(PythonTypeConverterCommon):
+	def get_type_api(self, module_name):
+		return ''
+
+	def to_c_call(self, in_var, out_var_p):
+		out = ''
+		if self.c_storage_class:
+			c_storage_var = 'storage_%s' % out_var_p.replace('&', '_')
+			out += '%s %s;\n' % (self.c_storage_class, c_storage_var)
+			out += '(*%s)(%s, (void *)%s, %s);\n' % (self.to_c_func, in_var, out_var_p, c_storage_var)
+		else:
+			out += '(*%s)(%s, (void *)%s);\n' % (self.to_c_func, in_var, out_var_p)
+		return out
+
+	def from_c_call(self, out_var, expr, ownership):
+		return "%s = (*%s)((void *)%s, %s);\n" % (out_var, self.from_c_func, expr, ownership)
+
+	def check_call(self, in_var):
+		return "(*%s)(%s)" % (self.check_func, in_var)
+
+	def get_type_glue(self, gen, module_name):
+		out = '// extern type API for %s\n' % self.ctype
+		if self.c_storage_class:
+			out += 'struct %s;\n' % self.c_storage_class
+		out += 'bool (*%s)(PyObject *o) = nullptr;\n' % self.check_func
+		if self.c_storage_class:
+			out += 'void (*%s)(PyObject *o, void *obj, %s &storage) = nullptr;\n' % (self.to_c_func, self.c_storage_class)
+		else:
+			out += 'void (*%s)(PyObject *o, void *obj) = nullptr;\n' % self.to_c_func
+		out += 'PyObject *(*%s)(void *obj, OwnershipPolicy) = nullptr;\n' % self.from_c_func
+		out += '\n'
+		return out
+
+
 #
 class CPythonGenerator(gen.FABGen):
 	default_class_converter = PythonClassTypeDefaultConverter
 	default_ptr_converter = PythonPtrTypeDefaultConverter
+	default_extern_converter = PythonExternTypeConverter
 
 	def __init__(self):
 		super().__init__()

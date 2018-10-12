@@ -625,55 +625,10 @@ uint32_t %s(lua_State *L, int idx) {
 		self._source += '   return 0;\n'
 		self._source += '}\n\n'
 
-	def output_linker_api(self):
-		link_func = gen.apply_api_prefix('link_binding')
-
-		self._header += '''\
-/*
-	pass the get_c_type_info function from another binding to this function to resolve external types declared in this binding.
-	you will need to write a wrapper to cast the type_info * pointer to the correct type if you are using a binding prefix.
-	this function returns the number of unresolved external symbols.
-*/
-size_t %s(%s *(*get_c_type_info)(const char *));\n
-''' % (link_func, gen.apply_api_prefix('type_info'))
-
-		self._source += '''\
-size_t %s(%s *(*get_c_type_info)(const char *type)) {
-	size_t unresolved = 0;\n
-''' % (link_func, gen.apply_api_prefix('type_info'))
-
-		for extern_type in self._extern_types:
-			self._source += '''\
-	if (%s == nullptr) {
-		if (%s *info = (*get_c_type_info)("%s")) {
-			%s = info->check;
-			%s = info->to_c;
-			%s = info->from_c;
-		} else {
-			++unresolved;
-		}
-	}
-
-''' % (
-		extern_type.check_func,
-		gen.apply_api_prefix('type_info'),
-		extern_type.ctype,
-		extern_type.check_func,
-		extern_type.to_c_func,
-		extern_type.from_c_func
-	)
-
-		self._source += '''\
-	return unresolved;
-}
-
-'''
-
 	def finalize(self):
 		super().finalize()
 
 		self.output_binding_api()
-		self.output_linker_api()
 
 		# output module functions table
 		self._source += 'static const luaL_Reg %s_global_functions[] = {\n' % self._name
