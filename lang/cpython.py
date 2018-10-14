@@ -6,9 +6,6 @@ import gen
 
 #
 class PythonTypeConverterCommon(gen.TypeConverter):
-	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None, needs_c_storage_class=False):
-		super().__init__(type, arg_storage_type, bound_name, rval_storage_type, needs_c_storage_class)
-
 	def get_type_api(self, module_name):
 		out = '// type API for %s\n' % self.ctype
 		if self.c_storage_class:
@@ -308,9 +305,6 @@ static void delete_inline_%s(void *o) {
 
 #
 class PythonPtrTypeDefaultConverter(PythonTypeConverterCommon):
-	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):
-		super().__init__(type, arg_storage_type, bound_name, rval_storage_type)
-
 	def get_type_glue(self, gen, module_name):
 		out = '''bool %s(PyObject *o) {
 	if (PyLong_Check(o))
@@ -336,6 +330,10 @@ class PythonPtrTypeDefaultConverter(PythonTypeConverterCommon):
 
 
 class PythonExternTypeConverter(PythonTypeConverterCommon):
+	def __init__(self, type, arg_storage_type, bound_name, module):
+		super().__init__(type, arg_storage_type, bound_name)
+		self.module = module
+
 	def get_type_api(self, module_name):
 		return ''
 

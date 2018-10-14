@@ -48,10 +48,6 @@ def build_index_map(name, values, filter, gen_output):
 
 #
 class LuaClassTypeConverter(LuaTypeConverterCommon):
-	def __init__(self, type, arg_storage_type, bound_name=None, module=None):
-		super().__init__(type, arg_storage_type, bound_name, None, False)
-		self.module = module
-
 	def is_type_class(self):
 		return True
 
@@ -406,6 +402,10 @@ class LuaPtrTypeConverter(LuaTypeConverterCommon):
 
 #
 class LuaExternTypeConverter(LuaTypeConverterCommon):
+	def __init__(self, type, arg_storage_type, bound_name, module):
+		super().__init__(type, arg_storage_type, bound_name)
+		self.module = module
+
 	def get_type_api(self, module_name):
 		return ''
 
