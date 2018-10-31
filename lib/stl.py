@@ -10,6 +10,7 @@ class SharedPtrProxyFeature:
 		gen.add_cast(conv, self.wrapped_conv, lambda in_var, out_var: '%s = ((%s *)%s)->get();\n' % (out_var, conv.ctype, in_var))
 		conv._inline = True  # use inline alloc where possible
 		conv._supports_deep_compare = True  # supports deep comparison by default (compare wrapped (T*)'s and not (std::shared_ptr<T>*)'s)
+		conv._is_pointer = True  # should be checked against empty return value
 
 	def unwrap(self, in_var, out_var):
 		return '%s = %s->get();\n' % (out_var, in_var)

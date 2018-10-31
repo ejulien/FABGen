@@ -277,6 +277,7 @@ class TypeConverter:
 		self._moveable = False
 		self._inline = False
 		self._supports_deep_compare = False
+		self._is_pointer = False
 
 		self._features = {}
 		self._casts = []  # valid casts
@@ -724,10 +725,20 @@ class FABGen:
 		if 'rval_transform' in rval['conv']._features:
 			src += rval['conv']._features['rval_transform'](self, rval['conv'], expr, out_var, rval['ownership'])
 		else:
+			check_is_valid_pointer = rval['ctype'].is_pointer() or rval['conv']._is_pointer
+
+			if check_is_valid_pointer:
+				src += 'if (!%s) {\n' % rval['var']
+				src += self.rval_from_nullptr(out_var)
+				src += '} else {\n'
+
 			if rval['conv'].is_type_class() and rval['is_arg_in_out']:  # if an object is used as arg_out then reuse the input argument directly 
 				src += self.rval_assign_arg_in_out(out_var, self.get_arg(rval['arg_idx'], rval['ctx']))
 			else:
 				src += self.rval_from_c_ptr(rval['conv'], out_var, expr, rval['ownership'])
+
+			if check_is_valid_pointer:
+				src += '}\n'
 
 		return src
 

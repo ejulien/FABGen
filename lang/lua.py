@@ -542,6 +542,9 @@ static int wrapped_Object_gc(lua_State *L) {
 	def return_void_from_c(self):
 		return 'return 0;'
 
+	def rval_from_nullptr(self, out_var):
+		return 'lua_pushnil(L);\n++rval_count;\n'
+
 	def rval_from_c_ptr(self, conv, out_var, expr, ownership):
 		return 'rval_count += ' + conv.from_c_call(out_var, expr, ownership)
 
