@@ -19,6 +19,8 @@ struct simple_struct {
 };
 
 std::shared_ptr<simple_struct> get_shared_ptr_to_simple_struct() { return std::make_shared<simple_struct>(); }
+
+std::shared_ptr<simple_struct> get_empty_shared_ptr() { return {}; }
 ''', True, False)
 
 	gen.add_include('memory', True)
@@ -33,6 +35,8 @@ std::shared_ptr<simple_struct> get_shared_ptr_to_simple_struct() { return std::m
 	gen.end_class(shared_ptr_simple_struct_conv)
 
 	gen.bind_function('get_shared_ptr_to_simple_struct', 'std::shared_ptr<simple_struct>', [])
+
+	gen.bind_function('get_empty_shared_ptr', 'std::shared_ptr<simple_struct>', [])
 
 	gen.finalize()
 	return gen.get_output()
@@ -50,6 +54,10 @@ sp2 = my_test.ssimple_struct(9.0)
 
 assert sp2.u == 9.0
 assert sp2.v == 90
+
+spn = my_test.get_empty_shared_ptr()
+
+assert spn == None
 '''
 
 test_lua = '''\
@@ -64,4 +72,8 @@ sp2 = my_test.ssimple_struct(9.0)
 
 assert(sp2.u == 9.0)
 assert(sp2.v == 90)
+
+spn = my_test.get_empty_shared_ptr()
+
+assert(spn == nil)
 '''

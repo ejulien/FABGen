@@ -542,6 +542,9 @@ static inline bool CheckArgsTuple(PyObject *args) {
 	def declare_rval(self, out_var):
 		return 'PyObject *%s;\n' % out_var
 
+	def rval_from_nullptr(self, out_var):
+		return 'Py_INCREF(Py_None);\n%s = Py_None;\n' % out_var
+
 	def rval_from_c_ptr(self, conv, out_var, expr, ownership):
 		return conv.from_c_call(out_var, expr, ownership)
 
