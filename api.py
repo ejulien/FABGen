@@ -117,6 +117,9 @@ class APIGenerator(gen.FABGen):
 	def return_void_from_c(self):
 		return ''
 
+	def rval_from_nullptr(self, out_var):
+		return ''
+
 	def rval_from_c_ptr(self, conv, out_var, expr, ownership):
 		return ''
 
