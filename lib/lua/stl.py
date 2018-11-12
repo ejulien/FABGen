@@ -6,7 +6,6 @@ import lang.lua
 
 def bind_stl(gen):
 	gen.add_include('vector', True)
-
 	gen.add_include('string', True)
 
 	class LuaStringConverter(lang.lua.LuaTypeConverterCommon):
@@ -16,6 +15,46 @@ def bind_stl(gen):
 			'int %s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushstring(L, ((%s*)obj)->c_str()); return 1; }\n' % (self.from_c_func, self.ctype)
 
 	gen.bind_type(LuaStringConverter('std::string'))
+
+
+def bind_function_T(gen, type, bound_name=None):
+	gen.add_include('functional', True)
+
+	class LuaStdFunctionConverter(lang.lua.LuaTypeConverterCommon):
+		def get_type_glue(self, gen, module_name):
+			check = 'bool %s(lua_State *L, int idx) { return lua_isfunction(L, idx); }\n' % self.check_func
+
+			func = self.ctype.template.function
+
+			if hasattr(func, 'void_return'):
+				return_type = 'void'
+			else:
+				return_type = str(func.return_type)
+
+			parms = []
+			if hasattr(func, 'parms'):
+				parms = [str(parm) for parm in func.parms]
+
+			to_c = '''\
+void %s(lua_State *L, int idx, void *obj) {
+	LuaValueRef ref(L, idx);
+	*((%s*)obj) = [=](%s) -> %s {
+		ref.Push();
+	};
+}
+''' % (self.to_c_func, self.ctype, ', '.join(['%s v%d' % (parm, idx) for idx, parm in enumerate(parms)]), return_type)
+
+			from_c = '''\
+int %s(lua_State *L, void *obj, OwnershipPolicy) {
+	lua_pushcfunction(L, [](lua_State *L) -> int {
+		return 0; // TODO
+	});
+	return 1;
+}
+''' % (self.from_c_func)
+			return check + to_c + from_c
+
+	return gen.bind_type(LuaStdFunctionConverter(type))
 
 
 class LuaTableToStdVectorConverter(lang.lua.LuaTypeConverterCommon):

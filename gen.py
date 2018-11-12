@@ -15,6 +15,22 @@ def apply_api_prefix(symbol):
 
 
 #
+def get_fully_qualified_function_signature(func):
+	out = ''
+	if hasattr(func, 'void_return'):
+		out += 'void'
+	else:
+		out += str(func.return_type)
+
+	if hasattr(func, 'parms'):
+		args = [str(arg) for arg in func.parms]
+		out += '(%s)' % ', '.join(args)
+	else:
+		out += '()'
+
+	return out
+
+
 def get_fully_qualified_ctype_name(ctype):
 	out = ''
 	if ctype.const:
@@ -25,8 +41,11 @@ def get_fully_qualified_ctype_name(ctype):
 		out += 'unsigned '
 	out += ctype.name
 	if hasattr(ctype, 'template'):
-		args = [str(arg) for arg in ctype.template]
-		out += '<%s>' % ', '.join(args)
+		if hasattr(ctype.template, 'parms'):
+			args = [str(arg) for arg in ctype.template.parms]
+			out += '<%s>' % ', '.join(args)
+		elif hasattr(ctype.template, 'function'):
+			out += '<%s>' % get_fully_qualified_function_signature(ctype.template.function)
 	if ctype.const_ref:
 		out += ' const '
 	if hasattr(ctype, 'ref'):
@@ -57,7 +76,17 @@ def get_clean_ctype_name(ctype):
 	parts.append(ctype.name.replace(':', '_'))
 
 	if hasattr(ctype, 'template'):
-		parts.append('of_%s' % get_clean_ctype_name(ctype.template[0]))
+		if hasattr(ctype.template, 'parms'):
+			parts.append('of_%s' % get_clean_ctype_name(ctype.template.parms[0]))
+		elif hasattr(ctype.template, 'function'):
+			parts.append('function')
+			if hasattr(ctype.template.function, 'void_return'):
+				parts.append('void')
+			else:
+				parts.append(get_fully_qualified_ctype_name(ctype.template.function.return_type))
+			if hasattr(ctype.template.function, 'parms'):
+				for parm in ctype.template.function.parms:
+					parts.append(get_fully_qualified_ctype_name(parm))
 	if ctype.const_ref:
 		parts.append('const')
 	if hasattr(ctype, 'ref'):
@@ -123,8 +152,13 @@ typename = re.compile(r"((::)*(_|[A-z])[A-z0-9_]*)+")
 ref_re = re.compile(r"[&*]+")
 
 
-class _TemplateParameters(List):
+class _TemplateParameters:
 	pass
+
+
+class _FunctionSignature:
+	def __repr__(self):
+		return get_fully_qualified_function_signature(self)
 
 
 class _CType:
@@ -170,7 +204,8 @@ class _CType:
 		return t
 
 
-_TemplateParameters.grammar = "<", optional(csl(_CType)), ">"
+_FunctionSignature.grammar = [attr("void_return", "void"), attr("return_type", _CType)], "(", optional(attr("parms", csl(_CType))), ")"
+_TemplateParameters.grammar = "<", [attr("function", _FunctionSignature), attr("parms", csl(_CType))], ">"
 _CType.grammar = flag("const", K("const")), optional(flag("signed", K("signed"))), optional(flag("unsigned", K("unsigned"))), attr("name", typename), optional(attr("template", _TemplateParameters)), optional(attr("ref", ref_re)), flag("const_ref", K("const"))
 
 

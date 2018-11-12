@@ -505,6 +505,29 @@ static int wrapped_Object_gc(lua_State *L) {
 }
 \n'''
 
+		self._source += '''
+// helper class to store a reference to an Lua value on the stack
+class LuaValueRef {
+public:
+	LuaValueRef(lua_State *_L, int idx) : L(_L) {
+		lua_pushvalue(L, idx);
+		ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	}
+	~LuaValueRef() {
+		if (ref != LUA_NOREF)
+			luaL_unref(L, LUA_REGISTRYINDEX, ref);
+	}
+
+	void Push() const {
+		lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
+	}
+
+private:
+	lua_State *L{nullptr};
+	int ref{LUA_NOREF};
+};
+\n'''
+
 		self._source += self.get_binding_api_declaration()
 		self._header += self.get_binding_api_declaration()
 

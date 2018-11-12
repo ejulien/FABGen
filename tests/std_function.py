@@ -23,13 +23,15 @@ void SetIntIntFunction(std::function<int(int)> f) { int_int_function = f; }
 int InvokeIntIntFunction(int v) { return int_int_function(v); }
 ''', True, False)
 
-	lib.stl.bind_function_T(gen, 'void', [], 'VoidCb')
+	lib.stl.bind_function_T(gen, 'std::function<void()>', 'VoidCb')
 	gen.bind_function('SetSimpleVoidFunction', 'void', ['std::function<void()> f'])
 	gen.bind_function('InvokeSimpleVoidFunction', 'void', [])
 
-	lib.stl.bind_function_T(gen, 'int', ['int'], 'IntCbTakingInt')
+	lib.stl.bind_function_T(gen, 'std::function<int(int)>', 'IntCbTakingInt')
 	gen.bind_function('SetIntIntFunction', 'void', ['std::function<int(int)> f'])
 	gen.bind_function('InvokeIntIntFunction', 'int', ['int v'])
+
+	gen.finalize()
 
 	return gen.get_output()
 
