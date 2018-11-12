@@ -40,13 +40,13 @@ test_python = '''\
 import my_test
 
 def simple_void_function():
-    print("void function called!")
+	print("void function called!")
 
 my_test.SetSimpleVoidFunction(simple_void_function)
 my_test.InvokeSimpleVoidFunction()
 
 def int_int_function(v):
-    return v * 3
+	return v * 3
 
 my_test.SetIntIntFunction(int_int_function)
 r = my_test.InvokeIntIntFunction(5)
@@ -58,14 +58,14 @@ test_lua = '''\
 my_test = require "my_test"
 
 function simple_void_function()
-    print('void function called!')
+	print('void function called!')
 end
 
 my_test.SetSimpleVoidFunction(simple_void_function)
 my_test.InvokeSimpleVoidFunction()
 
 function int_int_function(v)
-    return v * 3
+	return v * 3
 end
 
 my_test.SetIntIntFunction(int_int_function)

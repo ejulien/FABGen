@@ -17,13 +17,13 @@ def apply_api_prefix(symbol):
 #
 def get_fully_qualified_function_signature(func):
 	out = ''
-	if hasattr(func, 'void_return'):
+	if hasattr(func, 'void_rval'):
 		out += 'void'
 	else:
-		out += str(func.return_type)
+		out += str(func.rval)
 
-	if hasattr(func, 'parms'):
-		args = [str(arg) for arg in func.parms]
+	if hasattr(func, 'args'):
+		args = [str(arg) for arg in func.args]
 		out += '(%s)' % ', '.join(args)
 	else:
 		out += '()'
@@ -41,8 +41,8 @@ def get_fully_qualified_ctype_name(ctype):
 		out += 'unsigned '
 	out += ctype.name
 	if hasattr(ctype, 'template'):
-		if hasattr(ctype.template, 'parms'):
-			args = [str(arg) for arg in ctype.template.parms]
+		if hasattr(ctype.template, 'args'):
+			args = [str(arg) for arg in ctype.template.args]
 			out += '<%s>' % ', '.join(args)
 		elif hasattr(ctype.template, 'function'):
 			out += '<%s>' % get_fully_qualified_function_signature(ctype.template.function)
@@ -76,16 +76,16 @@ def get_clean_ctype_name(ctype):
 	parts.append(ctype.name.replace(':', '_'))
 
 	if hasattr(ctype, 'template'):
-		if hasattr(ctype.template, 'parms'):
-			parts.append('of_%s' % get_clean_ctype_name(ctype.template.parms[0]))
+		if hasattr(ctype.template, 'args'):
+			parts.append('of_' + '_and_'.join([get_clean_ctype_name(arg) for arg in ctype.template.args]))
 		elif hasattr(ctype.template, 'function'):
 			parts.append('function')
-			if hasattr(ctype.template.function, 'void_return'):
+			if hasattr(ctype.template.function, 'void_rval'):
 				parts.append('void')
 			else:
-				parts.append(get_fully_qualified_ctype_name(ctype.template.function.return_type))
-			if hasattr(ctype.template.function, 'parms'):
-				for parm in ctype.template.function.parms:
+				parts.append(get_fully_qualified_ctype_name(ctype.template.function.rval))
+			if hasattr(ctype.template.function, 'args'):
+				for parm in ctype.template.function.args:
 					parts.append(get_fully_qualified_ctype_name(parm))
 	if ctype.const_ref:
 		parts.append('const')
@@ -204,8 +204,8 @@ class _CType:
 		return t
 
 
-_FunctionSignature.grammar = [attr("void_return", "void"), attr("return_type", _CType)], "(", optional(attr("parms", csl(_CType))), ")"
-_TemplateParameters.grammar = "<", [attr("function", _FunctionSignature), attr("parms", csl(_CType))], ">"
+_FunctionSignature.grammar = [attr("void_rval", "void"), attr("rval", _CType)], "(", optional(attr("args", csl(_CType))), ")"
+_TemplateParameters.grammar = "<", [attr("function", _FunctionSignature), attr("args", csl(_CType))], ">"
 _CType.grammar = flag("const", K("const")), optional(flag("signed", K("signed"))), optional(flag("unsigned", K("unsigned"))), attr("name", typename), optional(attr("template", _TemplateParameters)), optional(attr("ref", ref_re)), flag("const_ref", K("const"))
 
 
@@ -497,7 +497,8 @@ class FABGen:
 		return conv
 
 	def end_type(self, conv):
-		self._source += conv.get_type_glue(self, self._name) + '\n'
+		type_glue = conv.get_type_glue(self, self._name)
+		self._source += type_glue + '\n'
 
 	def bind_type(self, conv, features={}):
 		self.begin_type(conv, features)
@@ -1024,6 +1025,61 @@ class FABGen:
 
 		self.__bind_proxy(proxy_name, None, protos, 'function %s' % bound_name, expr_eval, 'function')
 		self._bound_functions.append({'name': name, 'bound_name': bound_name, 'proxy_name': proxy_name, 'protos': protos})
+
+	# reverse binding support
+	def _get_rbind_call_signature(self, name, rval, args):
+		assert 'not implemented in this generator'
+
+	def _prepare_rbind_call(self, rval, args):
+		assert 'not implemented in this generator'
+
+	def _rbind_call(self, rval, args):
+		assert 'not implemented in this generator'
+
+	def _clean_rbind_call(self, rval, args):
+		assert 'not implemented in this generator'
+
+	def rbind_function(self, name, rval, args, internal=False):
+		sig = self._get_rbind_call_signature(apply_api_prefix(name), rval, args)
+
+		if internal:
+			self._header += sig + ';\n'
+			self._source += 'static inline %s {\n' % sig
+		else:
+			self._source += '%s {\n' % sig
+
+		self._source += self._prepare_rbind_call(rval, args)
+
+		# prepare args
+		self._source += '	int rval_count = 0;\n'
+
+		arg_vars = []
+		for arg in args:
+			_arg = self.parse_carg(arg)
+
+			arg_var = _arg.name + '_out'
+			arg_conv = self.get_conv(str(_arg.ctype))
+			arg_vars.append(arg_var)
+
+			self._source += self.declare_rval(arg_var)
+			self._source += self.prepare_c_rval({'conv': arg_conv, 'ctype': _arg.ctype, 'var': _arg.name, 'is_arg_in_out': False, 'ownership': None})
+
+		self._source += self.commit_rvals(arg_vars)
+
+		# call
+		self._source += '\n' + self._rbind_call(rval, args) + '\n'
+
+		# rval
+		if rval != 'void':
+			rval_conv = self.get_conv(rval)
+			self._source += self._prepare_c_arg(0, rval_conv, 'rval_', 'rbind_rval')
+
+		self._source += self._clean_rbind_call(rval, args)
+
+		if rval != 'void':
+			self._source += 'return rval_;\n'
+
+		self._source += '}\n'
 
 	#
 	def bind_constructor(self, conv, args, features=[]):

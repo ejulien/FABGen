@@ -518,9 +518,7 @@ public:
 			luaL_unref(L, LUA_REGISTRYINDEX, ref);
 	}
 
-	void Push() const {
-		lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
-	}
+	void Push() const { lua_rawgeti(L, LUA_REGISTRYINDEX, ref); }
 
 private:
 	lua_State *L{nullptr};
@@ -543,6 +541,8 @@ private:
 		i += 1  # Lua stack starts at 1
 		if ctx in ['getter', 'setter', 'method', 'arithmetic_op', 'comparison_op']:
 			i += 1  # account for self in those methods
+		if ctx == 'rbind_rval':
+			i = -1  # return value for a reverse binding call
 		return str(i)
 
 	def open_proxy(self, name, max_arg_count, ctx):
@@ -578,6 +578,34 @@ private:
 		out = 'lua_pushvalue(L, %s);\n' % arg_in_out
 		out += 'rval_count += 1;\n'
 		return out
+
+	# reverse binding support
+	def _get_rbind_call_signature(self, name, rval, args):
+		out = '%s %s(lua_State *L, int idx' % (rval, name)
+		if len(args) > 0:
+			out += ', ' + ', '.join(args)
+		out += ')'
+		return out
+
+	def _prepare_rbind_call(self, rval, args):
+		return '''\
+if (idx != -1) {
+	lua_pushvalue(L, idx);
+	if (idx < 0)
+		--idx;
+	lua_remove(L, idx);
+}\n
+'''
+
+	def _rbind_call(self, rval, args):
+		if rval == 'void':
+			return 'lua_call(L, rval_count, 0);\n'
+		return 'lua_call(L, rval_count, 1);\n'
+
+	def _clean_rbind_call(self, rval, args):
+		if rval == 'void':
+			return ''
+		return 'lua_pop(L, 1);\n'
 
 	#
 	def get_binding_api_declaration(self):

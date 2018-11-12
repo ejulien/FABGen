@@ -22,28 +22,46 @@ def bind_function_T(gen, type, bound_name=None):
 
 	class LuaStdFunctionConverter(lang.lua.LuaTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
-			check = 'bool %s(lua_State *L, int idx) { return lua_isfunction(L, idx); }\n' % self.check_func
-
 			func = self.ctype.template.function
 
-			if hasattr(func, 'void_return'):
-				return_type = 'void'
-			else:
-				return_type = str(func.return_type)
+			# check C
+			check = 'bool %s(lua_State *L, int idx) { return lua_isfunction(L, idx); }\n' % self.check_func
 
-			parms = []
-			if hasattr(func, 'parms'):
-				parms = [str(parm) for parm in func.parms]
+			# to C
+			if hasattr(func, 'void_rval'):
+				rval = 'void'
+			else:
+				rval = str(func.rval)
+
+			args = []
+			if hasattr(func, 'args'):
+				args = [str(arg) for arg in func.args]
+
+			rbind_helper = '_rbind_' + self.bound_name  # helper to call from C to Lua
+			parms = ['%s v%d' % (arg, idx) for idx, arg in enumerate(args)]
+			gen.rbind_function(rbind_helper, rval, parms, True)
 
 			to_c = '''\
 void %s(lua_State *L, int idx, void *obj) {
-	LuaValueRef ref(L, idx);
+	auto ref = std::make_shared<LuaValueRef>(L, idx);
 	*((%s*)obj) = [=](%s) -> %s {
-		ref.Push();
+		ref->Push();
+''' % (self.to_c_func, self.ctype, ', '.join(['%s v%d' % (parm, idx) for idx, parm in enumerate(args)]), rval)
+
+			if rval != 'void':
+				to_c += '		return '
+
+			if len(args) > 0:
+				to_c += '%s(L, -1, %s);\n' % (gen.apply_api_prefix(rbind_helper), ', '.join(['v%d' % idx for idx in range(len(args))]))
+			else:
+				to_c += '%s(L, -1);\n' % gen.apply_api_prefix(rbind_helper)
+
+			to_c += '''\
 	};
 }
-''' % (self.to_c_func, self.ctype, ', '.join(['%s v%d' % (parm, idx) for idx, parm in enumerate(parms)]), return_type)
+'''
 
+			# from C
 			from_c = '''\
 int %s(lua_State *L, void *obj, OwnershipPolicy) {
 	lua_pushcfunction(L, [](lua_State *L) -> int {
@@ -52,6 +70,7 @@ int %s(lua_State *L, void *obj, OwnershipPolicy) {
 	return 1;
 }
 ''' % (self.from_c_func)
+
 			return check + to_c + from_c
 
 	return gen.bind_type(LuaStdFunctionConverter(type))
