@@ -24,8 +24,6 @@ Py_DECREF(utf8_pyobj);
 
 
 def bind_function_T(gen, type, bound_name=None):
-	gen.add_include('functional', True)
-
 	class PythonStdFunctionConverter(lang.cpython.PythonTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
 			func = self.ctype.template.function

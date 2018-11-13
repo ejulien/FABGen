@@ -38,6 +38,9 @@ def bind_future_T(gen, T, bound_name=None):
 
 
 def bind_function_T(gen, type, bound_name=None):
+	gen.add_include('functional', is_system=True)
+	gen.add_include('memory', is_system=True)
+
 	if gen.get_language() == 'CPython':
 		import lib.cpython.stl
 		lib.cpython.stl.bind_function_T(gen, type, bound_name)
