@@ -28,10 +28,7 @@ def bind_function_T(gen, type, bound_name=None):
 			check = 'bool %s(lua_State *L, int idx) { return lua_isfunction(L, idx); }\n' % self.check_func
 
 			# to C
-			if hasattr(func, 'void_rval'):
-				rval = 'void'
-			else:
-				rval = str(func.rval)
+			rval = 'void' if hasattr(func, 'void_rval') else str(func.rval)
 
 			args = []
 			if hasattr(func, 'args'):

@@ -23,6 +23,62 @@ Py_DECREF(utf8_pyobj);
 	gen.bind_type(PythonStringConverter('std::string'))
 
 
+def bind_function_T(gen, type, bound_name=None):
+	gen.add_include('functional', True)
+
+	class PythonStdFunctionConverter(lang.lua.LuaTypeConverterCommon):
+		def get_type_glue(self, gen, module_name):
+			func = self.ctype.template.function
+
+			# check C
+			check = 'bool %s(PyObject *o) { return PyFunction_Check(o) ? true : false; }\n' % self.check_func
+
+			# to C
+			rval = 'void' if hasattr(func, 'void_rval') else str(func.rval)
+
+			args = []
+			if hasattr(func, 'args'):
+				args = [str(arg) for arg in func.args]
+
+			rbind_helper = '_rbind_' + self.bound_name  # helper to call from C to Lua
+			parms = ['%s v%d' % (arg, idx) for idx, arg in enumerate(args)]
+			gen.rbind_function(rbind_helper, rval, parms, True)
+
+			to_c = '''\
+void %s(PyObject *o, void *obj) {
+	auto ref = std::make_shared<LuaValueRef>(L, idx);
+	*((%s*)obj) = [=](%s) -> %s {
+		ref->Push();
+''' % (self.to_c_func, self.ctype, ', '.join(['%s v%d' % (parm, idx) for idx, parm in enumerate(args)]), rval)
+
+			if rval != 'void':
+				to_c += '		return '
+
+			if len(args) > 0:
+				to_c += '%s(L, -1, %s);\n' % (gen.apply_api_prefix(rbind_helper), ', '.join(['v%d' % idx for idx in range(len(args))]))
+			else:
+				to_c += '%s(L, -1);\n' % gen.apply_api_prefix(rbind_helper)
+
+			to_c += '''\
+	};
+}
+'''
+
+			# from C
+			from_c = '''\
+int %s(lua_State *L, void *obj, OwnershipPolicy) {
+	lua_pushcfunction(L, [](lua_State *L) -> int {
+		return 0; // TODO
+	});
+	return 1;
+}
+''' % (self.from_c_func)
+
+			return check + to_c + from_c
+
+	return gen.bind_type(PythonStdFunctionConverter(type))
+
+
 class PySequenceToStdVectorConverter(lang.cpython.PythonTypeConverterCommon):
 	def __init__(self, type, T_conv):
 		native_type = 'std::vector<%s>' % T_conv.ctype

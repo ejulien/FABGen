@@ -59,7 +59,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--pybase", "C:/Pythons/36", "--debug", "shared_ptr", "--x64"],
+			"args": ["--pybase", "C:/Pythons/36", "--debug", "std_function", "--x64"],
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
 				"WaitOnAbnormalExit",

@@ -575,6 +575,21 @@ static inline bool CheckArgsTuple(PyObject *args) {
 		return src
 
 	#
+	def _get_rbind_call_signature(self, name, rval, args):
+		if len(args) == 0:
+			return '%s %s(PyObject *func)' % (rval, name)
+		return '%s %s(PyObject *func, %s)' % (rval, name, ', '.join(args))
+
+	def _prepare_rbind_call(self, rval, args):
+		return ''
+
+	def _rbind_call(self, rval, args):
+		return 'PyObject *rval = PyObject_CallObject(func);\n'
+
+	def _clean_rbind_call(self, rval, args):
+		return ''
+
+	#
 	def output_module_functions_table(self):
 		table_name = '%s_Methods' % self._name
 		self._source += "static PyMethodDef %s[] = {\n" % table_name
