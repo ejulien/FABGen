@@ -63,7 +63,7 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 
 			# get_size
 			out += 'static int __len_%s(lua_State *L) {\n' % self.bound_name
-			out += gen._prepare_c_arg_self(self, '_self')
+			out += gen._prepare_to_c_self(self, '_self')
 			out += '	lua_Integer size;\n'
 			out += seq.get_size('_self', 'size')
 			out += '	lua_pushinteger(L, size);\n'
@@ -73,16 +73,16 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 			# get_item
 			out += 'static int seq__index_%s(lua_State *L) {\n' % self.bound_name
 			out += '	int rval_count = 0;\n'
-			out += gen._prepare_c_arg_self(self, '_self')
-			out += gen._prepare_c_arg(0, gen.get_conv('int'), 'idx', 'getter')
+			out += gen._prepare_to_c_self(self, '_self')
+			out += gen.prepare_to_c_var(0, gen.get_conv('int'), 'idx', 'getter')
 			out += gen.decl_var(seq.wrapped_conv.ctype, 'rval')
 			out += '	bool error = false;\n'
 			out += seq.get_item('_self', 'idx-1', 'rval', 'error')  # Lua index starts at 1
 			out += '''	if (error)
 		return luaL_error(L, "invalid lookup");
 '''
-			out += gen.prepare_c_rval({'conv': seq.wrapped_conv, 'ctype': seq.wrapped_conv.ctype, 'var': 'rval', 'is_arg_in_out': False, 'ownership': None})
-			out += gen.commit_rvals(['rval'])
+			out += gen.prepare_from_c_var({'conv': seq.wrapped_conv, 'ctype': seq.wrapped_conv.ctype, 'var': 'rval', 'is_arg_in_out': False, 'ownership': None})
+			out += gen.commit_from_c_vars(['rval'])
 			out += '	return rval_count;\n'
 			out += '}\n\n'
 
@@ -90,9 +90,9 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 			out += 'static int seq__newindex_%s(lua_State *L) {\n' % self.bound_name
 			out += '	if (!%s)\n' % seq.wrapped_conv.check_call('-1')
 			out += '		return luaL_error(L, "invalid type in assignation, expected %s");\n' % seq.wrapped_conv.ctype
-			out += gen._prepare_c_arg_self(self, '_self')
-			out += gen._prepare_c_arg(0, gen.get_conv('int'), 'idx', 'setter')
-			out += gen._prepare_c_arg(1, seq.wrapped_conv, 'cval', 'setter')
+			out += gen._prepare_to_c_self(self, '_self')
+			out += gen.prepare_to_c_var(0, gen.get_conv('int'), 'idx', 'setter')
+			out += gen.prepare_to_c_var(1, seq.wrapped_conv, 'cval', 'setter')
 			out += '	bool error = false;\n'
 			out += seq.set_item('_self', 'idx-1', 'cval', 'error')  # Lua index starts at 1
 			out += '''	if (error)
@@ -241,7 +241,7 @@ static int __default_Lua_eq_%s(lua_State *L) {
 		if has___debugger_extand:
 			out += '\
 static int __debugger_extand_%s_class(lua_State *L) {\n' % self.bound_name
-			out += gen._prepare_c_arg_self(self, 'obj', 'getter', self._features)
+			out += gen._prepare_to_c_self(self, 'obj', 'getter', self._features)
 
 			out += '\n	lua_newtable(L);\n'
 
@@ -402,8 +402,8 @@ class LuaPtrTypeConverter(LuaTypeConverterCommon):
 
 #
 class LuaExternTypeConverter(LuaTypeConverterCommon):
-	def __init__(self, type, arg_storage_type, bound_name, module):
-		super().__init__(type, arg_storage_type, bound_name)
+	def __init__(self, type, to_c_storage_type, bound_name, module):
+		super().__init__(type, to_c_storage_type, bound_name)
 		self.module = module
 
 	def get_type_api(self, module_name):
@@ -505,6 +505,27 @@ static int wrapped_Object_gc(lua_State *L) {
 }
 \n'''
 
+		self._source += '''
+// helper class to store a reference to an Lua value on the stack
+class LuaValueRef {
+public:
+	LuaValueRef(lua_State *_L, int idx) : L(_L) {
+		lua_pushvalue(L, idx);
+		ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	}
+	~LuaValueRef() {
+		if (ref != LUA_NOREF)
+			luaL_unref(L, LUA_REGISTRYINDEX, ref);
+	}
+
+	void Push() const { lua_rawgeti(L, LUA_REGISTRYINDEX, ref); }
+
+private:
+	lua_State *L{nullptr};
+	int ref{LUA_NOREF};
+};
+\n'''
+
 		self._source += self.get_binding_api_declaration()
 		self._header += self.get_binding_api_declaration()
 
@@ -520,6 +541,8 @@ static int wrapped_Object_gc(lua_State *L) {
 		i += 1  # Lua stack starts at 1
 		if ctx in ['getter', 'setter', 'method', 'arithmetic_op', 'comparison_op']:
 			i += 1  # account for self in those methods
+		if ctx == 'rbind_rval':
+			i = -1  # return value for a reverse binding call
 		return str(i)
 
 	def open_proxy(self, name, max_arg_count, ctx):
@@ -548,13 +571,44 @@ static int wrapped_Object_gc(lua_State *L) {
 	def rval_from_c_ptr(self, conv, out_var, expr, ownership):
 		return 'rval_count += ' + conv.from_c_call(out_var, expr, ownership)
 
-	def commit_rvals(self, rvals, ctx='default'):
+	def commit_from_c_vars(self, rvals, ctx='default'):
 		return ''  #'return rval_count;\n'
 
 	def rval_assign_arg_in_out(self, out_var, arg_in_out):
 		out = 'lua_pushvalue(L, %s);\n' % arg_in_out
 		out += 'rval_count += 1;\n'
 		return out
+
+	# reverse binding support
+	def _get_rbind_call_signature(self, name, rval, args):
+		out = '%s %s(lua_State *L, int idx' % (rval, name)
+		if len(args) > 0:
+			out += ', ' + ', '.join(args)
+		out += ')'
+		return out
+
+	def _prepare_rbind_call(self, rval, args):
+		return '''\
+int rval_count = 0;
+
+if (idx != -1) {
+	lua_pushvalue(L, idx);
+	if (idx < 0)
+		--idx;
+	lua_remove(L, idx);
+}
+
+'''
+
+	def _rbind_call(self, rval, args):
+		if rval == 'void':
+			return 'lua_call(L, rval_count, 0);\n'
+		return 'lua_call(L, rval_count, 1);\n'
+
+	def _clean_rbind_call(self, rval, args):
+		if rval == 'void':
+			return ''
+		return 'lua_pop(L, 1);\n'
 
 	#
 	def get_binding_api_declaration(self):

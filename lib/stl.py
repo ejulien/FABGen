@@ -1,6 +1,7 @@
 # FABGen - The FABulous binding Generator for CPython and Lua
 #	Copyright (C) 2018 Emmanuel Julien
 
+
 class SharedPtrProxyFeature:
 	def __init__(self, wrapped_conv):
 		self.wrapped_conv = wrapped_conv
@@ -34,3 +35,15 @@ def bind_future_T(gen, T, bound_name=None):
 
 	gen.end_class(future)
 	return future
+
+
+def bind_function_T(gen, type, bound_name=None):
+	gen.add_include('functional', is_system=True)
+	gen.add_include('memory', is_system=True)
+
+	if gen.get_language() == 'CPython':
+		import lib.cpython.stl
+		lib.cpython.stl.bind_function_T(gen, type, bound_name)
+	elif gen.get_language() == 'Lua':
+		import lib.lua.stl
+		lib.lua.stl.bind_function_T(gen, type, bound_name)

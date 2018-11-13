@@ -15,6 +15,22 @@ def apply_api_prefix(symbol):
 
 
 #
+def get_fully_qualified_function_signature(func):
+	out = ''
+	if hasattr(func, 'void_rval'):
+		out += 'void'
+	else:
+		out += str(func.rval)
+
+	if hasattr(func, 'args'):
+		args = [str(arg) for arg in func.args]
+		out += '(%s)' % ', '.join(args)
+	else:
+		out += '()'
+
+	return out
+
+
 def get_fully_qualified_ctype_name(ctype):
 	out = ''
 	if ctype.const:
@@ -25,8 +41,11 @@ def get_fully_qualified_ctype_name(ctype):
 		out += 'unsigned '
 	out += ctype.name
 	if hasattr(ctype, 'template'):
-		args = [str(arg) for arg in ctype.template]
-		out += '<%s>' % ', '.join(args)
+		if hasattr(ctype.template, 'args'):
+			args = [str(arg) for arg in ctype.template.args]
+			out += '<%s>' % ', '.join(args)
+		elif hasattr(ctype.template, 'function'):
+			out += '<%s>' % get_fully_qualified_function_signature(ctype.template.function)
 	if ctype.const_ref:
 		out += ' const '
 	if hasattr(ctype, 'ref'):
@@ -57,7 +76,17 @@ def get_clean_ctype_name(ctype):
 	parts.append(ctype.name.replace(':', '_'))
 
 	if hasattr(ctype, 'template'):
-		parts.append('of_%s' % get_clean_ctype_name(ctype.template[0]))
+		if hasattr(ctype.template, 'args'):
+			parts.append('of_' + '_and_'.join([get_clean_ctype_name(arg) for arg in ctype.template.args]))
+		elif hasattr(ctype.template, 'function'):
+			parts.append('function')
+			if hasattr(ctype.template.function, 'void_rval'):
+				parts.append('void')
+			else:
+				parts.append(get_fully_qualified_ctype_name(ctype.template.function.rval))
+			if hasattr(ctype.template.function, 'args'):
+				for parm in ctype.template.function.args:
+					parts.append(get_fully_qualified_ctype_name(parm))
 	if ctype.const_ref:
 		parts.append('const')
 	if hasattr(ctype, 'ref'):
@@ -123,10 +152,16 @@ typename = re.compile(r"((::)*(_|[A-z])[A-z0-9_]*)+")
 ref_re = re.compile(r"[&*]+")
 
 
-class _TemplateParameters(List):
+class _TemplateParameters:
 	pass
 
 
+class _FunctionSignature:
+	def __repr__(self):
+		return get_fully_qualified_function_signature(self)
+
+
+#
 class _CType:
 	def __repr__(self):
 		return get_fully_qualified_ctype_name(self)
@@ -170,12 +205,13 @@ class _CType:
 		return t
 
 
-_TemplateParameters.grammar = "<", optional(csl(_CType)), ">"
+_FunctionSignature.grammar = [attr("void_rval", "void"), attr("rval", _CType)], "(", optional(attr("args", csl(_CType))), ")"
+_TemplateParameters.grammar = "<", [attr("function", _FunctionSignature), attr("args", csl(_CType))], ">"
 _CType.grammar = flag("const", K("const")), optional(flag("signed", K("signed"))), optional(flag("unsigned", K("unsigned"))), attr("name", typename), optional(attr("template", _TemplateParameters)), optional(attr("ref", ref_re)), flag("const_ref", K("const"))
 
 
 #
-class _CArg:
+class _NamedCType:
 	def __repr__(self):  # pragma: no cover
 		out = repr(self.ctype)
 		if hasattr(self, 'name'):
@@ -183,19 +219,7 @@ class _CArg:
 		return out
 
 
-_CArg.grammar = attr("ctype", _CType), optional(name())
-
-
-#
-class _CVar:
-	def __repr__(self):  # pragma: no cover
-		out = repr(self.ctype)
-		if hasattr(self, 'name'):
-			out += ' ' + str(self.name)
-		return out
-
-
-_CVar.grammar = attr("ctype", _CType), optional(attr("name", typename))
+_NamedCType.grammar = attr("ctype", _CType), optional(attr("name", typename))
 
 
 #
@@ -252,11 +276,11 @@ def collect_attr_from_conv_recursive(out, conv, attr, dlg):
 
 
 class TypeConverter:
-	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None, needs_c_storage_class=False):
+	def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None, needs_c_storage_class=False):
 		self.ctype = parse(type, _CType)
-		self.arg_storage_ctype = parse(arg_storage_type, _CType) if arg_storage_type is not None else self.ctype.non_const()
+		self.to_c_storage_ctype = parse(to_c_storage_type, _CType) if to_c_storage_type is not None else self.ctype.non_const()
 		self.bound_name = get_ctype_default_bound_name(self.ctype) if bound_name is None else bound_name
-		self.rval_storage_ctype = parse(rval_storage_type, _CType) if rval_storage_type is not None else None  # if None the prototype return value type will be used to determine adequate storage at binding time
+		self.from_c_storage_ctype = parse(from_c_storage_type, _CType) if from_c_storage_type is not None else None  # if None the prototype return value type will be used to determine adequate storage at binding time
 
 		if needs_c_storage_class:
 			self.c_storage_class = 'storage_%s' % self.bound_name
@@ -310,10 +334,10 @@ class TypeConverter:
 
 	def prepare_var_for_conv(self, var, input_ref):
 		"""Transform a variable for use with the converter from_c/to_c methods."""
-		return transform_var_ref_to(var, input_ref, self.arg_storage_ctype.get_ref())
+		return transform_var_ref_to(var, input_ref, self.to_c_storage_ctype.get_ref())
 	def prepare_var_from_conv(self, var, target_ref):
 		"""Transform a converted variable back to its ctype reference."""
-		return transform_var_ref_to(var, self.arg_storage_ctype.get_ref(), target_ref)
+		return transform_var_ref_to(var, self.to_c_storage_ctype.get_ref(), target_ref)
 
 	def get_all_members(self):
 		return collect_attr_from_conv_recursive([], self, 'members', lambda a,b: a['name'] == b['name'])
@@ -357,9 +381,9 @@ class FABGen:
 	def parse_ctype(self, type):
 		return parse(type, _CType)
 
-	def parse_carg(self, type):
+	def parse_named_ctype(self, type):
 		type = type.replace('* *', '**')
-		return parse(type, _CArg)
+		return parse(type, _NamedCType)
 
 	get_symbol_doc_hook = lambda gen, name: ""
 
@@ -462,7 +486,8 @@ class FABGen:
 		return conv
 
 	def end_type(self, conv):
-		self._source += conv.get_type_glue(self, self._name) + '\n'
+		type_glue = conv.get_type_glue(self, self._name)
+		self._source += type_glue + '\n'
 
 	def bind_type(self, conv, features={}):
 		self.begin_type(conv, features)
@@ -470,15 +495,15 @@ class FABGen:
 		return conv
 
 	#
-	def typedef(self, type, alias_of, arg_storage_type=None, bound_name=None):
+	def typedef(self, type, alias_of, to_c_storage_type=None, bound_name=None):
 		conv = copy.deepcopy(self.__type_convs[alias_of])
 
-		default_arg_storage_type = type if arg_storage_type is None else arg_storage_type
+		default_arg_storage_type = type if to_c_storage_type is None else to_c_storage_type
 
 		if bound_name is not None:
 			conv.bound_name=bound_name
 		conv.ctype = parse(type, _CType)
-		conv.arg_storage_ctype = parse(default_arg_storage_type, _CType)
+		conv.to_c_storage_ctype = parse(default_arg_storage_type, _CType)
 
 		self.__type_convs[type] = conv
 
@@ -603,7 +628,7 @@ class FABGen:
 		return [{'conv': self.select_ctype_conv(arg.ctype), 'ctype': arg.ctype} for i, arg in enumerate(args)]
 
 	#
-	def commit_rvals(self, rval, ctx):
+	def commit_from_c_vars(self, rval, ctx):
 		assert 'not implemented in this generator'
 
 	def rval_assign_arg_in_out(self, out_var, arg_in_out):
@@ -648,21 +673,21 @@ class FABGen:
 			rval_ctype = parse(rval_type, _CType)
 			rval_conv = self.select_ctype_conv(rval_ctype)
 
-			if rval_conv is not None and rval_conv.rval_storage_ctype is not None:
-				rval_storage_ctype = rval_conv.rval_storage_ctype
+			if rval_conv is not None and rval_conv.from_c_storage_ctype is not None:
+				from_c_storage_ctype = rval_conv.from_c_storage_ctype
 			else:
-				rval_storage_ctype = rval_ctype  # prepare the return value variable CType
-				if rval_storage_ctype.get_ref() == '':
-					rval_storage_ctype = rval_storage_ctype.non_const()
+				from_c_storage_ctype = rval_ctype  # prepare the return value variable CType
+				if from_c_storage_ctype.get_ref() == '':
+					from_c_storage_ctype = from_c_storage_ctype.non_const()
 
-			_proto = {'rval': {'storage_ctype': rval_storage_ctype, 'conv': rval_conv}, 'args': [], 'argsin': [], 'features': features}
+			_proto = {'rval': {'storage_ctype': from_c_storage_ctype, 'conv': rval_conv}, 'args': [], 'argsin': [], 'features': features}
 
 			if not type(args) is type([]):
 				args = [args]
 
 			for arg in args:
 				assert ',' not in arg, "malformed argument, a comma was found in an argument when it should be a separate list entry"
-				carg = self.parse_carg(arg)
+				carg = self.parse_named_ctype(arg)
 				conv = self.select_ctype_conv(carg.ctype)
 				_proto['args'].append({'carg': carg, 'conv': conv, 'check_var': None})
 
@@ -679,25 +704,26 @@ class FABGen:
 	def __assert_conv_feature(self, conv, feature):
 		assert feature in conv._features, "Type converter for %s does not support the %s feature" % (conv.ctype, feature)
 
-	def _prepare_c_arg_self(self, conv, out_var, ctx='none', features=[]):
+	#
+	def _prepare_to_c_self(self, conv, out_var, ctx='none', features=[]):
 		out = ''
 		if 'proxy' in features:
 			proxy = conv._features['proxy']
 
-			out += '	' + self.decl_var(conv.arg_storage_ctype, '%s_wrapped' % out_var)
+			out += '	' + self.decl_var(conv.to_c_storage_ctype, '%s_wrapped' % out_var)
 			out += '	' + conv.to_c_call(self.get_self(ctx), '&%s_wrapped' % out_var)
 
-			out += '	' + self.decl_var(proxy.wrapped_conv.arg_storage_ctype, out_var)
+			out += '	' + self.decl_var(proxy.wrapped_conv.to_c_storage_ctype, out_var)
 			out += proxy.unwrap('%s_wrapped' % out_var, out_var)
 		else:
-			out += '	' + self.decl_var(conv.arg_storage_ctype, out_var)
+			out += '	' + self.decl_var(conv.to_c_storage_ctype, out_var)
 			out += '	' + conv.to_c_call(self.get_self(ctx), '&%s' % out_var)
 		return out
 
-	def _declare_c_arg(self, ctype, var):
+	def _declare_to_c_var(self, ctype, var):
 		return self.decl_var(ctype, var)
 
-	def _convert_c_arg(self, idx, conv, var, ctx='default', features=[]):
+	def _convert_to_c_var(self, idx, conv, var, ctx='default', features=[]):
 		out = conv.to_c_call(self.get_arg(idx, ctx), '&%s' % var)
 
 		if 'validate_arg_in' in features:
@@ -707,13 +733,14 @@ class FABGen:
 
 		return out
 
-	def _prepare_c_arg(self, idx, conv, var, ctx='default', features=[]):
-		return self._declare_c_arg(conv.arg_storage_ctype, var) + self._convert_c_arg(idx, conv, var, ctx, features)
+	def prepare_to_c_var(self, idx, conv, var, ctx='default', features=[]):
+		return self._declare_to_c_var(conv.to_c_storage_ctype, var) + self._convert_to_c_var(idx, conv, var, ctx, features)
 
-	def declare_rval(self, out_var):
+	#
+	def declare_from_c_var(self, out_var):
 		return ''
 
-	def prepare_c_rval(self, rval):
+	def prepare_from_c_var(self, rval):
 		if rval['ownership'] is None:
 			rval['ownership'] = self.__ctype_to_ownership_policy(rval['ctype'])
 
@@ -721,7 +748,7 @@ class FABGen:
 		expr = transform_var_ref_to(rval['var'], rval['ctype'].get_ref(), rval['conv'].ctype.add_ref('*').get_ref())
 
 		out_var = rval['var'] + '_out'
-		src = self.declare_rval(out_var)
+		src = self.declare_from_c_var(out_var)
 		if 'rval_transform' in rval['conv']._features:
 			src += rval['conv']._features['rval_transform'](self, rval['conv'], expr, out_var, rval['ownership'])
 		else:
@@ -742,6 +769,7 @@ class FABGen:
 
 		return src
 
+	#
 	def __proto_call(self, self_conv, proto, expr_eval, ctx, fixed_arg_count=None):
 		features = proto['features']
 
@@ -755,7 +783,7 @@ class FABGen:
 		# prepare C call self argument
 		if self_conv:
 			if ctx in ['getter', 'setter', 'method', 'arithmetic_op', 'inplace_arithmetic_op', 'comparison_op']:
-				self._source += self._prepare_c_arg_self(self_conv, '_self', ctx, features)
+				self._source += self._prepare_to_c_self(self_conv, '_self', ctx, features)
 
 		# prepare C call arguments
 		args = proto['args']
@@ -771,11 +799,11 @@ class FABGen:
 
 			if arg_out is not None and arg['carg'].name in arg_out:
 				arg_ctype = conv.ctype
-				self._source += self._declare_c_arg(arg_ctype, var)
+				self._source += self._declare_to_c_var(arg_ctype, var)
 			else:
-				arg_ctype = conv.arg_storage_ctype
-				self._source += self._declare_c_arg(conv.arg_storage_ctype, var)
-				self._source += self._convert_c_arg(argin_idx, conv, var, ctx, features)
+				arg_ctype = conv.to_c_storage_ctype
+				self._source += self._declare_to_c_var(conv.to_c_storage_ctype, var)
+				self._source += self._convert_to_c_var(argin_idx, conv, var, ctx, features)
 				argin_idx += 1
 
 			c_call_args.append(transform_var_ref_to(var, arg_ctype.get_ref(), arg['carg'].ctype.get_ref()))
@@ -795,7 +823,7 @@ class FABGen:
 
 		if ctx == 'constructor':
 			rval_conv = proto['rval']['conv']
-			rval_storage_ctype = proto['rval']['storage_ctype'].add_ref('*')  # constructor returns a pointer
+			from_c_storage_ctype = proto['rval']['storage_ctype'].add_ref('*')  # constructor returns a pointer
 
 			ownership = 'Owning'  # constructor output is always owned by the VM
 
@@ -805,7 +833,7 @@ class FABGen:
 				self._source += self.decl_var(proxy.wrapped_conv.ctype.add_ref('*'), 'rval_raw', ' = ')
 				self._source += 'new %s(%s);\n' % (proxy.wrapped_conv.ctype, ', '.join(c_call_args))
 
-				self._source += self.decl_var(rval_storage_ctype, 'rval')
+				self._source += self.decl_var(from_c_storage_ctype, 'rval')
 				self._source += proxy.wrap('rval_raw', 'rval')
 			else:
 				if rval_conv._inline:
@@ -815,22 +843,22 @@ class FABGen:
 						self._source += '%s _new_obj;\n' % rval_conv.ctype
 					ownership = 'Copy'  # inline objects are constructed on the heap then copy constructed to the VM memory block
 
-				self._source += self.decl_var(rval_storage_ctype, 'rval', ' = ')
+				self._source += self.decl_var(from_c_storage_ctype, 'rval', ' = ')
 
 				if rval_conv._inline:
 					self._source += '&_new_obj;\n'
 				else:
 					self._source += 'new %s(%s);\n' % (rval_conv.ctype, ', '.join(c_call_args))
 
-			rvals_prepare_args.append({'conv': rval_conv, 'ctype': rval_storage_ctype, 'var': 'rval', 'is_arg_in_out': False, 'ctx': ctx, 'ownership': ownership})
+			rvals_prepare_args.append({'conv': rval_conv, 'ctype': from_c_storage_ctype, 'var': 'rval', 'is_arg_in_out': False, 'ctx': ctx, 'ownership': ownership})
 			rvals.append('rval')
 		else:
 			rval_conv = proto['rval']['conv']
-			rval_storage_ctype = proto['rval']['storage_ctype']
+			from_c_storage_ctype = proto['rval']['storage_ctype']
 
 			# return value is optional for a function call
 			if rval_conv:
-				self._source += self.decl_var(rval_storage_ctype, 'rval', ' = ')
+				self._source += self.decl_var(from_c_storage_ctype, 'rval', ' = ')
 
 			if 'route' in features:
 				if self_conv:
@@ -844,7 +872,7 @@ class FABGen:
 				if 'new_obj' in features:
 					ownership = 'Owning'  # force ownership when the prototype is flagged to return a new object
 
-				rvals_prepare_args.append({'conv': rval_conv, 'ctype': rval_storage_ctype, 'var': 'rval', 'is_arg_in_out': False, 'ctx': ctx, 'ownership': ownership})
+				rvals_prepare_args.append({'conv': rval_conv, 'ctype': from_c_storage_ctype, 'var': 'rval', 'is_arg_in_out': False, 'ctx': ctx, 'ownership': ownership})
 				rvals.append('rval')
 
 		# process arg_out
@@ -856,7 +884,7 @@ class FABGen:
 					is_arg_in_out = arg['carg'].name in arg_in_out
 
 					if is_arg_in_out:
-						arg_ctype = arg['conv'].arg_storage_ctype
+						arg_ctype = arg['conv'].to_c_storage_ctype
 					else:
 						arg_ctype = arg['conv'].ctype
 
@@ -869,9 +897,9 @@ class FABGen:
 
 		# prepare return values ([EJ] once check is done so we don't leak)
 		for rval in rvals_prepare_args:
-			self._source += self.prepare_c_rval(rval)
+			self._source += self.prepare_from_c_var(rval)
 
-		self._source += self.commit_rvals(rvals, ctx)
+		self._source += self.commit_from_c_vars(rvals, ctx)
 
 		if 'exception' in features:
 			self._source += '}\n'
@@ -990,6 +1018,57 @@ class FABGen:
 		self.__bind_proxy(proxy_name, None, protos, 'function %s' % bound_name, expr_eval, 'function')
 		self._bound_functions.append({'name': name, 'bound_name': bound_name, 'proxy_name': proxy_name, 'protos': protos})
 
+	# reverse binding support
+	def _get_rbind_call_signature(self, name, rval, args):
+		assert 'not implemented in this generator'
+
+	def _prepare_rbind_call(self, rval, args):
+		assert 'not implemented in this generator'
+
+	def _rbind_call(self, rval, args):
+		assert 'not implemented in this generator'
+
+	def _clean_rbind_call(self, rval, args):
+		assert 'not implemented in this generator'
+
+	def rbind_function(self, name, rval, args, internal=False):
+		sig = self._get_rbind_call_signature(apply_api_prefix(name), rval, args)
+
+		if internal:
+			self._header += sig + ';\n'
+			self._source += 'static inline %s {\n' % sig
+		else:
+			self._source += '%s {\n' % sig
+
+		self._source += self._prepare_rbind_call(rval, args)
+
+		# prepare args
+		arg_vars = []
+		for arg in args:
+			_arg = self.parse_named_ctype(arg)
+
+			arg_conv = self.get_conv(str(_arg.ctype))
+			arg_vars.append(_arg.name)
+
+			self._source += self.prepare_from_c_var({'conv': arg_conv, 'ctype': _arg.ctype, 'var': _arg.name, 'is_arg_in_out': False, 'ownership': None})
+
+		self._source += self.commit_from_c_vars(arg_vars, 'rbind_args')
+
+		# call
+		self._source += '\n' + self._rbind_call(rval, args) + '\n'
+
+		# rval
+		if rval != 'void':
+			rval_conv = self.get_conv(rval)
+			self._source += self.prepare_to_c_var(0, rval_conv, 'rval_', 'rbind_rval')
+
+		self._source += self._clean_rbind_call(rval, args)
+
+		if rval != 'void':
+			self._source += 'return rval_;\n'
+
+		self._source += '}\n'
+
 	#
 	def bind_constructor(self, conv, args, features=[]):
 		self.bind_constructor_overloads(conv, [(args, features)])
@@ -1042,7 +1121,7 @@ class FABGen:
 		if is_bitfield:
 			member = member[:-1]
 
-		arg = parse(member, _CArg)
+		arg = parse(member, _NamedCType)
 
 		# getter
 		expr_eval = lambda args: '_self->%s;' % arg.name
@@ -1067,7 +1146,7 @@ class FABGen:
 
 	#
 	def bind_static_member(self, conv, member, features=[]):
-		arg = parse(member, _CArg)
+		arg = parse(member, _NamedCType)
 
 		# getter
 		if 'proxy' in features:
@@ -1100,7 +1179,7 @@ class FABGen:
 
 	#
 	def bind_variable(self, var, features=[], bound_name=None):
-		arg = parse(var, _CVar)
+		arg = self.parse_named_ctype(var)
 
 		if bound_name == None:
 			bound_name = get_symbol_default_bound_name(arg.name)

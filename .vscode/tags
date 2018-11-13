@@ -41,7 +41,7 @@ PythonUnsignedIntConverter	../lib/cpython/std.py	/^	class PythonUnsignedIntConve
 SharedPtrProxyFeature	../lib/stl.py	/^class SharedPtrProxyFeature:$/;"	kind:class	line:1
 TypeConverter	../gen.py	/^class TypeConverter:$/;"	kind:class	line:242
 VectorSequenceFeature	../lib/std.py	/^class VectorSequenceFeature:$/;"	kind:class	line:1
-_CArg	../gen.py	/^class _CArg:$/;"	kind:class	line:178
+_NamedCType	../gen.py	/^class _NamedCType:$/;"	kind:class	line:178
 _CType	../gen.py	/^class _CType:$/;"	kind:class	line:122
 _TemplateParameters	../gen.py	/^class _TemplateParameters(List):$/;"	kind:class	line:118
 __add_upcast	../gen.py	/^	def __add_upcast(self, conv, base):$/;"	kind:member	line:490
@@ -51,14 +51,14 @@ __ctype_to_ownership_policy	../gen.py	/^	def __ctype_to_ownership_policy(self, c
 __expand_protos	../gen.py	/^	def __expand_protos(self, protos):$/;"	kind:member	line:550
 __get_stats	../gen.py	/^	def __get_stats(self):$/;"	kind:member	line:1116
 __init__	../gen.py	/^	def __init__(self):$/;"	kind:member	line:320
-__init__	../gen.py	/^	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):$/;"	kind:member	line:243
+__init__	../gen.py	/^	def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None):$/;"	kind:member	line:243
 __init__	../lang/cpython.py	/^	def __init__(self):$/;"	kind:member	line:289
-__init__	../lang/cpython.py	/^	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):$/;"	kind:member	line:257
-__init__	../lang/cpython.py	/^	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):$/;"	kind:member	line:28
-__init__	../lang/cpython.py	/^	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):$/;"	kind:member	line:6
+__init__	../lang/cpython.py	/^	def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None):$/;"	kind:member	line:257
+__init__	../lang/cpython.py	/^	def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None):$/;"	kind:member	line:28
+__init__	../lang/cpython.py	/^	def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None):$/;"	kind:member	line:6
 __init__	../lang/lua.py	/^	def __init__(self):$/;"	kind:member	line:314
-__init__	../lang/lua.py	/^	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):$/;"	kind:member	line:28
-__init__	../lang/lua.py	/^	def __init__(self, type, storage_type=None, bound_name=None, rval_storage_type=None):$/;"	kind:member	line:6
+__init__	../lang/lua.py	/^	def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None):$/;"	kind:member	line:28
+__init__	../lang/lua.py	/^	def __init__(self, type, storage_type=None, bound_name=None, from_c_storage_type=None):$/;"	kind:member	line:6
 __init__	../lib/cpython/stl.py	/^	def __init__(self, type, T_conv):$/;"	kind:member	line:24
 __init__	../lib/std.py	/^	def __init__(self, wrapped_conv):$/;"	kind:member	line:2
 __init__	../lib/stl.py	/^	def __init__(self, wrapped_conv):$/;"	kind:member	line:2
@@ -68,10 +68,10 @@ __print_stats	../gen.py	/^	def __print_stats(self):$/;"	kind:member	line:1138
 __proto_call	../gen.py	/^	def __proto_call(self, self_conv, proto, expr_eval, ctx, fixed_arg_count=None):$/;"	kind:member	line:654
 __repr__	../gen.py	/^	def __repr__(self):$/;"	kind:member	line:123
 __repr__	../gen.py	/^	def __repr__(self):$/;"	kind:member	line:179
-_convert_c_arg	../gen.py	/^	def _convert_c_arg(self, idx, conv, var, ctx='default'):$/;"	kind:member	line:629
-_declare_c_arg	../gen.py	/^	def _declare_c_arg(self, ctype, var):$/;"	kind:member	line:626
-_prepare_c_arg	../gen.py	/^	def _prepare_c_arg(self, idx, conv, var, ctx='default'):$/;"	kind:member	line:632
-_prepare_c_arg_self	../gen.py	/^	def _prepare_c_arg_self(self, conv, out_var, ctx='none', features=[]):$/;"	kind:member	line:611
+_convert_to_c_var	../gen.py	/^	def _convert_to_c_var(self, idx, conv, var, ctx='default'):$/;"	kind:member	line:629
+_declare_to_c_var	../gen.py	/^	def _declare_to_c_var(self, ctype, var):$/;"	kind:member	line:626
+prepare_to_c_var	../gen.py	/^	def prepare_to_c_var(self, idx, conv, var, ctx='default'):$/;"	kind:member	line:632
+_prepare_to_c_self	../gen.py	/^	def _prepare_to_c_self(self, conv, out_var, ctx='none', features=[]):$/;"	kind:member	line:611
 _prepare_ctypes	../gen.py	/^def _prepare_ctypes(ctypes, template):$/;"	kind:function	line:171
 add_base	../gen.py	/^	def add_base(self, conv, base):$/;"	kind:member	line:495
 add_bases	../gen.py	/^	def add_bases(self, conv, bases):$/;"	kind:member	line:499
@@ -192,9 +192,9 @@ clean_symbol_name_part	../gen.py	/^	def clean_symbol_name_part(part):$/;"	kind:f
 close_proxy	../lang/cpython.py	/^	def close_proxy(self, ctx):$/;"	kind:function	line:414
 close_proxy	../lang/lua.py	/^	def close_proxy(self, ctx):$/;"	kind:function	line:397
 collect_attr_from_conv_recursive	../gen.py	/^def collect_attr_from_conv_recursive(out, conv, attr, dlg):$/;"	kind:function	line:234
-commit_rvals	../gen.py	/^	def commit_rvals(self, rval, ctx):$/;"	kind:member	line:538
-commit_rvals	../lang/cpython.py	/^	def commit_rvals(self, rvals, ctx='default'):$/;"	kind:function	line:441
-commit_rvals	../lang/lua.py	/^	def commit_rvals(self, rvals, ctx='default'):$/;"	kind:function	line:410
+commit_from_c_vars	../gen.py	/^	def commit_from_c_vars(self, rval, ctx):$/;"	kind:member	line:538
+commit_from_c_vars	../lang/cpython.py	/^	def commit_from_c_vars(self, rvals, ctx='default'):$/;"	kind:function	line:441
+commit_from_c_vars	../lang/lua.py	/^	def commit_from_c_vars(self, rvals, ctx='default'):$/;"	kind:function	line:410
 cpp_exceptions.py	../tests/cpp_exceptions.py	1;"	kind:file	line:1
 cpython.py	../lang/cpython.py	1;"	kind:file	line:1
 create_clang_format_file	../tests.py	/^def create_clang_format_file(work_path):$/;"	kind:function	line:257
@@ -205,8 +205,8 @@ ctypes_to_string	../gen.py	/^def ctypes_to_string(ctypes):$/;"	kind:function	lin
 decl_comp_get_set_method	../examples/harfang.py	/^	def decl_comp_get_set_method(conv, comp_type, comp_var_name, type, method_suffix, var_name, features=[]):$/;"	kind:function	line:706
 decl_get_set_method	../examples/harfang.py	/^	def decl_get_set_method(conv, type, method_suffix, var_name, features=[]):$/;"	kind:function	line:702
 decl_var	../gen.py	/^	def decl_var(self, ctype, name, eol=';\\n'):$/;"	kind:member	line:530
-declare_rval	../gen.py	/^	def declare_rval(self, out_var):$/;"	kind:member	line:635
-declare_rval	../lang/cpython.py	/^	def declare_rval(self, out_var):$/;"	kind:function	line:435
+declare_from_c_var	../gen.py	/^	def declare_from_c_var(self, out_var):$/;"	kind:member	line:635
+declare_from_c_var	../lang/cpython.py	/^	def declare_from_c_var(self, out_var):$/;"	kind:function	line:435
 default_class_converter	../lang/cpython.py	/^	default_class_converter = PythonClassTypeDefaultConverter$/;"	kind:variable	line:286
 default_class_converter	../lang/lua.py	/^	default_class_converter = LuaClassTypeConverter$/;"	kind:variable	line:312
 default_ptr_converter	../lang/cpython.py	/^	default_ptr_converter = PythonPtrTypeDefaultConverter$/;"	kind:variable	line:287
@@ -340,7 +340,7 @@ parser	../tests.py	/^parser = argparse.ArgumentParser(description='Run generator
 path	../bind.py	/^path = split[0]$/;"	kind:variable	line:36
 physic_system	../examples/harfang.py	/^	physic_system = gen.begin_class('gs::core::IPhysicSystem', bound_name='PhysicSystem_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:1251
 physic_trace	../examples/harfang.py	/^	physic_trace = gen.begin_class('gs::core::PhysicTrace')$/;"	kind:variable	line:1239
-prepare_c_rval	../gen.py	/^	def prepare_c_rval(self, conv, ctype, var, ownership=None):$/;"	kind:member	line:638
+prepare_from_c_var	../gen.py	/^	def prepare_from_c_var(self, conv, ctype, var, ownership=None):$/;"	kind:member	line:638
 prepare_var_for_conv	../gen.py	/^	def prepare_var_for_conv(self, var, input_ref):$/;"	kind:member	line:285
 prepare_var_from_conv	../gen.py	/^	def prepare_var_from_conv(self, var, target_ref):$/;"	kind:member	line:288
 protos	../examples/harfang.py	/^	protos = [('bool', ['gs::uint channel', 'gs::uint poly_index', 'const std::vector<gs::tVector2<float>> &uvs'], ['proxy'])]$/;"	kind:variable	line:534
@@ -446,7 +446,7 @@ to_c_call	../lang/lua.py	/^	def to_c_call(self, in_var, out_var_p):$/;"	kind:mem
 transform	../examples/harfang.py	/^	transform = gen.begin_class('gs::core::Transform', bound_name='Transform_nobind', noncopyable=True, nobind=True)$/;"	kind:variable	line:847
 transform_rval.py	../tests/transform_rval.py	1;"	kind:file	line:1
 transform_var_ref_to	../gen.py	/^def transform_var_ref_to(var, from_ref, to_ref):$/;"	kind:function	line:223
-typedef	../gen.py	/^	def typedef(self, type, alias_of, arg_storage_type=None, bound_name=None):$/;"	kind:member	line:427
+typedef	../gen.py	/^	def typedef(self, type, alias_of, to_c_storage_type=None, bound_name=None):$/;"	kind:member	line:427
 typename	../gen.py	/^typename = re.compile(r"((::)*(_|[A-z])[A-z0-9_]*)+")$/;"	kind:variable	line:114
 unwrap	../lib/stl.py	/^	def unwrap(self, in_var, out_var):$/;"	kind:member	line:9
 view_state	../examples/harfang.py	/^	view_state = gen.begin_class('gs::render::ViewState')$/;"	kind:variable	line:2300

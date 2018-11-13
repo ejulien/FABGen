@@ -11,8 +11,8 @@ import gen
 
 
 class DummyTypeConverter(gen.TypeConverter):
-	def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None, needs_c_storage_class=False):
-		super().__init__(type, arg_storage_type, bound_name, rval_storage_type, needs_c_storage_class)
+	def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None, needs_c_storage_class=False):
+		super().__init__(type, to_c_storage_type, bound_name, from_c_storage_type, needs_c_storage_class)
 
 	def get_type_api(self, module_name):
 		return ''
@@ -31,8 +31,8 @@ class DummyTypeConverter(gen.TypeConverter):
 
 
 class DummyExternTypeConverter(gen.TypeConverter):
-	def __init__(self, type, arg_storage_type=None, bound_name=None, module=None):
-		super().__init__(type, arg_storage_type, bound_name, None, None)
+	def __init__(self, type, to_c_storage_type=None, bound_name=None, module=None):
+		super().__init__(type, to_c_storage_type, bound_name, None, None)
 
 		self.module = module  # store module
 
@@ -123,7 +123,7 @@ class APIGenerator(gen.FABGen):
 	def rval_from_c_ptr(self, conv, out_var, expr, ownership):
 		return ''
 
-	def commit_rvals(self, rvals, ctx='default'):
+	def commit_from_c_vars(self, rvals, ctx='default'):
 		return ''
 
 	def output_binding_api(self):

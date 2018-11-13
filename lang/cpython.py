@@ -52,7 +52,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 			out += 'static PyObject *%s_tp_repr(PyObject *self) {\n' % self.bound_name
 			out += '	std::string repr;\n'
-			out += gen._prepare_c_arg_self(self, '_self')
+			out += gen._prepare_to_c_self(self, '_self')
 			out += repr('_self', 'repr')
 			out += '	return PyUnicode_FromString(repr.c_str());\n'
 			out += '}\n\n'
@@ -66,7 +66,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 			# get_size
 			out += 'static Py_ssize_t %s_sq_length(PyObject *self) {\n' % self.bound_name
-			out += gen._prepare_c_arg_self(self, '_self')
+			out += gen._prepare_to_c_self(self, '_self')
 			out += '	Py_ssize_t size = -1;\n'
 			out += seq.get_size('_self', 'size')
 			out += '	return size;\n'
@@ -74,7 +74,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 
 			# get_item
 			out += 'static PyObject *%s_sq_item(PyObject *self, Py_ssize_t idx) {\n' % self.bound_name
-			out += gen._prepare_c_arg_self(self, '_self')
+			out += gen._prepare_to_c_self(self, '_self')
 			out += gen.decl_var(seq.wrapped_conv.ctype, 'rval')
 			out += 'bool error = false;\n'
 			out += seq.get_item('_self', 'idx', 'rval', 'error')
@@ -82,8 +82,8 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 	PyErr_Format(PyExc_IndexError, "invalid lookup");
 	return NULL;
 }\n'''
-			out += gen.prepare_c_rval({'conv': seq.wrapped_conv, 'ctype': seq.wrapped_conv.ctype, 'var': 'rval', 'is_arg_in_out': False, 'ownership': None})
-			out += gen.commit_rvals(['rval'])
+			out += gen.prepare_from_c_var({'conv': seq.wrapped_conv, 'ctype': seq.wrapped_conv.ctype, 'var': 'rval', 'is_arg_in_out': False, 'ownership': None})
+			out += gen.commit_from_c_vars(['rval'])
 			out += '}\n\n'
 
 			# set_item
@@ -92,8 +92,8 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 			out += '		PyErr_Format(PyExc_TypeError, "invalid type in assignation, expected %s");\n' % seq.wrapped_conv.ctype
 			out += '		return -1;\n'
 			out += '	}\n\n'
-			out += gen._prepare_c_arg_self(self, '_self')
-			out += gen._prepare_c_arg(0, seq.wrapped_conv, 'cval', 'setter')
+			out += gen._prepare_to_c_self(self, '_self')
+			out += gen.prepare_to_c_var(0, seq.wrapped_conv, 'cval', 'setter')
 			out += 'bool error = false;\n'
 			out += seq.set_item('_self', 'idx', 'cval', 'error')
 			out += '''if (error) {
@@ -330,8 +330,8 @@ class PythonPtrTypeDefaultConverter(PythonTypeConverterCommon):
 
 
 class PythonExternTypeConverter(PythonTypeConverterCommon):
-	def __init__(self, type, arg_storage_type, bound_name, module):
-		super().__init__(type, arg_storage_type, bound_name)
+	def __init__(self, type, to_c_storage_type, bound_name, module):
+		super().__init__(type, to_c_storage_type, bound_name)
 		self.module = module
 
 	def get_type_api(self, module_name):
@@ -473,6 +473,19 @@ static inline bool CheckArgsTuple(PyObject *args) {
 }
 \n'''
 
+		self._source += '''\
+class PythonValueRef {
+public:
+	PythonValueRef(PyObject *o_) : o(o_) { Py_XINCREF(o); }
+	~PythonValueRef() { Py_XDECREF(o); }
+
+	PyObject *Get() const { return o; }
+
+private:
+	PyObject *o;
+};
+\n'''
+
 		self._source += self.get_binding_api_declaration()
 		self._header += self.get_binding_api_declaration()
 
@@ -491,6 +504,8 @@ static inline bool CheckArgsTuple(PyObject *args) {
 			return 'o%d' % (i+2)
 		elif ctx == 'setter':
 			return 'val'
+		elif ctx == 'rbind_rval':
+			return 'rbind_rval'
 		return 'arg_pyobj[%d]' % i
 
 	def open_proxy(self, name, max_arg_count, ctx):
@@ -539,7 +554,7 @@ static inline bool CheckArgsTuple(PyObject *args) {
 	def return_void_from_c(self):
 		return 'return 0;'
 
-	def declare_rval(self, out_var):
+	def declare_from_c_var(self, out_var):
 		return 'PyObject *%s;\n' % out_var
 
 	def rval_from_nullptr(self, out_var):
@@ -548,7 +563,7 @@ static inline bool CheckArgsTuple(PyObject *args) {
 	def rval_from_c_ptr(self, conv, out_var, expr, ownership):
 		return conv.from_c_call(out_var, expr, ownership)
 
-	def commit_rvals(self, rvals, ctx='default'):
+	def commit_from_c_vars(self, rvals, ctx='default'):
 		out = ''
 
 		if ctx == 'setter':
@@ -561,11 +576,23 @@ static inline bool CheckArgsTuple(PyObject *args) {
 			rvals = [rval + '_out' for rval in rvals]
 
 			if rval_count == 0:
-				out += 'Py_INCREF(Py_None);\nreturn Py_None;\n'
+				if ctx == 'rbind_args':
+					rval_expr = 'NULL'
+				else:
+					out += 'Py_INCREF(Py_None);\n'
+					rval_expr = 'Py_None'
 			elif rval_count == 1:
-				out += 'return %s;\n' % rvals[0]
+				if ctx == 'rbind_args':
+					rval_expr = 'PyTuple_Pack(1, %s)' % rvals[0]
+				else:
+					rval_expr = rvals[0]
 			else:
-				out += 'return PyTuple_Pack(%d, %s);\n' % (rval_count, ', '.join(rvals))
+				rval_expr = 'PyTuple_Pack(%d, %s)' % (rval_count, ', '.join(rvals))
+
+			if ctx == 'rbind_args':
+				out += 'PyObject *rbind_args = %s;\n' % rval_expr
+			else:
+				out += 'return %s;\n' % rval_expr
 
 		return out
 
@@ -573,6 +600,23 @@ static inline bool CheckArgsTuple(PyObject *args) {
 		src = '%s = %s;\n' % (out_var, arg_in_out)
 		src += 'Py_INCREF(%s);\n' % out_var
 		return src
+
+	#
+	def _get_rbind_call_signature(self, name, rval, args):
+		if len(args) == 0:
+			return '%s %s(PyObject *func)' % (rval, name)
+		return '%s %s(PyObject *func, %s)' % (rval, name, ', '.join(args))
+
+	def _prepare_rbind_call(self, rval, args):
+		return ''
+
+	def _rbind_call(self, rval, args):
+		return 'PyObject *rbind_rval = PyObject_CallObject(func, rbind_args);\n'
+
+	def _clean_rbind_call(self, rval, args):
+		if len(args) > 0:
+			return 'Py_DECREF(rbind_args);\n'
+		return ''
 
 	#
 	def output_module_functions_table(self):
