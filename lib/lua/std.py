@@ -52,8 +52,8 @@ def bind_std(gen):
 	gen.bind_type(LuaDoubleConverter('double'))
 
 	class LuaConstCharPtrConverter(lang.lua.LuaTypeConverterCommon):
-		def __init__(self, type, arg_storage_type=None, bound_name=None, rval_storage_type=None):
-			super().__init__(type, arg_storage_type, bound_name, rval_storage_type, True)
+		def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None):
+			super().__init__(type, to_c_storage_type, bound_name, from_c_storage_type, True)
 
 		def get_type_glue(self, gen, module_name):
 			return 'struct %s { std::string s; };\n' % self.c_storage_class +\

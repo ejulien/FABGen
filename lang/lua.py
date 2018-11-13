@@ -63,7 +63,7 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 
 			# get_size
 			out += 'static int __len_%s(lua_State *L) {\n' % self.bound_name
-			out += gen._prepare_c_arg_self(self, '_self')
+			out += gen._prepare_to_c_self(self, '_self')
 			out += '	lua_Integer size;\n'
 			out += seq.get_size('_self', 'size')
 			out += '	lua_pushinteger(L, size);\n'
@@ -73,16 +73,16 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 			# get_item
 			out += 'static int seq__index_%s(lua_State *L) {\n' % self.bound_name
 			out += '	int rval_count = 0;\n'
-			out += gen._prepare_c_arg_self(self, '_self')
-			out += gen._prepare_c_arg(0, gen.get_conv('int'), 'idx', 'getter')
+			out += gen._prepare_to_c_self(self, '_self')
+			out += gen.prepare_to_c_var(0, gen.get_conv('int'), 'idx', 'getter')
 			out += gen.decl_var(seq.wrapped_conv.ctype, 'rval')
 			out += '	bool error = false;\n'
 			out += seq.get_item('_self', 'idx-1', 'rval', 'error')  # Lua index starts at 1
 			out += '''	if (error)
 		return luaL_error(L, "invalid lookup");
 '''
-			out += gen.prepare_c_rval({'conv': seq.wrapped_conv, 'ctype': seq.wrapped_conv.ctype, 'var': 'rval', 'is_arg_in_out': False, 'ownership': None})
-			out += gen.commit_rvals(['rval'])
+			out += gen.prepare_from_c_var({'conv': seq.wrapped_conv, 'ctype': seq.wrapped_conv.ctype, 'var': 'rval', 'is_arg_in_out': False, 'ownership': None})
+			out += gen.commit_from_c_vars(['rval'])
 			out += '	return rval_count;\n'
 			out += '}\n\n'
 
@@ -90,9 +90,9 @@ class LuaClassTypeConverter(LuaTypeConverterCommon):
 			out += 'static int seq__newindex_%s(lua_State *L) {\n' % self.bound_name
 			out += '	if (!%s)\n' % seq.wrapped_conv.check_call('-1')
 			out += '		return luaL_error(L, "invalid type in assignation, expected %s");\n' % seq.wrapped_conv.ctype
-			out += gen._prepare_c_arg_self(self, '_self')
-			out += gen._prepare_c_arg(0, gen.get_conv('int'), 'idx', 'setter')
-			out += gen._prepare_c_arg(1, seq.wrapped_conv, 'cval', 'setter')
+			out += gen._prepare_to_c_self(self, '_self')
+			out += gen.prepare_to_c_var(0, gen.get_conv('int'), 'idx', 'setter')
+			out += gen.prepare_to_c_var(1, seq.wrapped_conv, 'cval', 'setter')
 			out += '	bool error = false;\n'
 			out += seq.set_item('_self', 'idx-1', 'cval', 'error')  # Lua index starts at 1
 			out += '''	if (error)
@@ -241,7 +241,7 @@ static int __default_Lua_eq_%s(lua_State *L) {
 		if has___debugger_extand:
 			out += '\
 static int __debugger_extand_%s_class(lua_State *L) {\n' % self.bound_name
-			out += gen._prepare_c_arg_self(self, 'obj', 'getter', self._features)
+			out += gen._prepare_to_c_self(self, 'obj', 'getter', self._features)
 
 			out += '\n	lua_newtable(L);\n'
 
@@ -402,8 +402,8 @@ class LuaPtrTypeConverter(LuaTypeConverterCommon):
 
 #
 class LuaExternTypeConverter(LuaTypeConverterCommon):
-	def __init__(self, type, arg_storage_type, bound_name, module):
-		super().__init__(type, arg_storage_type, bound_name)
+	def __init__(self, type, to_c_storage_type, bound_name, module):
+		super().__init__(type, to_c_storage_type, bound_name)
 		self.module = module
 
 	def get_type_api(self, module_name):
@@ -571,7 +571,7 @@ private:
 	def rval_from_c_ptr(self, conv, out_var, expr, ownership):
 		return 'rval_count += ' + conv.from_c_call(out_var, expr, ownership)
 
-	def commit_rvals(self, rvals, ctx='default'):
+	def commit_from_c_vars(self, rvals, ctx='default'):
 		return ''  #'return rval_count;\n'
 
 	def rval_assign_arg_in_out(self, out_var, arg_in_out):

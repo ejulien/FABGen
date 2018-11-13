@@ -103,7 +103,7 @@ class LuaTableToStdVectorConverter(lang.lua.LuaTypeConverterCommon):
 		%s(L, -1, &v);
 		(*sv)[i] = %s;
 	}
-}\n''' % (self.to_c_func, self.T_conv.ctype, self.T_conv.ctype, self.T_conv.arg_storage_ctype, self.T_conv.to_c_func, self.T_conv.prepare_var_from_conv('v', ''))
+}\n''' % (self.to_c_func, self.T_conv.ctype, self.T_conv.ctype, self.T_conv.to_c_storage_ctype, self.T_conv.to_c_func, self.T_conv.prepare_var_from_conv('v', ''))
 
 		out += '''int %s(lua_State *L, void *obj, OwnershipPolicy own) {
 	std::vector<%s> *sv = (std::vector<%s> *)obj;

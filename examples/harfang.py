@@ -50,7 +50,7 @@ def expand_std_vector_proto(gen, protos):
 		expanded = []
 		add_expanded = False
 		for arg in proto[1]:
-			carg = gen.parse_carg(arg)
+			carg = gen.parse_named_ctype(arg)
 			conv = gen.select_ctype_conv(carg.ctype)
 			has_sequence = ('sequence' in conv._features) if conv is not None else False
 			if has_sequence:
