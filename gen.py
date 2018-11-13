@@ -1051,20 +1051,16 @@ class FABGen:
 		self._source += self._prepare_rbind_call(rval, args)
 
 		# prepare args
-		self._source += '	int rval_count = 0;\n'
-
 		arg_vars = []
 		for arg in args:
 			_arg = self.parse_carg(arg)
 
-			arg_var = _arg.name + '_out'
 			arg_conv = self.get_conv(str(_arg.ctype))
-			arg_vars.append(arg_var)
+			arg_vars.append(_arg.name)
 
-			self._source += self.declare_rval(arg_var)
 			self._source += self.prepare_c_rval({'conv': arg_conv, 'ctype': _arg.ctype, 'var': _arg.name, 'is_arg_in_out': False, 'ownership': None})
 
-		self._source += self.commit_rvals(arg_vars)
+		self._source += self.commit_rvals(arg_vars, 'rbind_args')
 
 		# call
 		self._source += '\n' + self._rbind_call(rval, args) + '\n'

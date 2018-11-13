@@ -473,6 +473,19 @@ static inline bool CheckArgsTuple(PyObject *args) {
 }
 \n'''
 
+		self._source += '''\
+class PythonValueRef {
+public:
+	PythonValueRef(PyObject *o_) : o(o_) { Py_XINCREF(o); }
+	~PythonValueRef() { Py_XDECREF(o); }
+
+	PyObject *Get() const { return o; }
+
+private:
+	PyObject *o;
+};
+\n'''
+
 		self._source += self.get_binding_api_declaration()
 		self._header += self.get_binding_api_declaration()
 
@@ -491,6 +504,8 @@ static inline bool CheckArgsTuple(PyObject *args) {
 			return 'o%d' % (i+2)
 		elif ctx == 'setter':
 			return 'val'
+		elif ctx == 'rbind_rval':
+			return 'rbind_rval'
 		return 'arg_pyobj[%d]' % i
 
 	def open_proxy(self, name, max_arg_count, ctx):
@@ -561,11 +576,23 @@ static inline bool CheckArgsTuple(PyObject *args) {
 			rvals = [rval + '_out' for rval in rvals]
 
 			if rval_count == 0:
-				out += 'Py_INCREF(Py_None);\nreturn Py_None;\n'
+				if ctx == 'rbind_args':
+					rval_expr = 'NULL'
+				else:
+					out += 'Py_INCREF(Py_None);\n'
+					rval_expr = 'Py_None'
 			elif rval_count == 1:
-				out += 'return %s;\n' % rvals[0]
+				if ctx == 'rbind_args':
+					rval_expr = 'PyTuple_Pack(1, %s)' % rvals[0]
+				else:
+					rval_expr = rvals[0]
 			else:
-				out += 'return PyTuple_Pack(%d, %s);\n' % (rval_count, ', '.join(rvals))
+				rval_expr = 'PyTuple_Pack(%d, %s)' % (rval_count, ', '.join(rvals))
+
+			if ctx == 'rbind_args':
+				out += 'PyObject *rbind_args = %s;\n' % rval_expr
+			else:
+				out += 'return %s;\n' % rval_expr
 
 		return out
 
@@ -584,9 +611,11 @@ static inline bool CheckArgsTuple(PyObject *args) {
 		return ''
 
 	def _rbind_call(self, rval, args):
-		return 'PyObject *rval = PyObject_CallObject(func);\n'
+		return 'PyObject *rbind_rval = PyObject_CallObject(func, rbind_args);\n'
 
 	def _clean_rbind_call(self, rval, args):
+		if len(args) > 0:
+			return 'Py_DECREF(rbind_args);\n'
 		return ''
 
 	#

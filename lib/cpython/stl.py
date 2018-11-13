@@ -26,12 +26,12 @@ Py_DECREF(utf8_pyobj);
 def bind_function_T(gen, type, bound_name=None):
 	gen.add_include('functional', True)
 
-	class PythonStdFunctionConverter(lang.lua.LuaTypeConverterCommon):
+	class PythonStdFunctionConverter(lang.cpython.PythonTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
 			func = self.ctype.template.function
 
 			# check C
-			check = 'bool %s(PyObject *o) { return PyFunction_Check(o) ? true : false; }\n' % self.check_func
+			check = 'bool %s(PyObject *o) { return PyCallable_Check(o) ? true : false; }\n' % self.check_func
 
 			# to C
 			rval = 'void' if hasattr(func, 'void_rval') else str(func.rval)
@@ -46,18 +46,17 @@ def bind_function_T(gen, type, bound_name=None):
 
 			to_c = '''\
 void %s(PyObject *o, void *obj) {
-	auto ref = std::make_shared<LuaValueRef>(L, idx);
+	auto ref = std::make_shared<PythonValueRef>(o);
 	*((%s*)obj) = [=](%s) -> %s {
-		ref->Push();
 ''' % (self.to_c_func, self.ctype, ', '.join(['%s v%d' % (parm, idx) for idx, parm in enumerate(args)]), rval)
 
 			if rval != 'void':
 				to_c += '		return '
 
 			if len(args) > 0:
-				to_c += '%s(L, -1, %s);\n' % (gen.apply_api_prefix(rbind_helper), ', '.join(['v%d' % idx for idx in range(len(args))]))
+				to_c += '%s(ref->Get(), %s);\n' % (gen.apply_api_prefix(rbind_helper), ', '.join(['v%d' % idx for idx in range(len(args))]))
 			else:
-				to_c += '%s(L, -1);\n' % gen.apply_api_prefix(rbind_helper)
+				to_c += '%s(ref->Get());\n' % gen.apply_api_prefix(rbind_helper)
 
 			to_c += '''\
 	};
@@ -66,11 +65,9 @@ void %s(PyObject *o, void *obj) {
 
 			# from C
 			from_c = '''\
-int %s(lua_State *L, void *obj, OwnershipPolicy) {
-	lua_pushcfunction(L, [](lua_State *L) -> int {
-		return 0; // TODO
-	});
-	return 1;
+PyObject *%s(void *obj, OwnershipPolicy) {
+	Py_INCREF(Py_None);
+	return Py_None; // TODO
 }
 ''' % (self.from_c_func)
 

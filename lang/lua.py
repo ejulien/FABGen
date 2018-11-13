@@ -589,12 +589,15 @@ private:
 
 	def _prepare_rbind_call(self, rval, args):
 		return '''\
+int rval_count = 0;
+
 if (idx != -1) {
 	lua_pushvalue(L, idx);
 	if (idx < 0)
 		--idx;
 	lua_remove(L, idx);
-}\n
+}
+
 '''
 
 	def _rbind_call(self, rval, args):
