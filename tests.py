@@ -379,3 +379,4 @@ else:
 	print("The following tests failed:")
 	for test in failed_test_list:
 		print(" - " + test)
+	sys.exit(1)
