@@ -17,19 +17,19 @@ static std::function<void()> simple_void_function;
 void SetSimpleVoidFunction(std::function<void()> f) { simple_void_function = f; }
 void InvokeSimpleVoidFunction() {  simple_void_function(); }
 
-static std::function<int(int)> int_int_function;
+static std::function<int(int, int &, int *)> compute_function;
 
-void SetIntIntFunction(std::function<int(int)> f) { int_int_function = f; }
-int InvokeIntIntFunction(int v) { return int_int_function(v); }
+void SetComputeFunction(std::function<int(int, int &, int *)> f) { compute_function = f; }
+int InvokeComputeFunction(int v, int m, int c) { return compute_function(v, m, &c); }
 ''', True, False)
 
 	lib.stl.bind_function_T(gen, 'std::function<void()>', 'VoidCb')
 	gen.bind_function('SetSimpleVoidFunction', 'void', ['std::function<void()> f'])
 	gen.bind_function('InvokeSimpleVoidFunction', 'void', [])
 
-	lib.stl.bind_function_T(gen, 'std::function<int(int)>', 'IntCbTakingInt')
-	gen.bind_function('SetIntIntFunction', 'void', ['std::function<int(int)> f'])
-	gen.bind_function('InvokeIntIntFunction', 'int', ['int v'])
+	lib.stl.bind_function_T(gen, 'std::function<int(int, int &, int *)>')
+	gen.bind_function('SetComputeFunction', 'void', ['std::function<int(int, int &, int *)> f'])
+	gen.bind_function('InvokeComputeFunction', 'int', ['int v', 'int m', 'int c'])
 
 	gen.finalize()
 
@@ -45,13 +45,13 @@ def simple_void_function():
 my_test.SetSimpleVoidFunction(simple_void_function)
 my_test.InvokeSimpleVoidFunction()
 
-def int_int_function(v):
-	return v * 3
+def compute_function(v, m, c):
+	return v * m + c
 
-my_test.SetIntIntFunction(int_int_function)
-r = my_test.InvokeIntIntFunction(5)
+my_test.SetComputeFunction(compute_function)
+r = my_test.InvokeComputeFunction(5, 3, 4)
 
-assert r == 15
+assert r == 19
 '''
 
 test_lua = '''\
@@ -64,12 +64,12 @@ end
 my_test.SetSimpleVoidFunction(simple_void_function)
 my_test.InvokeSimpleVoidFunction()
 
-function int_int_function(v)
-	return v * 3
+function compute_function(v, m, c)
+	return v * m + c
 end
 
-my_test.SetIntIntFunction(int_int_function)
-r = my_test.InvokeIntIntFunction(5)
+my_test.SetComputeFunction(compute_function)
+r = my_test.InvokeComputeFunction(5, 3, 4)
 
-assert(r == 15)
+assert(r == 19)
 '''

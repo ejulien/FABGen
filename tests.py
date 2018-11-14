@@ -73,7 +73,7 @@ def run_test(gen, name, testbed):
 		print("[OK]")
 	else:
 		print("[FAILED]")
-		failed_test_list.append(name)
+		failed_test_list.append('%s (%s)' % (name, gen.get_language()))
 
 	if args.debug_test:
 		if args.linux:
@@ -85,13 +85,13 @@ def run_test(gen, name, testbed):
 
 
 def run_tests(gen, names, testbed):
-	print("Starting tests with fabgen generator %s" % gen.get_language())
+	print("Starting tests with generator %s" % gen.get_language())
 
 	test_count = len(names)
 	print("Running %d tests\n" % test_count)
 
 	for i, name in enumerate(names):
-		print('[%d/%d] Running test "%s"' % (i+1, test_count, name))
+		print('[%d/%d] Running test "%s" (%s)' % (i+1, test_count, name, gen.get_language()))
 		cwd = os.getcwd()
 		run_test(gen, name, testbed)
 		os.chdir(cwd)

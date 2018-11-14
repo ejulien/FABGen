@@ -102,7 +102,7 @@ class APIGenerator(gen.FABGen):
 	def get_self(self, ctx):
 		return '1'  # always first arg
 
-	def get_arg(self, i, ctx):
+	def get_var(self, i, ctx):
 		return str(i)
 
 	def open_proxy(self, name, max_arg_count, ctx):
