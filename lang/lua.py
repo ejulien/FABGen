@@ -537,7 +537,7 @@ private:
 	def get_self(self, ctx):
 		return '1'  # always first arg
 
-	def get_arg(self, i, ctx):
+	def get_var(self, i, ctx):
 		i += 1  # Lua stack starts at 1
 		if ctx in ['getter', 'setter', 'method', 'arithmetic_op', 'comparison_op']:
 			i += 1  # account for self in those methods
@@ -545,6 +545,7 @@ private:
 			i = -1  # return value for a reverse binding call
 		return str(i)
 
+	#
 	def open_proxy(self, name, max_arg_count, ctx):
 		out = 'static int %s(lua_State *L) {\n' % name
 		if ctx in ['method']:
@@ -580,12 +581,8 @@ private:
 		return out
 
 	# reverse binding support
-	def _get_rbind_call_signature(self, name, rval, args):
-		out = '%s %s(lua_State *L, int idx' % (rval, name)
-		if len(args) > 0:
-			out += ', ' + ', '.join(args)
-		out += ')'
-		return out
+	def _get_rbind_call_custom_args(self):
+		return 'lua_State *L, int idx'
 
 	def _prepare_rbind_call(self, rval, args):
 		return '''\
@@ -600,10 +597,10 @@ if (idx != -1) {
 
 '''
 
-	def _rbind_call(self, rval, args):
+	def _rbind_call(self, rval, args, success_var):
 		if rval == 'void':
-			return 'lua_call(L, rval_count, 0);\n'
-		return 'lua_call(L, rval_count, 1);\n'
+			return '%s = lua_pcall(L, rval_count, 0, 0) == LUA_OK;\n' % success_var
+		return '%s = lua_pcall(L, rval_count, 1, 0) == LUA_OK;\n' % success_var
 
 	def _clean_rbind_call(self, rval, args):
 		if rval == 'void':

@@ -499,7 +499,7 @@ private:
 			return 'o1'
 		return 'self'
 
-	def get_arg(self, i, ctx):
+	def get_var(self, i, ctx):
 		if ctx in ['arithmetic_op', 'inplace_arithmetic_op', 'comparison_op']:
 			return 'o%d' % (i+2)
 		elif ctx == 'setter':
@@ -508,6 +508,7 @@ private:
 			return 'rbind_rval'
 		return 'arg_pyobj[%d]' % i
 
+	#
 	def open_proxy(self, name, max_arg_count, ctx):
 		out = ''
 
@@ -602,16 +603,17 @@ private:
 		return src
 
 	#
-	def _get_rbind_call_signature(self, name, rval, args):
-		if len(args) == 0:
-			return '%s %s(PyObject *func)' % (rval, name)
-		return '%s %s(PyObject *func, %s)' % (rval, name, ', '.join(args))
+	def _get_rbind_call_custom_args(self):
+		return 'PyObject *func'
 
 	def _prepare_rbind_call(self, rval, args):
 		return ''
 
-	def _rbind_call(self, rval, args):
-		return 'PyObject *rbind_rval = PyObject_CallObject(func, rbind_args);\n'
+	def _rbind_call(self, rval, args, success_var):
+		return '''\
+PyObject *rbind_rval = PyObject_CallObject(func, rbind_args);
+%s = rbind_rval != NULL;
+''' % success_var
 
 	def _clean_rbind_call(self, rval, args):
 		if len(args) > 0:

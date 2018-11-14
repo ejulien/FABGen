@@ -63,7 +63,7 @@ def ref_to_string(ref):
 	return '_'.join(parts)
 
 
-def get_clean_ctype_name(ctype):
+def ctype_to_plain_string(ctype):
 	parts = []
 
 	if ctype.const:
@@ -77,16 +77,17 @@ def get_clean_ctype_name(ctype):
 
 	if hasattr(ctype, 'template'):
 		if hasattr(ctype.template, 'args'):
-			parts.append('of_' + '_and_'.join([get_clean_ctype_name(arg) for arg in ctype.template.args]))
+			parts.append('of_' + '_and_'.join([ctype_to_plain_string(arg) for arg in ctype.template.args]))
 		elif hasattr(ctype.template, 'function'):
-			parts.append('function')
+			parts.append('returning')
 			if hasattr(ctype.template.function, 'void_rval'):
 				parts.append('void')
 			else:
-				parts.append(get_fully_qualified_ctype_name(ctype.template.function.rval))
+				parts.append(ctype_to_plain_string(ctype.template.function.rval))
 			if hasattr(ctype.template.function, 'args'):
-				for parm in ctype.template.function.args:
-					parts.append(get_fully_qualified_ctype_name(parm))
+				parts.append('taking')
+				for arg in ctype.template.function.args:
+					parts.append(ctype_to_plain_string(arg))
 	if ctype.const_ref:
 		parts.append('const')
 	if hasattr(ctype, 'ref'):
@@ -98,7 +99,7 @@ def get_clean_ctype_name(ctype):
 def get_ctype_default_bound_name(ctype):
 	ctype = copy.deepcopy(ctype)
 	ctype.name = ctype.name.split('::')[-1]  # strip namespace
-	return get_clean_ctype_name(ctype)
+	return ctype_to_plain_string(ctype)
 
 
 #
@@ -328,9 +329,9 @@ class TypeConverter:
 		return ''
 
 	def to_c_call(self, out_var, expr):
-		assert 'not implemented in this converter'
+		assert 'not implemented in this converter'  # pragma: no cover
 	def from_c_call(self, out_var, expr, ownership):
-		assert 'not implemented in this converter'
+		assert 'not implemented in this converter'  # pragma: no cover
 
 	def prepare_var_for_conv(self, var, input_ref):
 		"""Transform a variable for use with the converter from_c/to_c methods."""
@@ -376,7 +377,7 @@ class FABGen:
 		return apply_api_prefix(symbol)
 
 	def get_language(self):
-		assert 'not implemented in this generator'
+		assert 'not implemented in this generator'  # pragma: no cover
 
 	def parse_ctype(self, type):
 		return parse(type, _CType)
@@ -384,6 +385,9 @@ class FABGen:
 	def parse_named_ctype(self, type):
 		type = type.replace('* *', '**')
 		return parse(type, _NamedCType)
+
+	def ctype_to_plain_string(self, ctype):
+		return ctype_to_plain_string(ctype)
 
 	get_symbol_doc_hook = lambda gen, name: ""
 
@@ -629,14 +633,14 @@ class FABGen:
 
 	#
 	def commit_from_c_vars(self, rval, ctx):
-		assert 'not implemented in this generator'
+		assert 'not implemented in this generator'  # pragma: no cover
 
 	def rval_assign_arg_in_out(self, out_var, arg_in_out):
-		assert 'not implemented in this generator'
+		assert 'not implemented in this generator'  # pragma: no cover
 
 	#
 	def proxy_call_error(self, msg, ctx):
-		assert 'not implemented in this generator'
+		assert 'not implemented in this generator'  # pragma: no cover
 
 	#
 	def __ctype_to_ownership_policy(self, ctype):
@@ -686,7 +690,6 @@ class FABGen:
 				args = [args]
 
 			for arg in args:
-				assert ',' not in arg, "malformed argument, a comma was found in an argument when it should be a separate list entry"
 				carg = self.parse_named_ctype(arg)
 				conv = self.select_ctype_conv(carg.ctype)
 				_proto['args'].append({'carg': carg, 'conv': conv, 'check_var': None})
@@ -724,7 +727,7 @@ class FABGen:
 		return self.decl_var(ctype, var)
 
 	def _convert_to_c_var(self, idx, conv, var, ctx='default', features=[]):
-		out = conv.to_c_call(self.get_arg(idx, ctx), '&%s' % var)
+		out = conv.to_c_call(self.get_var(idx, ctx), '&%s' % var)
 
 		if 'validate_arg_in' in features:
 			validator = features['validate_arg_in'][idx]
@@ -760,7 +763,7 @@ class FABGen:
 				src += '} else {\n'
 
 			if rval['conv'].is_type_class() and rval['is_arg_in_out']:  # if an object is used as arg_out then reuse the input argument directly 
-				src += self.rval_assign_arg_in_out(out_var, self.get_arg(rval['arg_idx'], rval['ctx']))
+				src += self.rval_assign_arg_in_out(out_var, self.get_var(rval['arg_idx'], rval['ctx']))
 			else:
 				src += self.rval_from_c_ptr(rval['conv'], out_var, expr, rval['ownership'])
 
@@ -972,7 +975,7 @@ class FABGen:
 
 				self._source += indent
 				for conv, protos_for_conv in protos_per_arg_conv.items():
-					self._source += 'if (%s) {\n' % conv.check_call(self.get_arg(arg_idx, ctx))
+					self._source += 'if (%s) {\n' % conv.check_call(self.get_var(arg_idx, ctx))
 					output_arg_check_and_dispatch(protos_for_conv, arg_idx+1, arg_limit)
 					self._source += indent + '} else '
 
@@ -1020,52 +1023,63 @@ class FABGen:
 
 	# reverse binding support
 	def _get_rbind_call_signature(self, name, rval, args):
-		assert 'not implemented in this generator'
+		assert 'not implemented in this generator'  # pragma: no cover
 
 	def _prepare_rbind_call(self, rval, args):
-		assert 'not implemented in this generator'
+		assert 'not implemented in this generator'  # pragma: no cover
 
-	def _rbind_call(self, rval, args):
-		assert 'not implemented in this generator'
+	def _rbind_call(self, rval, args, success_var):
+		assert 'not implemented in this generator'  # pragma: no cover
 
 	def _clean_rbind_call(self, rval, args):
-		assert 'not implemented in this generator'
+		assert 'not implemented in this generator'  # pragma: no cover
+
+	def __get_rbind_call_signature(self, name, rval, args, output_default_args):
+		return '%s %s(%s%s, bool *success%s)' % (rval, name, self._get_rbind_call_custom_args(), (', ' + ', '.join([str(arg) for arg in args])) if len(args) > 0 else '', ' = NULL' if output_default_args else '')
 
 	def rbind_function(self, name, rval, args, internal=False):
-		sig = self._get_rbind_call_signature(apply_api_prefix(name), rval, args)
+		args = [self.parse_named_ctype(arg) for arg in args]
 
 		if internal:
-			self._header += sig + ';\n'
-			self._source += 'static inline %s {\n' % sig
+			self._source += 'static inline %s {\n' % self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, True)
 		else:
-			self._source += '%s {\n' % sig
+			self._header += self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, True) + ';\n'
+			self._source += '%s {\n' % self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, False)
 
 		self._source += self._prepare_rbind_call(rval, args)
 
 		# prepare args
-		arg_vars = []
 		for arg in args:
-			_arg = self.parse_named_ctype(arg)
+			arg_conv = self.select_ctype_conv(arg.ctype)
+			self._source += self.prepare_from_c_var({'conv': arg_conv, 'ctype': arg.ctype, 'var': arg.name, 'is_arg_in_out': False, 'ownership': None})
 
-			arg_conv = self.get_conv(str(_arg.ctype))
-			arg_vars.append(_arg.name)
-
-			self._source += self.prepare_from_c_var({'conv': arg_conv, 'ctype': _arg.ctype, 'var': _arg.name, 'is_arg_in_out': False, 'ownership': None})
-
-		self._source += self.commit_from_c_vars(arg_vars, 'rbind_args')
+		self._source += self.commit_from_c_vars([arg.name for arg in args], 'rbind_args')
 
 		# call
-		self._source += '\n' + self._rbind_call(rval, args) + '\n'
+		self._source += 'bool _call_success_var;'
+		self._source += '\n' + self._rbind_call(rval, args, '_call_success_var') + '\n'
+		self._source += '''\
+if (success)
+	*success = _call_success_var;
+'''
 
 		# rval
 		if rval != 'void':
-			rval_conv = self.get_conv(rval)
-			self._source += self.prepare_to_c_var(0, rval_conv, 'rval_', 'rbind_rval')
+			rval_conv = self.select_ctype_conv(self.parse_ctype(rval))
+
+			self._source += self._declare_to_c_var(rval_conv.to_c_storage_ctype, '_rbind_rval')
+			self._source += '''\
+if (%s) {
+	%s
+} else if (success != NULL) {
+	*success = false;
+}
+''' % (rval_conv.check_call(self.get_var(0, 'rbind_rval')), self._convert_to_c_var(0, rval_conv, '_rbind_rval', 'rbind_rval'))
 
 		self._source += self._clean_rbind_call(rval, args)
 
 		if rval != 'void':
-			self._source += 'return rval_;\n'
+			self._source += 'return _rbind_rval;\n'
 
 		self._source += '}\n'
 
