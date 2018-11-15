@@ -32,25 +32,29 @@ def get_fully_qualified_function_signature(func):
 
 
 def get_fully_qualified_ctype_name(ctype):
-	out = ''
+	parts = []
+
 	if ctype.const:
-		out += 'const '
+		parts.append('const')
 	if ctype.signed:
-		out += 'signed '
+		parts.append('signed')
 	if ctype.unsigned:
-		out += 'unsigned '
-	out += ctype.name
+		parts.append('unsigned')
+
 	if hasattr(ctype, 'template'):
 		if hasattr(ctype.template, 'args'):
-			args = [str(arg) for arg in ctype.template.args]
-			out += '<%s>' % ', '.join(args)
+			parts.append(ctype.name + '<%s>' % ', '.join([str(arg) for arg in ctype.template.args]))
 		elif hasattr(ctype.template, 'function'):
-			out += '<%s>' % get_fully_qualified_function_signature(ctype.template.function)
+			parts.append(ctype.name + '<%s>' % get_fully_qualified_function_signature(ctype.template.function))
+	else:
+		parts.append(ctype.name)
+
 	if ctype.const_ref:
-		out += ' const '
+		parts.append('const')
 	if hasattr(ctype, 'ref'):
-		out += ' ' + ctype.ref
-	return out
+		parts.append(ctype.ref)
+
+	return ' '.join(parts)
 
 
 def ref_to_string(ref):
@@ -774,6 +778,8 @@ class FABGen:
 
 	#
 	def __proto_call(self, self_conv, proto, expr_eval, ctx, fixed_arg_count=None):
+		parts = []
+
 		features = proto['features']
 
 		enable_proxy = 'proxy' in features
@@ -786,7 +792,7 @@ class FABGen:
 		# prepare C call self argument
 		if self_conv:
 			if ctx in ['getter', 'setter', 'method', 'arithmetic_op', 'inplace_arithmetic_op', 'comparison_op']:
-				self._source += self._prepare_to_c_self(self_conv, '_self', ctx, features)
+				parts.append(self._prepare_to_c_self(self_conv, '_self', ctx, features))
 
 		# prepare C call arguments
 		args = proto['args']
@@ -802,11 +808,11 @@ class FABGen:
 
 			if arg_out is not None and arg['carg'].name in arg_out:
 				arg_ctype = conv.ctype
-				self._source += self._declare_to_c_var(arg_ctype, var)
+				parts.append(self._declare_to_c_var(arg_ctype, var))
 			else:
 				arg_ctype = conv.to_c_storage_ctype
-				self._source += self._declare_to_c_var(conv.to_c_storage_ctype, var)
-				self._source += self._convert_to_c_var(argin_idx, conv, var, ctx, features)
+				parts.append(self._declare_to_c_var(conv.to_c_storage_ctype, var))
+				parts.append(self._convert_to_c_var(argin_idx, conv, var, ctx, features))
 				argin_idx += 1
 
 			c_call_args.append(transform_var_ref_to(var, arg_ctype.get_ref(), arg['carg'].ctype.get_ref()))
@@ -818,7 +824,7 @@ class FABGen:
 
 		# c++ exception support
 		if 'exception' in features:
-			self._source += 'try {\n'
+			parts.append('try {\n')
 
 		# declare return value
 		rvals = []
@@ -833,25 +839,25 @@ class FABGen:
 			if enable_proxy:
 				proxy = rval_conv._features['proxy']
 
-				self._source += self.decl_var(proxy.wrapped_conv.ctype.add_ref('*'), 'rval_raw', ' = ')
-				self._source += 'new %s(%s);\n' % (proxy.wrapped_conv.ctype, ', '.join(c_call_args))
+				parts.append(self.decl_var(proxy.wrapped_conv.ctype.add_ref('*'), 'rval_raw', ' = '))
+				parts.append('new %s(%s);\n' % (proxy.wrapped_conv.ctype, ', '.join(c_call_args)))
 
-				self._source += self.decl_var(from_c_storage_ctype, 'rval')
-				self._source += proxy.wrap('rval_raw', 'rval')
+				parts.append(self.decl_var(from_c_storage_ctype, 'rval'))
+				parts.append(proxy.wrap('rval_raw', 'rval'))
 			else:
 				if rval_conv._inline:
 					if len(c_call_args) > 0:
-						self._source += '%s _new_obj(%s);\n' % (rval_conv.ctype, ', '.join(c_call_args))  # construct new inline object on the stack
+						parts.append('%s _new_obj(%s);\n' % (rval_conv.ctype, ', '.join(c_call_args)))  # construct new inline object on the stack
 					else:
-						self._source += '%s _new_obj;\n' % rval_conv.ctype
+						parts.append('%s _new_obj;\n' % rval_conv.ctype)
 					ownership = 'Copy'  # inline objects are constructed on the heap then copy constructed to the VM memory block
 
-				self._source += self.decl_var(from_c_storage_ctype, 'rval', ' = ')
+				parts.append(self.decl_var(from_c_storage_ctype, 'rval', ' = '))
 
 				if rval_conv._inline:
-					self._source += '&_new_obj;\n'
+					parts.append('&_new_obj;\n')
 				else:
-					self._source += 'new %s(%s);\n' % (rval_conv.ctype, ', '.join(c_call_args))
+					parts.append('new %s(%s);\n' % (rval_conv.ctype, ', '.join(c_call_args)))
 
 			rvals_prepare_args.append({'conv': rval_conv, 'ctype': from_c_storage_ctype, 'var': 'rval', 'is_arg_in_out': False, 'ctx': ctx, 'ownership': ownership})
 			rvals.append('rval')
@@ -861,14 +867,14 @@ class FABGen:
 
 			# return value is optional for a function call
 			if rval_conv:
-				self._source += self.decl_var(from_c_storage_ctype, 'rval', ' = ')
+				parts.append(self.decl_var(from_c_storage_ctype, 'rval', ' = '))
 
 			if 'route' in features:
 				if self_conv:
 					c_call_args = ['_self'] + c_call_args
 				expr_eval = features['route']  # hijack the output expression
 
-			self._source += expr_eval(c_call_args) + '\n'
+			parts.append(expr_eval(c_call_args) + '\n')
 
 			if rval_conv:
 				ownership = None  # automatic ownership policy
@@ -896,21 +902,25 @@ class FABGen:
 
 		# check return values
 		if 'check_rval' in features:
-			self._source += features['check_rval'](rvals, ctx)
+			parts.append(features['check_rval'](rvals, ctx))
 
 		# prepare return values ([EJ] once check is done so we don't leak)
 		for rval in rvals_prepare_args:
-			self._source += self.prepare_from_c_var(rval)
+			parts.append(self.prepare_from_c_var(rval))
 
-		self._source += self.commit_from_c_vars(rvals, ctx)
+		parts.append(self.commit_from_c_vars(rvals, ctx))
 
 		if 'exception' in features:
-			self._source += '}\n'
-			self._source += 'catch(...) {\n'
-			self._source += self.proxy_call_error(features['exception'], ctx)
-			self._source += '}\n'
+			parts.append('}\n')
+			parts.append('catch(...) {\n')
+			parts.append(self.proxy_call_error(features['exception'], ctx))
+			parts.append('}\n')
+
+		return ''.join(parts)
 
 	def __bind_proxy(self, name, self_conv, protos, desc, expr_eval, ctx, fixed_arg_count=None):
+		parts = []
+
 		if self.verbose:
 			print('Binding proxy %s' % name)
 
@@ -935,13 +945,13 @@ class FABGen:
 
 		max_arg_count = max(protos_by_arg_count.keys())
 
-		self._source += self.open_proxy(name, max_arg_count, ctx)
+		parts.append(self.open_proxy(name, max_arg_count, ctx))
 
 		# check self
 		if self.check_self_type_in_ops and ctx in ['arithmetic_op', 'inplace_arithmetic_op', 'comparison_op']:
-			self._source += 'if (!%s) {\n' % self_conv.check_call(self.get_self(ctx))
-			self._source += self.proxy_call_error('incorrect type for argument 0 to %s, expected %s' % (desc, self_conv.bound_name), ctx)
-			self._source += '}\n\n'
+			parts.append('if (!%s) {\n' % self_conv.check_call(self.get_self(ctx)))
+			parts.append(self.proxy_call_error('incorrect type for argument 0 to %s, expected %s' % (desc, self_conv.bound_name), ctx))
+			parts.append('}\n\n')
 
 		# output dispatching logic
 		def get_protos_per_arg_conv(protos, arg_idx):
@@ -961,25 +971,26 @@ class FABGen:
 
 		for arg_count, protos_with_arg_count in protos_by_arg_count.items():
 			if not has_fixed_argc:
-				self._source += '	if (arg_count == %d) {\n' % arg_count
+				parts.append('	if (arg_count == %d) {\n' % arg_count)
 
 			def output_arg_check_and_dispatch(protos, arg_idx, arg_limit):
+				parts = []
 				indent = '	' * (arg_idx+(2 if not has_fixed_argc else 1))
 
 				if arg_idx == arg_limit:
 					assert len(protos) == 1  # there should only be exactly one prototype with a single signature
-					self.__proto_call(self_conv, protos[0], expr_eval, ctx, fixed_arg_count)
-					return
+					parts.append(self.__proto_call(self_conv, protos[0], expr_eval, ctx, fixed_arg_count))
+					return ''.join(parts)
 
 				protos_per_arg_conv = get_protos_per_arg_conv(protos, arg_idx)
 
-				self._source += indent
+				parts.append(indent)
 				for conv, protos_for_conv in protos_per_arg_conv.items():
-					self._source += 'if (%s) {\n' % conv.check_call(self.get_var(arg_idx, ctx))
-					output_arg_check_and_dispatch(protos_for_conv, arg_idx+1, arg_limit)
-					self._source += indent + '} else '
+					parts.append('if (%s) {\n' % conv.check_call(self.get_var(arg_idx, ctx)))
+					parts.append(output_arg_check_and_dispatch(protos_for_conv, arg_idx+1, arg_limit))
+					parts.append(indent + '} else ')
 
-				self._source += '{\n'
+				parts.append('{\n')
 
 				expected_types = []
 				for proto in protos:
@@ -990,22 +1001,25 @@ class FABGen:
 
 					expected_types.append('%s %s' % (proto_arg_bound_name, proto_arg_name))
 
-				self._source += self.set_error('runtime', 'incorrect type for argument %d to %s, expected %s' % (arg_idx+1, desc, format_list_for_comment(expected_types)))
-				self._source += indent + '}\n'
+				parts.append(self.set_error('runtime', 'incorrect type for argument %d to %s, expected %s' % (arg_idx+1, desc, format_list_for_comment(expected_types))))
+				parts.append(indent + '}\n')
+				return ''.join(parts)
 
-			output_arg_check_and_dispatch(protos_with_arg_count, 0, arg_count)
+			parts.append(output_arg_check_and_dispatch(protos_with_arg_count, 0, arg_count))
 
 			if not has_fixed_argc:
-				self._source += '	} else '
+				parts.append('	} else ')
 
 		if not has_fixed_argc:
-			self._source += '{\n'
-			self._source += self.set_error('runtime', 'incorrect number of arguments to %s' % desc)
-			self._source += '	}\n'
+			parts.append('{\n')
+			parts.append(self.set_error('runtime', 'incorrect number of arguments to %s' % desc))
+			parts.append('	}\n')
 
 		#
-		self._source += self.close_proxy(ctx)
-		self._source += '\n'
+		parts.append(self.close_proxy(ctx))
+		parts.append('\n')
+
+		self._source += ''.join(parts)
 
 	#
 	def bind_function(self, name, rval, args, features=[], bound_name=None):
