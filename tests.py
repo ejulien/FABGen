@@ -57,17 +57,21 @@ def run_test(gen, name, testbed):
 	test_module = importlib.import_module(name)
 
 	# generate the interface file
-	header, source, api = test_module.bind_test(gen)
+	files = test_module.bind_test(gen)
+	sources = []
 
-	with open(os.path.join(work_path, 'test_module.h'), 'w') as file:
-		file.write(header)
-	with open(os.path.join(work_path, 'test_module.cpp'), 'w') as file:
-		file.write(source)
+	for path, src in files.items():
+		if path[-2:] != '.h':
+			sources.append(path)
+		with open(os.path.join(work_path, path), 'w') as file:
+			file.write(src)
+
 	with open(os.path.join(work_path, 'fabgen.h'), 'w') as file:
-		file.write(api)
+		import gen as gen_module
+		file.write(gen_module.get_fabgen_api())
 
 	run_test_list.append(name)
-	result = testbed.build_and_test_extension(work_path, test_module)
+	result = testbed.build_and_test_extension(work_path, test_module, sources)
 
 	if result:
 		print("[OK]")
@@ -105,7 +109,7 @@ def run_tests(gen, names, testbed):
 
 
 # CPython test bed
-def create_cpython_cmake_file(module, work_path, site_package, include_dir, python_lib):
+def create_cpython_cmake_file(module, work_path, sources, site_package, include_dir, python_lib):
 	cmake_path = os.path.join(work_path, 'CMakeLists.txt')
 
 	with open(cmake_path, 'w') as file:
@@ -117,11 +121,11 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/")
 project(%s)
 enable_language(C CXX)
 
-add_library(my_test SHARED test_module.cpp)
+add_library(my_test SHARED %s)
 set_target_properties(my_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "%s" RUNTIME_OUTPUT_DIRECTORY_RELEASE "%s" SUFFIX .pyd)
 target_include_directories(my_test PRIVATE "%s")
 target_link_libraries(my_test "%s")
-''' % (module, site_package, site_package, include_dir, python_lib))
+''' % (module, ' '.join(sources), site_package, site_package, include_dir, python_lib))
 
 
 def build_and_deploy_cpython_extension(work_path, build_path, python_interpreter):
@@ -157,7 +161,7 @@ def build_and_deploy_cpython_extension(work_path, build_path, python_interpreter
 
 
 class CPythonTestBed:
-	def build_and_test_extension(self, work_path, module):
+	def build_and_test_extension(self, work_path, module, sources):
 		global python_interpreter
 
 		test_path = os.path.join(work_path, 'test.py')
@@ -172,7 +176,7 @@ class CPythonTestBed:
 			cflags = subprocess.check_output('python3-config --cflags', shell=True).decode('utf-8').strip()
 			cflags = cflags.replace('\n', ' ')
 
-			build_cmd = 'gcc ' + cflags + ' -g -O0 -fPIC -std=c++11 -c test_module.cpp -o my_test.o'
+			build_cmd = 'gcc ' + cflags + ' -g -O0 -fPIC -std=c++11 -c %s -o my_test.o' % ' '.join(sources)
 
 			try:
 				subprocess.check_output(build_cmd, shell=True, stderr=subprocess.STDOUT)
@@ -200,7 +204,7 @@ class CPythonTestBed:
 			os.mkdir(build_path)
 			os.chdir(build_path)
 
-			create_cpython_cmake_file("test", work_path, python_site_package, python_include_dir, python_library)
+			create_cpython_cmake_file("test", work_path, sources, python_site_package, python_include_dir, python_library)
 			create_clang_format_file(work_path)
 
 			if not build_and_deploy_cpython_extension(work_path, build_path, python_interpreter):
@@ -223,7 +227,7 @@ class CPythonTestBed:
 
 
 # Lua test bed
-def create_lua_cmake_file(module, work_path, sdk_path):
+def create_lua_cmake_file(module, work_path, sources, sdk_path):
 	cmake_path = os.path.join(work_path, 'CMakeLists.txt')
 
 	with open(cmake_path, 'w') as file:
@@ -238,11 +242,11 @@ enable_language(C CXX)
 link_directories("%s/lib/Debug")
 
 #add_definitions(-DLUA_USE_APICHECK)
-add_library(my_test SHARED test_module.cpp)
+add_library(my_test SHARED %s)
 set_target_properties(my_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG %s)
 target_include_directories(my_test PRIVATE %s/include/lua)
 target_link_libraries(my_test lua)
-''' % (module, sdk_path, work_path.replace('\\', '/'), sdk_path))
+''' % (module, sdk_path, ' '.join(sources), work_path.replace('\\', '/'), sdk_path))
 
 
 def build_and_deploy_lua_extension(work_path, build_path):
@@ -281,15 +285,7 @@ def build_and_deploy_lua_extension(work_path, build_path):
 
 
 class LuaTestBed:
-	def build_and_test_extension(self, work_path, module):
-		create_lua_cmake_file("test", work_path, args.lua_base_path)
-		create_clang_format_file(work_path)
-
-		build_path = os.path.join(work_path, 'build')
-		os.mkdir(build_path)
-		os.chdir(build_path)
-
-		# run test to assert extension correctness
+	def build_and_test_extension(self, work_path, module, sources):
 		test_path = os.path.join(work_path, 'test.lua')
 		with open(test_path, 'w') as file:
 			file.write(module.test_lua)
@@ -300,7 +296,7 @@ class LuaTestBed:
 			os.chdir(work_path)
 			shutil.copy(os.path.join(args.lua_base_path, 'bin', 'lua'), work_path)
 
-			build_cmd = 'gcc -I' + os.path.join(args.lua_base_path, 'include') + ' -g -O0 -fPIC -std=c++11 -c test_module.cpp -o my_test.o'
+			build_cmd = 'gcc -I' + os.path.join(args.lua_base_path, 'include') + ' -g -O0 -fPIC -std=c++11 -c %s -o my_test.o' % ' '.join(sources)
 
 			try:
 				subprocess.check_output(build_cmd, shell=True, stderr=subprocess.STDOUT)
@@ -318,6 +314,13 @@ class LuaTestBed:
 
 			lua_interpreter = './lua'
 		else:
+			build_path = os.path.join(work_path, 'build')
+			os.mkdir(build_path)
+			os.chdir(build_path)
+
+			create_lua_cmake_file("test", work_path, sources, args.lua_base_path)
+			create_clang_format_file(work_path)
+
 			if not build_and_deploy_lua_extension(work_path, build_path):
 				return False
 

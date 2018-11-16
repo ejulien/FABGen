@@ -93,7 +93,6 @@
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
 			"args": ["--luabase", "D:/harfang/sdk", "--x64"],
-			"env": null,
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
 				"WaitOnAbnormalExit",
@@ -109,7 +108,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--luabase", "D:/harfang/sdk", "--debug", "std_function", "--x64"],
+			"args": ["--luabase", "D:/harfang/sdk", "--debug", "cpp_exceptions", "--x64"],
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
 				"WaitOnAbnormalExit",
@@ -125,7 +124,23 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/bind.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["d:/gs/binding/bind_harfang.py", "--lua", "--out", "d:/", "--embedded"],
+			"args": ["d:/gs/binding/bind_harfang.py", "--lua", "--out", "d:/tmp", "--embedded"],
+			"envFile": "${workspaceRoot}/.env",
+			"debugOptions": [
+				"WaitOnAbnormalExit",
+				"WaitOnNormalExit",
+				"RedirectOutput"
+			]
+		},
+		{
+			"name": "Lua53: Bind Harfang (PROFILE)",
+			"type": "python",
+			"request": "launch",
+			"stopOnEntry": false,
+			"pythonPath": "C:/Pythons/36/python.exe",
+			"program": "",
+			"cwd": "${workspaceRoot}",
+			"args": ["-m", "vprof", "-c", "hp", "\"${workspaceRoot}/bind.py d:/gs/binding/bind_harfang.py --lua --out d:/ --embedded\""],
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
 				"WaitOnAbnormalExit",
@@ -142,6 +157,22 @@
 			"program": "${workspaceRoot}/bind.py",
 			"cwd": "${workspaceRoot}",
 			"args": ["d:/gs/assemble/core/bind_assemble.py", "--lua", "--out", "d:/", "--embedded"],
+			"envFile": "${workspaceRoot}/.env",
+			"debugOptions": [
+				"WaitOnAbnormalExit",
+				"WaitOnNormalExit",
+				"RedirectOutput"
+			]
+		},
+		{
+			"name": "XML: Bind Harfang",
+			"type": "python",
+			"request": "launch",
+			"stopOnEntry": false,
+			"pythonPath": "${config:python.pythonPath}",
+			"program": "${workspaceRoot}/bind.py",
+			"cwd": "${workspaceRoot}",
+			"args": ["d:/gs/binding/bind_harfang.py", "--xml", "--out", "d:/tmp"],
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
 				"WaitOnAbnormalExit",
