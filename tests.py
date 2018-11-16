@@ -60,9 +60,9 @@ def run_test(gen, name, testbed):
 	files = test_module.bind_test(gen)
 
 	with open(os.path.join(work_path, 'test_module.h'), 'w') as file:
-		file.write(files.values()[0])
+		file.write(list(files.values())[0])
 	with open(os.path.join(work_path, 'test_module.cpp'), 'w') as file:
-		file.write(files.values()[1])
+		file.write(list(files.values())[1])
 	with open(os.path.join(work_path, 'fabgen.h'), 'w') as file:
 		import gen
 		file.write(gen.get_fabgen_api())
