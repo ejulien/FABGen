@@ -3,6 +3,7 @@
 
 import os
 import sys
+import time
 import importlib
 
 import argparse
@@ -131,35 +132,48 @@ class APIGenerator(gen.FABGen):
 
 	def extract_method(self, classname, method, static=False, name=None, bound_name=None, is_global=False):
 		xml = ""
+
 		if bound_name is None:
 			bound_name = method['bound_name']
 		if name is None:
 			name = bound_name
+
 		uid = classname + '_' + bound_name if classname else bound_name
+
 		protos = self._build_protos(method['protos'])
 		for proto in protos:
 			retval = 'void'
+
 			if proto['rval']['conv']:
 				retval = proto['rval']['conv'].bound_name
+
 			xml += '<function name="%s" returns="%s" uid="%s"' % (name, retval, uid)
-			if is_global: xml += ' global="1"'
-			if static: xml += ' static="1"'
+
+			if is_global:
+				xml += ' global="1"'
+			if static:
+				xml += ' static="1"'
+
 			if len(proto['args']):
 				xml += '>\n'
+
 				for argin in proto['argsin']:
 					arg_bound_name = argin['conv'].bound_name
 					if arg_bound_name.endswith('_nobind') and argin['conv'].nobind:
 						arg_bound_name = arg_bound_name[:-len('_nobind')]
 					xml += '<parm name="%s" type="%s"/>\n' % (argin['carg'].name, arg_bound_name)
+
 				if 'arg_out' in proto['features']:
 					i = 0
 					for arg in proto['args']:
 						if arg['carg'].name in proto['features']['arg_out']:
 							xml += '<parm name="OUTPUT%d" type="%s"/>\n' % (i, arg['conv'].bound_name)
 							i += 1
+
 				xml += '</function>\n'
 			else:
 				xml += '/>\n'
+
 		return xml
 
 	def output_xml_api(self):
@@ -214,6 +228,8 @@ class APIGenerator(gen.FABGen):
 
 
 if __name__ == '__main__':
+	t_start = time.perf_counter()
+
 	parser = argparse.ArgumentParser(description='API generation script')
 	parser.add_argument("script", nargs=1)
 	parser.add_argument('--out', help='Path to output generated files', required=True)
@@ -234,3 +250,5 @@ if __name__ == '__main__':
 	api_path = os.path.join(args.out, 'api.xml')
 	with open(api_path, mode='w', encoding='utf-8') as f:
 		f.write(xml)
+
+	print('Done in %f sec.' % (time.perf_counter() - t_start))

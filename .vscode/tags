@@ -246,9 +246,9 @@ get_all_members	../gen.py	/^	def get_all_members(self):$/;"	kind:member	line:292
 get_all_methods	../gen.py	/^	def get_all_methods(self):$/;"	kind:member	line:296
 get_all_static_members	../gen.py	/^	def get_all_static_members(self):$/;"	kind:member	line:294
 get_all_static_methods	../gen.py	/^	def get_all_static_methods(self):$/;"	kind:member	line:298
-get_arg	../lang/cpython.py	/^	def get_arg(self, i, ctx):$/;"	kind:function	line:382
-get_arg	../lang/lua.py	/^	def get_arg(self, i, ctx):$/;"	kind:function	line:381
-get_clean_ctype_name	../gen.py	/^def get_clean_ctype_name(ctype):$/;"	kind:function	line:35
+get_var	../lang/cpython.py	/^	def get_var(self, i, ctx):$/;"	kind:function	line:382
+get_var	../lang/lua.py	/^	def get_var(self, i, ctx):$/;"	kind:function	line:381
+ctype_to_plain_string	../gen.py	/^def ctype_to_plain_string(ctype):$/;"	kind:function	line:35
 get_clean_symbol_name	../gen.py	/^def get_clean_symbol_name(name):$/;"	kind:function	line:95
 get_conv	../gen.py	/^	def get_conv(self, type):$/;"	kind:member	line:526
 get_ctype_default_bound_name	../gen.py	/^def get_ctype_default_bound_name(ctype):$/;"	kind:function	line:57

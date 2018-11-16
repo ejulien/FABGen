@@ -456,10 +456,12 @@ class FABGen:
 			self._source += code
 
 	def insert_binding_code(self, code, comment=None):
+		parts = []
 		if comment is not None:
-			self._source += '// %s\n' % comment
-		self._source += code
-		self._source += '\n'
+			parts.append('// %s\n' % comment)
+		parts.append(code)
+		parts.append('\n')
+		self._source += ''.join(parts)
 
 	def add_custom_init_code(self, code):
 		self._custom_init_code += code
@@ -1052,50 +1054,52 @@ class FABGen:
 		return '%s %s(%s%s, bool *success%s)' % (rval, name, self._get_rbind_call_custom_args(), (', ' + ', '.join([str(arg) for arg in args])) if len(args) > 0 else '', ' = NULL' if output_default_args else '')
 
 	def rbind_function(self, name, rval, args, internal=False):
+		parts = []
 		args = [self.parse_named_ctype(arg) for arg in args]
 
 		if internal:
-			self._source += 'static inline %s {\n' % self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, True)
+			parts.append('static inline %s {\n' % self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, True))
 		else:
-			self._header += self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, True) + ';\n'
-			self._source += '%s {\n' % self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, False)
+			parts.append(self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, True) + ';\n')
+			parts.append('%s {\n' % self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, False))
 
-		self._source += self._prepare_rbind_call(rval, args)
+		parts.append(self._prepare_rbind_call(rval, args))
 
 		# prepare args
 		for arg in args:
 			arg_conv = self.select_ctype_conv(arg.ctype)
-			self._source += self.prepare_from_c_var({'conv': arg_conv, 'ctype': arg.ctype, 'var': arg.name, 'is_arg_in_out': False, 'ownership': None})
+			parts.append(self.prepare_from_c_var({'conv': arg_conv, 'ctype': arg.ctype, 'var': arg.name, 'is_arg_in_out': False, 'ownership': None}))
 
-		self._source += self.commit_from_c_vars([arg.name for arg in args], 'rbind_args')
+		parts.append(self.commit_from_c_vars([arg.name for arg in args], 'rbind_args'))
 
 		# call
-		self._source += 'bool _call_success_var;'
-		self._source += '\n' + self._rbind_call(rval, args, '_call_success_var') + '\n'
-		self._source += '''\
+		parts.append('bool _call_success_var;')
+		parts.append('\n' + self._rbind_call(rval, args, '_call_success_var') + '\n')
+		parts.append('''\
 if (success)
 	*success = _call_success_var;
-'''
+''')
 
 		# rval
 		if rval != 'void':
 			rval_conv = self.select_ctype_conv(self.parse_ctype(rval))
 
-			self._source += self._declare_to_c_var(rval_conv.to_c_storage_ctype, '_rbind_rval')
-			self._source += '''\
+			parts.append(self._declare_to_c_var(rval_conv.to_c_storage_ctype, '_rbind_rval'))
+			parts.append('''\
 if (%s) {
 	%s
 } else if (success != NULL) {
 	*success = false;
 }
-''' % (rval_conv.check_call(self.get_var(0, 'rbind_rval')), self._convert_to_c_var(0, rval_conv, '_rbind_rval', 'rbind_rval'))
+''' % (rval_conv.check_call(self.get_var(0, 'rbind_rval')), self._convert_to_c_var(0, rval_conv, '_rbind_rval', 'rbind_rval')))
 
-		self._source += self._clean_rbind_call(rval, args)
+		parts.append(self._clean_rbind_call(rval, args))
 
 		if rval != 'void':
-			self._source += 'return _rbind_rval;\n'
+			parts.append('return _rbind_rval;\n')
 
-		self._source += '}\n'
+		parts.append('}\n')
+		self._source += ''.join(parts)
 
 	#
 	def bind_constructor(self, conv, args, features=[]):
@@ -1307,26 +1311,26 @@ if (%s) {
 		out = '// type_tag based cast system\n'
 
 		def output_type_tag_cast_tree(expr):
-			out = ''
+			out = []
 
 			i = 0
 			for conv in self._bound_types:
 				if len(conv._casts) == 0:
 					continue
 
-				out += '	' if i == 0 else ' else '
-				out += 'if (in_type_tag == %s) {\n' % conv.type_tag
+				out.append('	' if i == 0 else ' else ')
+				out.append('if (in_type_tag == %s) {\n' % conv.type_tag)
 
 				for j, cast in enumerate(conv._casts):
-					out += '	' if j == 0 else ' else '
-					out += 'if (out_type_tag == %s) {\n' % cast[0].type_tag
-					out += expr(cast)
-					out += '}\n'
+					out.append('	' if j == 0 else ' else ')
+					out.append('if (out_type_tag == %s) {\n' % cast[0].type_tag)
+					out.append(expr(cast))
+					out.append('}\n')
 
-				out += '}\n'
+				out.append('}\n')
 				i += 1
 
-			return out
+			return ''.join(out)
 
 		# can cast
 		out += '''\
