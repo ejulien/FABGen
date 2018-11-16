@@ -64,8 +64,8 @@ def run_test(gen, name, testbed):
 	with open(os.path.join(work_path, 'test_module.cpp'), 'w') as file:
 		file.write(list(files.values())[1])
 	with open(os.path.join(work_path, 'fabgen.h'), 'w') as file:
-		import gen
-		file.write(gen.get_fabgen_api())
+		import gen as gen_module
+		file.write(gen_module.get_fabgen_api())
 
 	run_test_list.append(name)
 	result = testbed.build_and_test_extension(work_path, test_module)
