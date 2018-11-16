@@ -53,7 +53,7 @@ class DummyExternTypeConverter(gen.TypeConverter):
 		return ''
 
 
-class APIGenerator(gen.FABGen):
+class XMLGenerator(gen.FABGen):
 	default_ptr_converter = DummyTypeConverter
 	default_class_converter = DummyTypeConverter
 	default_extern_converter = DummyExternTypeConverter
@@ -61,6 +61,7 @@ class APIGenerator(gen.FABGen):
 	def __init__(self):
 		super().__init__()
 		self.check_self_type_in_ops = True
+		self.xml = ''
 
 	def get_language(self):
 		return "API"
@@ -70,6 +71,7 @@ class APIGenerator(gen.FABGen):
 
 	def start(self, module_name):
 		super().start(module_name)
+
 		# std
 		self.bind_type(DummyTypeConverter('bool')).nobind = True
 		self.bind_type(DummyTypeConverter('char')).nobind = True
@@ -97,16 +99,23 @@ class APIGenerator(gen.FABGen):
 		self.bind_type(DummyTypeConverter('const char *', bound_name="string")).nobind = True
 		self.bind_type(DummyTypeConverter('std::string')).nobind = True
 
+	# kill a bunch of functions we don't care about
 	def set_error(self, type, reason):
 		return ''
 
 	def get_self(self, ctx):
-		return '1'  # always first arg
+		return ''
 
 	def get_var(self, i, ctx):
-		return str(i)
+		return ''
 
 	def open_proxy(self, name, max_arg_count, ctx):
+		return ''
+
+	def _proto_call(self, self_conv, proto, expr_eval, ctx, fixed_arg_count=None):
+		return ''
+
+	def _bind_proxy(self, name, self_conv, protos, desc, expr_eval, ctx, fixed_arg_count=None):
 		return ''
 
 	def close_proxy(self, ctx):
@@ -127,10 +136,11 @@ class APIGenerator(gen.FABGen):
 	def commit_from_c_vars(self, rvals, ctx='default'):
 		return ''
 
-	def output_binding_api(self):
-		return '', ''
+	#
+	def get_output(self):
+		return {'api.xml': self.xml}
 
-	def extract_method(self, classname, method, static=False, name=None, bound_name=None, is_global=False):
+	def __extract_method(self, classname, method, static=False, name=None, bound_name=None, is_global=False):
 		xml = ""
 
 		if bound_name is None:
@@ -176,7 +186,7 @@ class APIGenerator(gen.FABGen):
 
 		return xml
 
-	def output_xml_api(self):
+	def finalize(self):
 		xml = '<?xml version="1.0" ?>\n<api>\n'
 		for conv in self._bound_types:
 			if conv.nobind:
@@ -195,21 +205,21 @@ class APIGenerator(gen.FABGen):
 					xml += '<variable name="%s" type="%s"/>\n' % (member['name'], self.select_ctype_conv(member['ctype']).bound_name)
 				# constructors
 				if conv.constructor:
-					xml += self.extract_method(conv.bound_name, conv.constructor, bound_name="Constructor")
+					xml += self.__extract_method(conv.bound_name, conv.constructor, bound_name="Constructor")
 				# arithmetic operators
 				for arithmetic in conv.arithmetic_ops:
 					bound_name = 'operator_' + gen.get_clean_symbol_name(arithmetic['op'])
-					xml += self.extract_method(conv.bound_name, arithmetic, name='operator'+arithmetic['op'], bound_name=bound_name)
+					xml += self.__extract_method(conv.bound_name, arithmetic, name='operator'+arithmetic['op'], bound_name=bound_name)
 				# comparison_ops
 				for comparison in conv.comparison_ops:
 					bound_name = 'operator_' + gen.get_clean_symbol_name(comparison['op'])
-					xml += self.extract_method(conv.bound_name, comparison, name='operator'+comparison['op'], bound_name=bound_name)
+					xml += self.__extract_method(conv.bound_name, comparison, name='operator'+comparison['op'], bound_name=bound_name)
 				# static methods
 				for method in conv.static_methods:
-					xml += self.extract_method(conv.bound_name, method, static=True)
+					xml += self.__extract_method(conv.bound_name, method, static=True)
 				# methods
 				for method in conv.methods:
-					xml += self.extract_method(conv.bound_name, method)
+					xml += self.__extract_method(conv.bound_name, method)
 			xml += '</class>\n'
 
 		# enum
@@ -221,34 +231,7 @@ class APIGenerator(gen.FABGen):
 
 		# functions
 		for func in self._bound_functions:
-			xml += self.extract_method('', func, is_global=True)
+			xml += self.__extract_method('', func, is_global=True)
 
 		xml += '</api>\n'
-		return xml
-
-
-if __name__ == '__main__':
-	t_start = time.perf_counter()
-
-	parser = argparse.ArgumentParser(description='API generation script')
-	parser.add_argument("script", nargs=1)
-	parser.add_argument('--out', help='Path to output generated files', required=True)
-	args = parser.parse_args()
-
-	# load binding script
-	split = os.path.split(args.script[0])
-	path = split[0]
-	mod = os.path.splitext(split[1])[0]
-
-	sys.path.append(path)
-	script = importlib.import_module(mod)
-
-	api_gen = APIGenerator()
-	
-	script.bind(api_gen)
-	xml = api_gen.output_xml_api()
-	api_path = os.path.join(args.out, 'api.xml')
-	with open(api_path, mode='w', encoding='utf-8') as f:
-		f.write(xml)
-
-	print('Done in %f sec.' % (time.perf_counter() - t_start))
+		self.xml = xml

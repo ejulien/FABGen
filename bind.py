@@ -8,8 +8,10 @@ import time
 
 import argparse
 
+import gen
 import lang.lua
 import lang.cpython
+import lang.xml
 
 import lib.std
 import lib.stl
@@ -24,6 +26,7 @@ parser = argparse.ArgumentParser(description='FABGen')
 parser.add_argument('script', nargs=1)
 parser.add_argument('--lua', help='Bind to Lua 5.2+', action='store_true')
 parser.add_argument('--cpython', help='Bind to CPython', action='store_true')
+parser.add_argument('--xml', help='Bind to CPython', action='store_true')
 parser.add_argument('--out', help='Path to output generated files', required=True)
 parser.add_argument('--prefix', help='Prefix to append to all public symbols')
 parser.add_argument('--embedded', help='Specify that the generated binding is for embedding and not expanding the target language', action='store_true')
@@ -32,36 +35,20 @@ parser.add_argument('--no_fabgen_api', help='Do not generate the fabgen.h API fi
 args = parser.parse_args()
 
 
-def output_binding(gen):
+def output_binding(generator):
 	t_start = time.perf_counter()
 
 	if args.embedded:
 		print("Generating embedded binding code")
-		gen.embedded = args.embedded
+		generator.embedded = args.embedded
 
-	script.bind(gen)
+	script.bind(generator)
 
-	hdr, src, api = gen.get_output()
-
-	hdr_path = os.path.join(args.out, 'bind_%s.h' % gen.get_language())
-	cpp_path = os.path.join(args.out, 'bind_%s.cpp' % gen.get_language())
-
-	with open(hdr_path, mode='w', encoding='utf-8') as f:
-		f.write(hdr)
-	with open(cpp_path, mode='w', encoding='utf-8') as f:
-		f.write(src)
-
-	print('Files written as %s and %s' % (hdr_path, cpp_path))
-
-	if not args.no_fabgen_api:
-		api_path = os.path.join(args.out, 'fabgen.h')
-
-		with open(api_path, mode='w', encoding='utf-8') as f:
-			f.write(api)
-
-		print('FABgen API written as %s' % api_path)
-	else:
-		print('FABgen API (fabgen.h) not written')
+	for path, src in generator.get_output().items():
+		path = os.path.join(args.out, path)
+		with open(path, mode='w', encoding='utf-8') as f:
+			f.write(src)
+		print('File written to %s' % path)
 
 	print('Done in %f sec.' % (time.perf_counter() - t_start))
 
@@ -77,12 +64,11 @@ script = importlib.import_module(mod)
 
 # set prefix
 if args.prefix:
-	import gen
 	gen.api_prefix = args.prefix
 
 
 # setup documentation hook
-def setup_gen(gen):
+def setup_generator(generator):
 	if args.doc_md_folder:
 		def md_doc_hook(name):
 			symbol_md_path = os.path.join(args.doc_md_folder, name + '.md')
@@ -94,14 +80,27 @@ def setup_gen(gen):
 			except IOError:
 				return ""
 
-		gen.get_symbol_doc_hook = md_doc_hook
+		generator.get_symbol_doc_hook = md_doc_hook
 
-	return gen
+	return generator
 
 
 # execute through generators
 if args.cpython:
-	output_binding(setup_gen(lang.cpython.CPythonGenerator()))
+	output_binding(setup_generator(lang.cpython.CPythonGenerator()))
 
 if args.lua:
-	output_binding(setup_gen(lang.lua.LuaGenerator()))
+	output_binding(setup_generator(lang.lua.LuaGenerator()))
+
+if args.xml:
+	output_binding(setup_generator(lang.xml.XMLGenerator()))
+
+
+# output Fabgen API
+if not args.no_fabgen_api:
+	path = os.path.join(args.out, 'fabgen.h')
+	with open(path, mode='w', encoding='utf-8') as f:
+		f.write(gen.get_fabgen_api())
+	print('FABgen API written to %s' % path)
+else:
+	print('FABgen API not written')

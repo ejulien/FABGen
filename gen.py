@@ -14,6 +14,16 @@ def apply_api_prefix(symbol):
 	return '%s_%s' % (api_prefix, symbol) if api_prefix else symbol
 
 
+def get_fabgen_api():
+		return '''\
+// FABgen .h
+
+#pragma once
+
+enum OwnershipPolicy { NonOwning, Copy, Owning };
+'''
+
+
 #
 def get_fully_qualified_function_signature(func):
 	out = ''
@@ -779,7 +789,7 @@ class FABGen:
 		return src
 
 	#
-	def __proto_call(self, self_conv, proto, expr_eval, ctx, fixed_arg_count=None):
+	def _proto_call(self, self_conv, proto, expr_eval, ctx, fixed_arg_count=None):
 		parts = []
 
 		features = proto['features']
@@ -920,7 +930,7 @@ class FABGen:
 
 		return ''.join(parts)
 
-	def __bind_proxy(self, name, self_conv, protos, desc, expr_eval, ctx, fixed_arg_count=None):
+	def _bind_proxy(self, name, self_conv, protos, desc, expr_eval, ctx, fixed_arg_count=None):
 		parts = []
 
 		if self.verbose:
@@ -981,7 +991,7 @@ class FABGen:
 
 				if arg_idx == arg_limit:
 					assert len(protos) == 1  # there should only be exactly one prototype with a single signature
-					parts.append(self.__proto_call(self_conv, protos[0], expr_eval, ctx, fixed_arg_count))
+					parts.append(self._proto_call(self_conv, protos[0], expr_eval, ctx, fixed_arg_count))
 					return ''.join(parts)
 
 				protos_per_arg_conv = get_protos_per_arg_conv(protos, arg_idx)
@@ -1034,7 +1044,7 @@ class FABGen:
 			bound_name = get_symbol_default_bound_name(name)
 		proxy_name = apply_api_prefix(bound_name)
 
-		self.__bind_proxy(proxy_name, None, protos, 'function %s' % bound_name, expr_eval, 'function')
+		self._bind_proxy(proxy_name, None, protos, 'function %s' % bound_name, expr_eval, 'function')
 		self._bound_functions.append({'name': name, 'bound_name': bound_name, 'proxy_name': proxy_name, 'protos': protos})
 
 	# reverse binding support
@@ -1112,7 +1122,7 @@ if (%s) {
 		protos = [(type, args[0], args[1]) for args in proto_args]
 		proxy_name = apply_api_prefix('construct_%s' % conv.bound_name)
 
-		self.__bind_proxy(proxy_name, conv, protos, '%s constructor' % conv.bound_name, expr_eval, 'constructor')
+		self._bind_proxy(proxy_name, conv, protos, '%s constructor' % conv.bound_name, expr_eval, 'constructor')
 		conv.constructor = {'proxy_name': proxy_name, 'protos': protos}
 
 	#
@@ -1126,7 +1136,7 @@ if (%s) {
 			bound_name = get_symbol_default_bound_name(name)
 		proxy_name = apply_api_prefix('method_%s_of_%s' % (bound_name, conv.bound_name))
 
-		self.__bind_proxy(proxy_name, conv, protos, 'method %s of %s' % (bound_name, conv.bound_name), expr_eval, 'method')
+		self._bind_proxy(proxy_name, conv, protos, 'method %s of %s' % (bound_name, conv.bound_name), expr_eval, 'method')
 		conv.methods.append({'name': name, 'bound_name': bound_name, 'proxy_name': proxy_name, 'protos': protos})
 
 	#
@@ -1140,7 +1150,7 @@ if (%s) {
 			bound_name = get_symbol_default_bound_name(name)
 		proxy_name = apply_api_prefix('static_method_%s_of_%s' % (bound_name, conv.bound_name))
 
-		self.__bind_proxy(proxy_name, conv, protos, 'static method %s of %s' % (bound_name, conv.bound_name), expr_eval, 'static_method')
+		self._bind_proxy(proxy_name, conv, protos, 'static method %s of %s' % (bound_name, conv.bound_name), expr_eval, 'static_method')
 		conv.static_methods.append({'name': name, 'bound_name': bound_name, 'proxy_name': proxy_name, 'protos': protos})
 
 	#
@@ -1161,7 +1171,7 @@ if (%s) {
 		getter_protos = [(repr(arg_ctype), [], features)]
 		getter_proxy_name = apply_api_prefix('get_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name))
 
-		self.__bind_proxy(getter_proxy_name, conv, getter_protos, 'get member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'getter', 0)
+		self._bind_proxy(getter_proxy_name, conv, getter_protos, 'get member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'getter', 0)
 
 		# setter
 		if not arg.ctype.is_const():
@@ -1170,7 +1180,7 @@ if (%s) {
 			setter_protos = [('void', [member], features)]
 			setter_proxy_name = apply_api_prefix('set_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name))
 
-			self.__bind_proxy(setter_proxy_name, conv, setter_protos, 'set member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'setter', 1)
+			self._bind_proxy(setter_proxy_name, conv, setter_protos, 'set member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'setter', 1)
 		else:
 			setter_proxy_name = None
 
@@ -1190,7 +1200,7 @@ if (%s) {
 		getter_protos = [(repr(arg.ctype.add_ref('*')), [], features)]
 		getter_proxy_name = apply_api_prefix('get_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name))
 		
-		self.__bind_proxy(getter_proxy_name, None, getter_protos, 'get static member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'getter', 0)
+		self._bind_proxy(getter_proxy_name, None, getter_protos, 'get static member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'getter', 0)
 
 		# setter
 		if not arg.ctype.is_const():
@@ -1199,7 +1209,7 @@ if (%s) {
 			setter_protos = [('void', [member], features)]
 			setter_proxy_name = apply_api_prefix('set_%s_of_%s' % (get_symbol_default_bound_name(arg.name), conv.bound_name))
 
-			self.__bind_proxy(setter_proxy_name, None, setter_protos, 'set static member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'setter', 1)
+			self._bind_proxy(setter_proxy_name, None, setter_protos, 'set static member %s of %s' % (arg.name, conv.bound_name), expr_eval, 'setter', 1)
 		else:
 			setter_proxy_name = None
 
@@ -1222,7 +1232,7 @@ if (%s) {
 		getter_protos = [(repr(arg.ctype.add_ref('*')), [], features)]
 		getter_proxy_name = apply_api_prefix('get_%s_variable' % bound_name)
 
-		self.__bind_proxy(getter_proxy_name, None, getter_protos, 'get variable %s' % arg.name, expr_eval, 'getter', 0)
+		self._bind_proxy(getter_proxy_name, None, getter_protos, 'get variable %s' % arg.name, expr_eval, 'getter', 0)
 
 		# setter
 		if not arg.ctype.is_const():
@@ -1231,7 +1241,7 @@ if (%s) {
 			setter_protos = [('void', ["%s %s" % (str(arg.ctype), bound_name)], features)]
 			setter_proxy_name = apply_api_prefix('set_%s_variable' % bound_name)
 
-			self.__bind_proxy(setter_proxy_name, None, setter_protos, 'set variable %s' % arg.name, expr_eval, 'setter', 1)
+			self._bind_proxy(setter_proxy_name, None, setter_protos, 'set variable %s' % arg.name, expr_eval, 'setter', 1)
 		else:
 			setter_proxy_name = None
 
@@ -1251,7 +1261,7 @@ if (%s) {
 		expr_eval = lambda args: '*_self %s %s;' % (op, ', '.join(args))
 		proxy_name = apply_api_prefix('%s_operator_of_%s' % (get_clean_symbol_name(op), conv.bound_name))
 
-		self.__bind_proxy(proxy_name, conv, protos, '%s operator of %s' % (op, conv.bound_name), expr_eval, 'arithmetic_op', 1)
+		self._bind_proxy(proxy_name, conv, protos, '%s operator of %s' % (op, conv.bound_name), expr_eval, 'arithmetic_op', 1)
 		conv.arithmetic_ops.append({'op': op, 'proxy_name': proxy_name, 'protos': protos})
 
 	def bind_arithmetic_ops(self, conv, ops, rval, args, features=[]):
@@ -1273,7 +1283,7 @@ if (%s) {
 		proxy_name = apply_api_prefix('%s_operator_of_%s' % (get_clean_symbol_name(op), conv.bound_name))
 		protos = [('void', arg[0], arg[1]) for arg in args]
 
-		self.__bind_proxy(proxy_name, conv, protos, '%s operator of %s' % (op, conv.bound_name), expr_eval, 'inplace_arithmetic_op', 1)
+		self._bind_proxy(proxy_name, conv, protos, '%s operator of %s' % (op, conv.bound_name), expr_eval, 'inplace_arithmetic_op', 1)
 		conv.arithmetic_ops.append({'op': op, 'proxy_name': proxy_name, 'protos': protos})
 
 	def bind_inplace_arithmetic_ops(self, conv, ops, args, features=[]):
@@ -1295,7 +1305,7 @@ if (%s) {
 		proxy_name = apply_api_prefix('%s_operator_of_%s' % (get_clean_symbol_name(op), conv.bound_name))
 		protos = [('bool', arg[0], arg[1]) for arg in args]
 
-		self.__bind_proxy(proxy_name, conv, protos, '%s operator of %s' % (op, conv.bound_name), expr_eval, 'comparison_op', 1)
+		self._bind_proxy(proxy_name, conv, protos, '%s operator of %s' % (op, conv.bound_name), expr_eval, 'comparison_op', 1)
 		conv.comparison_ops.append({'op': op, 'proxy_name': proxy_name, 'protos': protos})
 
 	def bind_comparison_ops(self, conv, ops, args, features=[]):
@@ -1465,17 +1475,11 @@ size_t %s(%s *(*get_c_type_info)(const char *type)) {
 		# extern types linker API
 		self.output_linker_api()
 
-	def __get_api(self):
-		return '''\
-// FABgen .h
-
-#pragma once
-
-enum OwnershipPolicy { NonOwning, Copy, Owning };
-'''
-
 	def get_output(self):
-		return self._header, self._source, self.__get_api()
+		return {
+			'bind_%s.h' % self.get_language(): self._header,
+			'bind_%s.cpp' % self.get_language(): self._source
+		}
 
 	def _build_protos(self, protos):
 		return self.__prepare_protos(self.__expand_protos(protos))

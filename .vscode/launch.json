@@ -124,7 +124,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/bind.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["d:/gs/binding/bind_harfang.py", "--lua", "--out", "d:/", "--embedded"],
+			"args": ["d:/gs/binding/bind_harfang.py", "--lua", "--out", "d:/tmp", "--embedded"],
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
 				"WaitOnAbnormalExit",
@@ -165,14 +165,14 @@
 			]
 		},
 		{
-			"name": "Generate API XML",
+			"name": "XML: Bind Harfang",
 			"type": "python",
 			"request": "launch",
 			"stopOnEntry": false,
 			"pythonPath": "${config:python.pythonPath}",
-			"program": "${workspaceRoot}/api.py",
+			"program": "${workspaceRoot}/bind.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["d:/gs/binding/bind_harfang.py", "--out", "d:/tmp/hg_doc"],
+			"args": ["d:/gs/binding/bind_harfang.py", "--xml", "--out", "d:/tmp"],
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
 				"WaitOnAbnormalExit",

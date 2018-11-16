@@ -46,7 +46,7 @@ _CType	../gen.py	/^class _CType:$/;"	kind:class	line:122
 _TemplateParameters	../gen.py	/^class _TemplateParameters(List):$/;"	kind:class	line:118
 __add_upcast	../gen.py	/^	def __add_upcast(self, conv, base):$/;"	kind:member	line:490
 __assert_conv_feature	../gen.py	/^	def __assert_conv_feature(self, conv, feature):$/;"	kind:member	line:608
-__bind_proxy	../gen.py	/^	def __bind_proxy(self, name, self_conv, protos, desc, expr_eval, ctx, fixed_arg_count=None):$/;"	kind:member	line:776
+_bind_proxy	../gen.py	/^	def _bind_proxy(self, name, self_conv, protos, desc, expr_eval, ctx, fixed_arg_count=None):$/;"	kind:member	line:776
 __ctype_to_ownership_policy	../gen.py	/^	def __ctype_to_ownership_policy(self, ctype):$/;"	kind:member	line:546
 __expand_protos	../gen.py	/^	def __expand_protos(self, protos):$/;"	kind:member	line:550
 __get_stats	../gen.py	/^	def __get_stats(self):$/;"	kind:member	line:1116
@@ -65,7 +65,7 @@ __init__	../lib/stl.py	/^	def __init__(self, wrapped_conv):$/;"	kind:member	line
 __init__.py	../lib/__init__.py	1;"	kind:file	line:1
 __prepare_protos	../gen.py	/^	def __prepare_protos(self, protos):$/;"	kind:member	line:568
 __print_stats	../gen.py	/^	def __print_stats(self):$/;"	kind:member	line:1138
-__proto_call	../gen.py	/^	def __proto_call(self, self_conv, proto, expr_eval, ctx, fixed_arg_count=None):$/;"	kind:member	line:654
+_proto_call	../gen.py	/^	def _proto_call(self, self_conv, proto, expr_eval, ctx, fixed_arg_count=None):$/;"	kind:member	line:654
 __repr__	../gen.py	/^	def __repr__(self):$/;"	kind:member	line:123
 __repr__	../gen.py	/^	def __repr__(self):$/;"	kind:member	line:179
 _convert_to_c_var	../gen.py	/^	def _convert_to_c_var(self, idx, conv, var, ctx='default'):$/;"	kind:member	line:629
