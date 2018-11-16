@@ -57,14 +57,15 @@ def run_test(gen, name, testbed):
 	test_module = importlib.import_module(name)
 
 	# generate the interface file
-	header, source, api = test_module.bind_test(gen)
+	files = test_module.bind_test(gen)
 
 	with open(os.path.join(work_path, 'test_module.h'), 'w') as file:
-		file.write(header)
+		file.write(files.values()[0])
 	with open(os.path.join(work_path, 'test_module.cpp'), 'w') as file:
-		file.write(source)
+		file.write(files.values()[1])
 	with open(os.path.join(work_path, 'fabgen.h'), 'w') as file:
-		file.write(api)
+		import gen
+		file.write(gen.get_fabgen_api())
 
 	run_test_list.append(name)
 	result = testbed.build_and_test_extension(work_path, test_module)
