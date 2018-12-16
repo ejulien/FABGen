@@ -434,6 +434,7 @@ class FABGen:
 		self.__system_includes, self.__user_includes = [], []
 
 		self.__type_convs = {}
+		self.__function_declarations = {}
 
 		self._bound_types = []  # list of bound types
 		self._bound_functions = []  # list of bound functions
@@ -1034,10 +1035,7 @@ class FABGen:
 		self._source += ''.join(parts)
 
 	#
-	def bind_function(self, name, rval, args, features=[], bound_name=None):
-		self.bind_function_overloads(name, [(rval, args, features)], bound_name)
-
-	def bind_function_overloads(self, name, protos, bound_name=None):
+	def __do_bind_function_overloads(self, name, protos, bound_name=None):
 		expr_eval = lambda args: '%s(%s);' % (name, ', '.join(args))
 
 		if bound_name is None:
@@ -1046,6 +1044,24 @@ class FABGen:
 
 		self._bind_proxy(proxy_name, None, protos, 'function %s' % bound_name, expr_eval, 'function')
 		self._bound_functions.append({'name': name, 'bound_name': bound_name, 'proxy_name': proxy_name, 'protos': protos})
+
+	def __commit_function_declarations(self):
+		for name, decl in self.__function_declarations.items():
+			self.__do_bind_function_overloads(name, decl['protos'], decl['bound_name'])
+
+	def bind_function(self, name, rval, args, features=[], bound_name=None):
+		self.bind_function_overloads(name, [(rval, args, features)], bound_name)
+
+	def bind_function_overloads(self, name, protos, bound_name=None):
+		if not name in self.__function_declarations:
+			fn = self.__function_declarations[name] = {
+				'protos': protos,
+				'bound_name': bound_name
+			}
+		else:
+			fn = self.__function_declarations[name]
+			assert(bound_name == fn['bound_name'])  # ensure bound_name coherency
+			fn['protos'] = fn['protos'] + protos
 
 	# reverse binding support
 	def _get_rbind_call_signature(self, name, rval, args):
@@ -1453,6 +1469,9 @@ size_t %s(%s *(*get_c_type_info)(const char *type)) {
 '''
 
 	def finalize(self):
+		# commit all function declarations
+		self.__commit_function_declarations()
+
 		# insert includes
 		system_includes = ''
 		if len(self.__system_includes) > 0:
