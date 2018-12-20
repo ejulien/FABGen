@@ -42,6 +42,7 @@ Fabgen is licensed under the GPLv3.
   - `arg_out`, `arg_in_out` to support output arguments.
   - `route` to route methods to a customizable expression.
   - `proxy` to support wrapper types such as std::shared_ptr<T>.
+- Extern type support to "link" C++ types shared by different bindings.
 - Simple and hopefully easy to dive into codebase.
 
 ## Supported target language
