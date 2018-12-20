@@ -1469,9 +1469,6 @@ size_t %s(%s *(*get_c_type_info)(const char *type)) {
 '''
 
 	def finalize(self):
-		# commit all function declarations
-		self.__commit_function_declarations()
-
 		# insert includes
 		system_includes = ''
 		if len(self.__system_includes) > 0:
@@ -1486,6 +1483,9 @@ size_t %s(%s *(*get_c_type_info)(const char *type)) {
 		# cast to
 		self._source += self.get_type_tag_cast_function()
 		self.bind_cast_functions()
+
+		# commit all function declarations
+		self.__commit_function_declarations()
 
 		# statistics
 		if self.verbose:  # pragma: no cover
