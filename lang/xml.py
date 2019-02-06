@@ -187,6 +187,8 @@ class XMLGenerator(gen.FABGen):
 		return xml
 
 	def finalize(self):
+		super().finalize()
+		
 		xml = '<?xml version="1.0" ?>\n<api>\n'
 		for conv in self._bound_types:
 			if conv.nobind:
