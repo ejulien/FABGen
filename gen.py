@@ -1268,6 +1268,15 @@ if (%s) {
 			self.bind_variable(var, features)
 
 	#
+	def bind_constant(self, type, name, value):
+		self.insert_binding_code('static const %s %s = %s;\n' % (type, name, value))
+		self.bind_variable('const %s %s' % (type, name))
+
+	def bind_constants(self, type, names_values):
+		for nv in names_values:
+			self.bind_constant(type, nv[0], nv[1])
+
+	#
 	def bind_arithmetic_op(self, conv, op, rval, args, features=[]):
 		self.bind_arithmetic_op_overloads(conv, op, [(rval, args, features)])
 
