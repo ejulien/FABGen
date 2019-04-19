@@ -1081,12 +1081,13 @@ class FABGen:
 
 	def rbind_function(self, name, rval, args, internal=False):
 		parts = []
+		header_parts = []
 		args = [self.parse_named_ctype(arg) for arg in args]
 
 		if internal:
 			parts.append('static inline %s {\n' % self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, True))
 		else:
-			parts.append(self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, True) + ';\n')
+			header_parts.append(self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, True) + ';\n')
 			parts.append('%s {\n' % self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, False))
 
 		parts.append(self._prepare_rbind_call(rval, args))
@@ -1126,6 +1127,7 @@ if (%s) {
 
 		parts.append('}\n')
 		self._source += ''.join(parts)
+		self._header += ''.join(header_parts)
 
 	#
 	def bind_constructor(self, conv, args, features=[]):
