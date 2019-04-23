@@ -1086,7 +1086,8 @@ class FABGen:
 		if internal:
 			parts.append('static inline %s {\n' % self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, True))
 		else:
-			parts.append(self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, True) + ';\n')
+			self._header += '// C to Lua reverse binding call ' + name + '\n'
+			self._header += self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, True) + ';\n\n'
 			parts.append('%s {\n' % self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, False))
 
 		parts.append(self._prepare_rbind_call(rval, args))
