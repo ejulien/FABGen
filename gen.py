@@ -1086,7 +1086,8 @@ class FABGen:
 		if internal:
 			parts.append('static inline %s {\n' % self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, True))
 		else:
-			parts.append(self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, True) + ';\n')
+			self._header += '// C to Lua reverse binding call ' + name + '\n'
+			self._header += self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, True) + ';\n\n'
 			parts.append('%s {\n' % self.__get_rbind_call_signature(apply_api_prefix(name), rval, args, False))
 
 		parts.append(self._prepare_rbind_call(rval, args))
@@ -1266,6 +1267,15 @@ if (%s) {
 	def bind_variables(self, vars, features=[]):
 		for var in vars:
 			self.bind_variable(var, features)
+
+	#
+	def bind_constant(self, type, name, value):
+		self.insert_binding_code('static const %s %s = %s;\n' % (type, name, value))
+		self.bind_variable('const %s %s' % (type, name))
+
+	def bind_constants(self, type, names_values):
+		for nv in names_values:
+			self.bind_constant(type, nv[0], nv[1])
 
 	#
 	def bind_arithmetic_op(self, conv, op, rval, args, features=[]):
