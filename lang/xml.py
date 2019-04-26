@@ -136,6 +136,9 @@ class XMLGenerator(gen.FABGen):
 	def commit_from_c_vars(self, rvals, ctx='default'):
 		return ''
 
+	def rbind_function(self, name, rval, args, internal=False):
+		return ''
+
 	#
 	def get_output(self):
 		return {'api.xml': self.xml}

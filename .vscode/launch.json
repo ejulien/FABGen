@@ -172,7 +172,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/bind.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["d:/gs/binding/bind_harfang.py", "--xml", "--out", "d:/tmp"],
+			"args": ["d:/gs/binding/bind_harfang.py", "--xml", "--out", "d:/tmp/issue_739"],
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
 				"WaitOnAbnormalExit",
