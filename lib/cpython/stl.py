@@ -83,6 +83,8 @@ class PySequenceToStdVectorConverter(lang.cpython.PythonTypeConverterCommon):
 	def get_type_glue(self, gen, module_name):
 		out = 'bool %s(PyObject *o) { return PySequence_Check(o) ? true : false; }\n' % self.check_func
 
+		type_ = ('%s*' % self.T_conv.ctype) if self.T_conv.ctype.is_pointer() else self.T_conv.to_c_storage_ctype
+		
 		out += '''void %s(PyObject *o, void *obj) {
 	std::vector<%s> *sv = (std::vector<%s> *)obj;
 
@@ -95,7 +97,7 @@ class PySequenceToStdVectorConverter(lang.cpython.PythonTypeConverterCommon):
 		(*sv)[i] = %s;
 		Py_DECREF(itm);
 	}
-}\n''' % (self.to_c_func, self.T_conv.ctype, self.T_conv.ctype, self.T_conv.to_c_storage_ctype, self.T_conv.to_c_func, self.T_conv.prepare_var_from_conv('v', ''))
+}\n''' % (self.to_c_func, self.T_conv.ctype, self.T_conv.ctype, type_, self.T_conv.to_c_func, self.T_conv.prepare_var_from_conv('v', ''))
 
 		out += '''PyObject *%s(void *obj, OwnershipPolicy) {
 	std::vector<%s> *sv = (std::vector<%s> *)obj;
