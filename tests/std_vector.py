@@ -26,8 +26,10 @@ int consume_pointer_to_int(const int *p) {
 
 	if gen.get_language() == 'CPython':
 		gen.bind_type(lib.cpython.stl.PySequenceToStdVectorConverter('PySequenceOfInt', int_conv))
+		gen.bind_type(lib.cpython.stl.PySequenceToStdVectorConverter('PySequenceOfInt_ptr', int_ptr))
 	elif gen.get_language() == 'Lua':
 		gen.bind_type(lib.lua.stl.LuaTableToStdVectorConverter('LuaTableOfInt', int_conv))
+		gen.bind_type(lib.lua.stl.LuaTableToStdVectorConverter('LuaTableOfInt_ptr', int_ptr))
 
 	std_vector_int = gen.begin_class('std::vector<int>', features={'sequence': lib.std.VectorSequenceFeature(int_conv)})
 
@@ -47,6 +49,21 @@ int consume_pointer_to_int(const int *p) {
 	gen.bind_function('consume_pointer_to_int', 'int', ['const int *p'])
 
 	gen.add_cast(std_vector_int, int_ptr, lambda in_var, out_var: '%s = ((std::vector<int> *)%s)->data();\n' % (out_var, in_var))
+
+	std_vector_int_ptr = gen.begin_class('std::vector<int*>', features={'sequence': lib.std.VectorSequenceFeature(int_ptr)})
+
+	if gen.get_language() == 'CPython':
+		gen.bind_constructor(std_vector_int_ptr, ['?PySequenceOfInt_ptr sequence'])
+	elif gen.get_language() == 'Lua':
+		gen.bind_constructor(std_vector_int_ptr, ['?LuaTableOfInt_ptr sequence'])
+
+	gen.bind_method(std_vector_int_ptr, 'size', 'int', [])
+	gen.bind_method(std_vector_int_ptr, 'push_back', 'void', ['int* v'])
+	gen.bind_method(std_vector_int_ptr, 'at', 'int*&', ['int pos'])
+
+	gen.bind_method(std_vector_int_ptr, 'data', 'int**', [])
+
+	gen.end_class(std_vector_int_ptr)
 
 	gen.finalize()
 	return gen.get_output()
@@ -96,6 +113,14 @@ w = my_test.vector_of_int([5, 2, 8])
 assert w[0] == 5
 assert w[1] == 2
 assert w[2] == 8
+
+v_ptr = my_test.vector_of_int_ptr()
+v_ptr.push_back(0)
+v_ptr.push_back(v.data())
+
+assert v_ptr.size() == 2
+assert len(v_ptr) == 2
+
 '''
 
 test_lua = '''\
@@ -142,4 +167,13 @@ w = my_test.vector_of_int({5, 2, 8})
 assert(w[1] == 5)
 assert(w[2] == 2)
 assert(w[3] == 8)
+
+v_ptr = my_test.vector_of_int_ptr()
+
+v_ptr:push_back(0)
+v_ptr:push_back(v:data())
+
+assert(v_ptr:size() == 2)
+assert(#v_ptr == 2)
+
 '''

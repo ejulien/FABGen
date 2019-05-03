@@ -92,6 +92,8 @@ class LuaTableToStdVectorConverter(lang.lua.LuaTypeConverterCommon):
 	return true;
 }\n''' % (self.check_func, self.T_conv.check_func)
 
+		type_ = ('%s*' % self.T_conv.ctype) if self.T_conv.ctype.is_pointer() else self.T_conv.to_c_storage_ctype
+		
 		out += '''void %s(lua_State *L, int idx, void *obj) {
 	std::vector<%s> *sv = (std::vector<%s> *)obj;
 
@@ -103,7 +105,7 @@ class LuaTableToStdVectorConverter(lang.lua.LuaTypeConverterCommon):
 		%s(L, -1, &v);
 		(*sv)[i] = %s;
 	}
-}\n''' % (self.to_c_func, self.T_conv.ctype, self.T_conv.ctype, self.T_conv.to_c_storage_ctype, self.T_conv.to_c_func, self.T_conv.prepare_var_from_conv('v', ''))
+}\n''' % (self.to_c_func, self.T_conv.ctype, self.T_conv.ctype, type_, self.T_conv.to_c_func, self.T_conv.prepare_var_from_conv('v', ''))
 
 		out += '''int %s(lua_State *L, void *obj, OwnershipPolicy own) {
 	std::vector<%s> *sv = (std::vector<%s> *)obj;
