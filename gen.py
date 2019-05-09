@@ -419,6 +419,7 @@ class FABGen:
 		self._header += common
 		self._header += '#pragma once\n\n'
 		self._header += '#include <cstdint>\n\n'
+		self._header += '#include <cstddef>\n\n'
 
 	def output_includes(self):
 		self.add_include('cstdint', True)
