@@ -28,6 +28,7 @@ parser.add_argument('--lua', help='Bind to Lua 5.2+', action='store_true')
 parser.add_argument('--cpython', help='Bind to CPython', action='store_true')
 parser.add_argument('--xml', help='Bind to CPython', action='store_true')
 parser.add_argument('--out', help='Path to output generated files', required=True)
+parser.add_argument('--out_prefix', help='Prefix to append to output generated files name', default='')
 parser.add_argument('--prefix', help='Prefix to append to all public symbols')
 parser.add_argument('--embedded', help='Specify that the generated binding is for embedding and not expanding the target language', action='store_true')
 parser.add_argument('--doc_md_folder', type=str, help='Retrieve symbol documentation using its bound name from a folder containing an MD file for each documented symbol')
@@ -45,7 +46,7 @@ def output_binding(generator):
 	script.bind(generator)
 
 	for path, src in generator.get_output().items():
-		path = os.path.join(args.out, path)
+		path = os.path.join(args.out, args.out_prefix + path)
 		with open(path, mode='w', encoding='utf-8') as f:
 			f.write(src)
 		print('File written to %s' % path)
