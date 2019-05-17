@@ -124,7 +124,7 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 			setter = member['setter']
 			if setter is None:
 				setter = 'NULL'
-			out += '	{"%s", (getter)%s, (setter)%s, "%s"},\n' % (member['name'], member['getter'], setter, gen.get_symbol_doc(member['name']))
+			out += '	{(char *)"%s", (getter)%s, (setter)%s, (char *)"%s"},\n' % (member['name'], member['getter'], setter, gen.get_symbol_doc(member['name']))
 		out += '	{NULL} /* Sentinel */\n'
 		out += '};\n\n'
 
@@ -145,9 +145,9 @@ class PythonClassTypeDefaultConverter(PythonTypeConverterCommon):
 		# methods
 		out += 'static PyMethodDef %s_tp_methods[] = {\n' % self.bound_name
 		for method in self.get_all_methods():
-			out += '	{"%s", (PyCFunction)%s, METH_VARARGS},\n' % (method['bound_name'], method['proxy_name'])
+			out += '	{(char *)"%s", (PyCFunction)%s, METH_VARARGS},\n' % (method['bound_name'], method['proxy_name'])
 		for method in self.get_all_static_methods():
-			out += '	{"%s", (PyCFunction)%s, METH_VARARGS|METH_STATIC},\n' % (method['bound_name'], method['proxy_name'])
+			out += '	{(char *)"%s", (PyCFunction)%s, METH_VARARGS|METH_STATIC},\n' % (method['bound_name'], method['proxy_name'])
 		out += '	{NULL} /* Sentinel */\n'
 		out += '};\n\n'
 
