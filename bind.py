@@ -36,6 +36,10 @@ parser.add_argument('--no_fabgen_api', help='Do not generate the fabgen.h API fi
 args = parser.parse_args()
 
 
+# prepare output directory
+os.makedirs(args.out, exist_ok=True)
+
+
 def output_binding(generator):
 	t_start = time.perf_counter()
 
