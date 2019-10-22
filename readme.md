@@ -152,6 +152,11 @@ gen.bind_method(shared_ptr_to_obj_conv, 'PrintState', 'void', [], features=['pro
 By default, values returned by reference or pointer are assumed C++ ownership.
 This feature transfers the returned object ownership to the target language.
 
+- 'copy_obj': None
+
+By default, values returned by reference or pointer are assumed C++ ownership.
+This feature makes a copy of the returned object, the target language then has full ownership.
+
 - 'check_rval': def check(rvals):
 
 Insert return value checking code right after the native call.
