@@ -894,6 +894,8 @@ class FABGen:
 				ownership = None  # automatic ownership policy
 				if 'new_obj' in features:
 					ownership = 'Owning'  # force ownership when the prototype is flagged to return a new object
+				elif 'copy_obj' in features:
+					ownership = 'Copy'  # force copy ownership
 
 				rvals_prepare_args.append({'conv': rval_conv, 'ctype': from_c_storage_ctype, 'var': 'rval', 'is_arg_in_out': False, 'ctx': ctx, 'ownership': ownership})
 				rvals.append('rval')
