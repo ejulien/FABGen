@@ -5,6 +5,14 @@ import lang.cpython
 
 
 def bind_std(gen):
+	class PyObjectPtrTypeConverter(lang.cpython.PythonTypeConverterCommon):
+		def get_type_glue(self, gen, module_name):
+			return 'bool %s(PyObject *o) { return true; }\n' % self.check_func +\
+			'void %s(PyObject *o, void *obj) { *(void **)obj = o; }\n' % self.to_c_func +\
+			'PyObject *%s(void *o, OwnershipPolicy) { return *(PyObject **)o; }\n' % self.from_c_func
+
+	gen.bind_type(PyObjectPtrTypeConverter('PyObject *'))
+
 	gen.add_include('cstdint', True)
 
 	class PythonBoolConverter(lang.cpython.PythonTypeConverterCommon):
