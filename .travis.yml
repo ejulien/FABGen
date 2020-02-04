@@ -12,7 +12,7 @@ install:
   - pip install python-coveralls
 
 script:
-  - python3 -m coverage run tests.py --x64 --linux --luabase $LUA_HOME_DIR
+  - python -m coverage run tests.py --x64 --linux --luabase $LUA_HOME_DIR
 
 after_success:
   - coveralls
