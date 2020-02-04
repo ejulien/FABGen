@@ -189,7 +189,7 @@ class CPythonTestBed:
 			ldflags = subprocess.check_output('python-config --ldflags', shell=True).decode('utf-8').strip()
 			ldflags = ldflags.replace('\n', ' ')
 
-			user_site = subprocess.check_output('python -m site --user-site', shell=True).decode('utf-8').strip()
+			user_site = '/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages'
 			os.makedirs(user_site, exist_ok=True)  # make sure site-packages exists
 
 			link_cmd = 'g++ -shared my_test.o ' + ldflags + ' -o ' + user_site + '/my_test.so'
