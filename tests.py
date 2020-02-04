@@ -189,10 +189,10 @@ class CPythonTestBed:
 			ldflags = subprocess.check_output('python-config --ldflags', shell=True).decode('utf-8').strip()
 			ldflags = ldflags.replace('\n', ' ')
 
-			site_packages = subprocess.check_output('python -c "import site; print(site.getsitepackages()[-1])"', shell=True).decode('utf-8').strip()
-			os.makedirs(site_packages, exist_ok=True)  # make sure site-packages exists
+			user_site = subprocess.check_output('python -m site --user-site', shell=True).decode('utf-8').strip()
+			os.makedirs(user_site, exist_ok=True)  # make sure site-packages exists
 
-			link_cmd = 'g++ -shared my_test.o ' + ldflags + ' -o ' + site_packages + '/my_test.so'
+			link_cmd = 'g++ -shared my_test.o ' + ldflags + ' -o ' + user_site + '/my_test.so'
 
 			try:
 				subprocess.check_output(link_cmd, shell=True, stderr=subprocess.STDOUT)
