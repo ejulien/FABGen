@@ -8,6 +8,7 @@ import argparse
 import shutil
 import lib
 import sys
+import site
 import os
 
 import lang.cpython
@@ -189,10 +190,11 @@ class CPythonTestBed:
 			ldflags = subprocess.check_output('python-config --ldflags', shell=True).decode('utf-8').strip()
 			ldflags = ldflags.replace('\n', ' ')
 
-			user_site = subprocess.check_output('python -m site --user-site', shell=True).decode('utf-8').strip()
-			os.makedirs(user_site, exist_ok=True)  # make sure site-packages exists
+			site_packages = site.getsitepackages()[-1]
+			print("Using Python site packages: " + site_packages)
+			os.makedirs(site_packages, exist_ok=True)  # make sure site-packages exists
 
-			link_cmd = 'g++ -shared my_test.o ' + ldflags + ' -o ' + user_site + '/my_test.so'
+			link_cmd = 'g++ -shared my_test.o ' + ldflags + ' -o ' + site_packages + '/my_test.so'
 
 			try:
 				subprocess.check_output(link_cmd, shell=True, stderr=subprocess.STDOUT)
