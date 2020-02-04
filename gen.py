@@ -1,7 +1,7 @@
 # FABGen - The FABulous binding Generator for CPython and Lua
 #	Copyright (C) 2018 Emmanuel Julien
 
-from pypeg2 import re, flag, name, Plain, optional, attr, K, parse, Keyword, Enum, List, csl
+from pypeg2 import re, flag, name, Plain, optional, attr, K, parse, Keyword, Enum, List, csl, some, maybe_some
 from collections import OrderedDict
 import zlib
 import copy
@@ -57,7 +57,7 @@ def get_fully_qualified_ctype_name(ctype):
 		elif hasattr(ctype.template, 'function'):
 			parts.append(ctype.name + '<%s>' % get_fully_qualified_function_signature(ctype.template.function))
 	else:
-		parts.append(ctype.name)
+		parts.append(repr(ctype.scoped_typename))
 
 	if ctype.const_ref:
 		parts.append('const')
@@ -87,21 +87,30 @@ def ctype_to_plain_string(ctype):
 	if ctype.unsigned:
 		parts.append('unsigned')
 
-	parts.append(ctype.name.replace(':', '_'))
+	_ctype = ctype.scoped_typename.parts[-1]  # ignore namespace entries (only consider last type in chain)
+	_name = _ctype.name.replace('::', '_').replace(':', '_')
 
-	if hasattr(ctype, 'template'):
-		if hasattr(ctype.template, 'args'):
-			parts.append('of_' + '_and_'.join([ctype_to_plain_string(arg) for arg in ctype.template.args]))
-		elif hasattr(ctype.template, 'function'):
+	parts.append(_name)
+
+	if hasattr(_ctype, 'template'):
+		_template = _ctype.template[0]
+
+		if _ctype.name == 'std::function':
 			parts.append('returning')
-			if hasattr(ctype.template.function, 'void_rval'):
+
+			if hasattr(_template, 'void_rval'):
 				parts.append('void')
 			else:
-				parts.append(ctype_to_plain_string(ctype.template.function.rval))
-			if hasattr(ctype.template.function, 'args'):
+				parts.append(ctype_to_plain_string(_template.rval))
+
+			if hasattr(_template, 'args'):
 				parts.append('taking')
-				for arg in ctype.template.function.args:
+				for arg in _template.args:
 					parts.append(ctype_to_plain_string(arg))
+		else:
+			if hasattr(_template, 'args'):
+				parts.append('of_' + '_and_'.join([ctype_to_plain_string(arg) for arg in _template.args]))
+
 	if ctype.const_ref:
 		parts.append('const')
 	if hasattr(ctype, 'ref'):
@@ -112,7 +121,8 @@ def ctype_to_plain_string(ctype):
 
 def get_ctype_default_bound_name(ctype):
 	ctype = copy.deepcopy(ctype)
-	ctype.name = ctype.name.split('::')[-1]  # strip namespace
+	ctype.scoped_typename.explicit_global = False
+	ctype.scoped_typename.scopes = None  # strip namespace
 	return ctype_to_plain_string(ctype)
 
 
@@ -158,22 +168,14 @@ def get_clean_symbol_name(name):
 
 
 def get_symbol_default_bound_name(name):
-	name = name.split('::')[-1]  # strip namespace
+	if not isinstance(name, str):
+		name = name.naked_name()  # no namespace
 	return get_clean_symbol_name(name)
 
 
 #
-typename = re.compile(r"((::)*(_|[A-z])[A-z0-9_]*)+")
+typename = re.compile(r"(_|[A-z])[A-z0-9_]*")
 ref_re = re.compile(r"[&*]+")
-
-
-class _TemplateParameters:
-	pass
-
-
-class _FunctionSignature:
-	def __repr__(self):
-		return get_fully_qualified_function_signature(self)
 
 
 #
@@ -220,21 +222,61 @@ class _CType:
 		return t
 
 
-_FunctionSignature.grammar = [attr("void_rval", "void"), attr("rval", _CType)], "(", optional(attr("args", csl(_CType))), ")"
-_TemplateParameters.grammar = "<", [attr("function", _FunctionSignature), attr("args", csl(_CType))], ">"
-_CType.grammar = flag("const", K("const")), optional(flag("signed", K("signed"))), optional(flag("unsigned", K("unsigned"))), attr("name", typename), optional(attr("template", _TemplateParameters)), optional(attr("ref", ref_re)), flag("const_ref", K("const"))
+class _FunctionSignature:
+	grammar = [attr("void_rval", "void"), attr("rval", _CType)], "(", optional(attr("args", csl(_CType))), ")"
+
+	def __repr__(self):
+		return get_fully_qualified_function_signature(self)
+
+
+class _TemplateParameters(List):
+	grammar = "<", csl([_FunctionSignature, _CType]), ">"
+
+	def __repr__(self):
+		args = [repr(arg) for arg in self]
+		return '<' + ','.join(args) + '>'
+
+
+class _Typename:
+	grammar = attr("name", typename), optional(attr("template", _TemplateParameters))
+
+	def __repr__(self):
+		out = self.name
+
+		if hasattr(self, 'template'):
+			out += repr(self.template)
+
+		return out
+
+
+class _ScopedTypename:
+	grammar = flag("explicit_global", K("::")), attr("parts", csl(_Typename, separator="::"))
+
+	def naked_name(self):
+		return self.parts[-1].name
+
+	def __repr__(self):
+		out = ''
+		if self.explicit_global:
+			out += '::'
+
+		parts = []
+		for part in self.parts:
+			parts.append(repr(part))
+
+		out += '::'.join(parts)
+		return out
+
+
+_CType.grammar = flag("const"), flag("signed"), flag("unsigned"), attr("scoped_typename", _ScopedTypename), optional(attr("ref", ref_re)), flag("const_ref", K("const"))
 
 
 #
 class _NamedCType:
+	grammar = attr("ctype", _CType), attr("name", _ScopedTypename)
+
 	def __repr__(self):  # pragma: no cover
-		out = repr(self.ctype)
-		if hasattr(self, 'name'):
-			out += ' ' + str(self.name)
-		return out
-
-
-_NamedCType.grammar = attr("ctype", _CType), optional(attr("name", typename))
+		return ' '.join([repr(self.ctype), self.name.naked_name()])
 
 
 #
@@ -272,6 +314,8 @@ def ctype_ref_to(src_ref, dst_ref):
 
 
 def transform_var_ref_to(var, from_ref, to_ref):
+	if isinstance(var, _ScopedTypename):
+		var = var.naked_name()
 	return ctype_ref_to(from_ref, to_ref) + var
 
 
@@ -768,7 +812,7 @@ class FABGen:
 		# transform from {T&, T*, T**, ...} to T* where T is conv.ctype
 		expr = transform_var_ref_to(rval['var'], rval['ctype'].get_ref(), rval['conv'].ctype.add_ref('*').get_ref())
 
-		out_var = rval['var'] + '_out'
+		out_var = (rval['var'] if isinstance(rval['var'], str) else rval['var'].naked_name()) + '_out'
 		src = self.declare_from_c_var(out_var)
 		if 'rval_transform' in rval['conv']._features:
 			src += rval['conv']._features['rval_transform'](self, rval['conv'], expr, out_var, rval['ownership'])

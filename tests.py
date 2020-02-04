@@ -113,6 +113,8 @@ def create_cpython_cmake_file(module, work_path, sources, site_package, include_
 	cmake_path = os.path.join(work_path, 'CMakeLists.txt')
 
 	with open(cmake_path, 'w') as file:
+		quoted_sources = ['"%s"' % source for source in sources]
+
 		file.write('''
 cmake_minimum_required(VERSION 3.1)
 
@@ -125,7 +127,7 @@ add_library(my_test SHARED %s)
 set_target_properties(my_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "%s" RUNTIME_OUTPUT_DIRECTORY_RELEASE "%s" SUFFIX .pyd)
 target_include_directories(my_test PRIVATE "%s")
 target_link_libraries(my_test "%s")
-''' % (module, ' '.join(sources), site_package, site_package, include_dir, python_lib))
+''' % (module, ' '.join(quoted_sources), site_package, site_package, include_dir, python_lib))
 
 
 def build_and_deploy_cpython_extension(work_path, build_path, python_interpreter):
@@ -231,6 +233,8 @@ def create_lua_cmake_file(module, work_path, sources, sdk_path):
 	cmake_path = os.path.join(work_path, 'CMakeLists.txt')
 
 	with open(cmake_path, 'w') as file:
+		quoted_sources = ['"%s"' % source for source in sources]
+
 		file.write('''
 cmake_minimum_required(VERSION 3.1)
 
@@ -243,10 +247,10 @@ link_directories("%s/lib/Debug")
 
 #add_definitions(-DLUA_USE_APICHECK)
 add_library(my_test SHARED %s)
-set_target_properties(my_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG %s)
-target_include_directories(my_test PRIVATE %s/include/lua)
+set_target_properties(my_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "%s")
+target_include_directories(my_test PRIVATE "%s/include/lua")
 target_link_libraries(my_test lua)
-''' % (module, sdk_path, ' '.join(sources), work_path.replace('\\', '/'), sdk_path))
+''' % (module, sdk_path, ' '.join(quoted_sources), work_path.replace('\\', '/'), sdk_path))
 
 
 def build_and_deploy_lua_extension(work_path, build_path):

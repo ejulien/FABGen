@@ -108,7 +108,7 @@
 			"pythonPath": "${config:python.pythonPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--luabase", "D:/harfang/sdk", "--debug", "cpp_exceptions", "--x64"],
+			"args": ["--luabase", "D:/harfang/sdk", "--debug", "template_struct_nesting", "--x64"],
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
 				"WaitOnAbnormalExit",
