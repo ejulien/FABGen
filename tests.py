@@ -175,7 +175,7 @@ class CPythonTestBed:
 		if args.linux:
 			os.chdir(work_path)
 
-			cflags = subprocess.check_output('python-config --cflags', shell=True).decode('utf-8').strip()
+			cflags = subprocess.check_output('python3-config --cflags', shell=True).decode('utf-8').strip()
 			cflags = cflags.replace('\n', ' ')
 
 			build_cmd = 'gcc ' + cflags + ' -g -O0 -fPIC -std=c++11 -c %s -o my_test.o' % ' '.join(sources)
@@ -186,10 +186,10 @@ class CPythonTestBed:
 				print("Build error: ", e.output.decode('utf-8'))
 				return False
 
-			ldflags = subprocess.check_output('python-config --ldflags', shell=True).decode('utf-8').strip()
+			ldflags = subprocess.check_output('python3-config --ldflags', shell=True).decode('utf-8').strip()
 			ldflags = ldflags.replace('\n', ' ')
 
-			user_site = '/home/travis/virtualenv/python3.7.1/lib/python3.7/site-packages'
+			user_site = subprocess.check_output('python3 -m site --user-site', shell=True).decode('utf-8').strip()
 			os.makedirs(user_site, exist_ok=True)  # make sure site-packages exists
 
 			link_cmd = 'g++ -shared my_test.o ' + ldflags + ' -o ' + user_site + '/my_test.so'
@@ -200,7 +200,7 @@ class CPythonTestBed:
 				print("Link error: ", e.output.decode('utf-8'))
 				return False
 
-			python_interpreter = 'python'
+			python_interpreter = 'python3'
 		else:
 			build_path = os.path.join(work_path, 'build')
 			os.mkdir(build_path)
