@@ -93,9 +93,9 @@ def ctype_to_plain_string(ctype):
 	parts.append(_name)
 
 	if hasattr(_ctype, 'template'):
-		_template = _ctype.template[0]
+		if ctype.scoped_typename.parts[0].name == 'std' and ctype.scoped_typename.parts[1].name == 'function':
+			_template = _ctype.template[0]
 
-		if _ctype.name == 'std::function':
 			parts.append('returning')
 
 			if hasattr(_template, 'void_rval'):
@@ -108,8 +108,7 @@ def ctype_to_plain_string(ctype):
 				for arg in _template.args:
 					parts.append(ctype_to_plain_string(arg))
 		else:
-			if hasattr(_template, 'args'):
-				parts.append('of_' + '_and_'.join([ctype_to_plain_string(arg) for arg in _template.args]))
+			parts.append('of_' + '_and_'.join([ctype_to_plain_string(arg) for arg in _ctype.template]))
 
 	if ctype.const_ref:
 		parts.append('const')
@@ -122,7 +121,6 @@ def ctype_to_plain_string(ctype):
 def get_ctype_default_bound_name(ctype):
 	ctype = copy.deepcopy(ctype)
 	ctype.scoped_typename.explicit_global = False
-	ctype.scoped_typename.scopes = None  # strip namespace
 	return ctype_to_plain_string(ctype)
 
 
@@ -254,6 +252,9 @@ class _ScopedTypename:
 
 	def naked_name(self):
 		return self.parts[-1].name
+
+	def __eq__(self, other):
+		return repr(self) == repr(other)
 
 	def __repr__(self):
 		out = ''
@@ -760,7 +761,7 @@ class FABGen:
 			_proto['argsin'] = _proto['args']  # default to the full arg list
 
 			if 'arg_out' in features:  # exclude output arguments from the argsin list
-				_proto['argsin'] = [arg for arg in _proto['args'] if arg['carg'].name not in _proto['features']['arg_out']]
+				_proto['argsin'] = [arg for arg in _proto['args'] if arg['carg'].name.naked_name() not in _proto['features']['arg_out']]
 
 			_protos.append(_proto)
 
@@ -864,7 +865,7 @@ class FABGen:
 
 			var = 'arg%d' % idx
 
-			if arg_out is not None and arg['carg'].name in arg_out:
+			if arg_out is not None and arg['carg'].name.naked_name() in arg_out:
 				arg_ctype = conv.ctype
 				parts.append(self._declare_to_c_var(arg_ctype, var))
 			else:
@@ -949,8 +950,10 @@ class FABGen:
 			arg_in_out = features['arg_in_out'] if 'arg_in_out' in features else []
 
 			for idx, arg in enumerate(args):
-				if arg['carg'].name in arg_out:
-					is_arg_in_out = arg['carg'].name in arg_in_out
+				carg_name = arg['carg'].name.naked_name()
+
+				if carg_name in arg_out:
+					is_arg_in_out = carg_name in arg_in_out
 
 					if is_arg_in_out:
 						arg_ctype = arg['conv'].to_c_storage_ctype

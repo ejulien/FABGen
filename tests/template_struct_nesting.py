@@ -16,7 +16,7 @@ template <typename T> struct enclosing_template {
 	nested_struct n;
 };
 
-template <typename T> enclosing_template<T>::nested_struct &GetNestedStruct(enclosing_template<T> &s) { return s.n; }
+template <typename T> auto &GetNestedStruct(enclosing_template<T> &s) { return s.n; }
 ''', True, False)
 
 	nested_struct = gen.begin_class('enclosing_template<int>::nested_struct', bound_name='nested_struct_int')
@@ -29,7 +29,7 @@ template <typename T> enclosing_template<T>::nested_struct &GetNestedStruct(encl
 	gen.bind_member(enclosing_struct, 'enclosing_template<int>::nested_struct n')
 	gen.end_class(enclosing_struct)
 
-	gen.bind_function('GetNestedStructInt', 'enclosing_template<int>::nested_struct &', ['enclosing_template<int> &s'])
+	gen.bind_function('GetNestedStruct<int>', 'enclosing_template<int>::nested_struct &', ['enclosing_template<int> &s'], bound_name='GetNestedStructInt')
 
 	gen.finalize()
 	return gen.get_output()
@@ -40,7 +40,7 @@ import my_test
 
 #
 s = my_test.enclosing_template_int()
-n = GetNestedStructInt(s)
+n = my_test.GetNestedStructInt(s)
 assert n.v == 9
 '''
 
@@ -49,6 +49,6 @@ my_test = require "my_test"
 
 --
 s = my_test.enclosing_template_int()
-n = GetNestedStructInt(s)
+n = my_test.GetNestedStructInt(s)
 assert(n.v == 9)
 '''
