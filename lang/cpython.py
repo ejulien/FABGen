@@ -574,7 +574,7 @@ private:
 			out += 'Py_INCREF(%s);\nreturn %s;\n' % (self_var, self_var)
 		else:
 			rval_count = len(rvals)
-			rvals = [rval + '_out' for rval in rvals]
+			rvals = [(rval if type(rval) == str else rval.naked_name()) + '_out' for rval in rvals]
 
 			if rval_count == 0:
 				if ctx == 'rbind_args':
