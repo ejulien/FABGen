@@ -1,7 +1,11 @@
+dist: trusty
 language: python
 
 python:
-  - "3.4_with_system_site_packages"
+  - "3.4"
+
+virtualenv:
+  system_site_packages: true
 
 before_install:
   - source .travis/setup_lua.sh
