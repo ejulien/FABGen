@@ -20,17 +20,17 @@ def bind_stl(gen):
 def bind_function_T(gen, type, bound_name=None):
 	class LuaStdFunctionConverter(lang.lua.LuaTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
-			func = self.ctype.scoped_typename.parts[-1].template[0]
+			function = self.ctype.scoped_typename.parts[-1].template.function
 
 			# check C
 			check = 'bool %s(lua_State *L, int idx) { return lua_isfunction(L, idx); }\n' % self.check_func
 
 			# to C
-			rval = 'void' if hasattr(func, 'void_rval') else str(func.rval)
+			rval = 'void' if hasattr(function, 'void_rval') else str(function.rval)
 
 			args = []
-			if hasattr(func, 'args'):
-				args = [str(arg) for arg in func.args]
+			if hasattr(function, 'args'):
+				args = [str(arg) for arg in function.args]
 
 			rbind_helper = '_rbind_' + self.bound_name  # helper to call from C to Lua
 			parms = ['%s v%d' % (arg, idx) for idx, arg in enumerate(args)]

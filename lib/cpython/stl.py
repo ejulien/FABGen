@@ -26,7 +26,7 @@ Py_DECREF(utf8_pyobj);
 def bind_function_T(gen, type, bound_name=None):
 	class PythonStdFunctionConverter(lang.cpython.PythonTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
-			func = self.ctype.scoped_typename.parts[-1].template[0]
+			func = self.ctype.scoped_typename.parts[-1].template.function
 
 			# check C
 			check = 'bool %s(PyObject *o) { return PyCallable_Check(o) ? true : false; }\n' % self.check_func

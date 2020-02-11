@@ -93,22 +93,22 @@ def ctype_to_plain_string(ctype):
 	parts.append(_name)
 
 	if hasattr(_ctype, 'template'):
-		if ctype.scoped_typename.parts[0].name == 'std' and ctype.scoped_typename.parts[1].name == 'function':
-			_template = _ctype.template[0]
+		if hasattr(_ctype.template, 'function'):
+			function = _ctype.template.function
 
 			parts.append('returning')
 
-			if hasattr(_template, 'void_rval'):
+			if hasattr(function, 'void_rval'):
 				parts.append('void')
 			else:
-				parts.append(ctype_to_plain_string(_template.rval))
+				parts.append(ctype_to_plain_string(function.rval))
 
-			if hasattr(_template, 'args'):
+			if hasattr(function, 'args'):
 				parts.append('taking')
-				for arg in _template.args:
+				for arg in function.args:
 					parts.append(ctype_to_plain_string(arg))
 		else:
-			parts.append('of_' + '_and_'.join([ctype_to_plain_string(arg) for arg in _ctype.template]))
+			parts.append('of_' + '_and_'.join([ctype_to_plain_string(arg) for arg in _ctype.template.args]))
 
 	if ctype.const_ref:
 		parts.append('const')
@@ -227,11 +227,15 @@ class _FunctionSignature:
 		return get_fully_qualified_function_signature(self)
 
 
-class _TemplateParameters(List):
-	grammar = "<", csl([_FunctionSignature, _CType]), ">"
+class _TemplateParameters:
+	grammar = "<", [attr("function", _FunctionSignature), attr("args", csl(_CType))], ">"
 
 	def __repr__(self):
-		args = [repr(arg) for arg in self]
+		if hasattr(self, "function"):
+			args = [repr(self.function)]
+		else:
+			args = [repr(arg) for arg in self.args]
+
 		return '<' + ','.join(args) + '>'
 
 
