@@ -152,8 +152,14 @@ symbol_clean_rules['>'] = 'gt'
 symbol_clean_rules['>='] = 'ge'
 
 
+def strip_namespace(name):
+	parts = name.split('::')
+	return parts[-1] if len(parts) > 1 else name
+
+
 def get_clean_symbol_name(name):
 	""" Return a string cleaned so that it may be used as a valid symbol name in the generator output."""
+
 	parts = name.split(' ')
 
 	def clean_symbol_name_part(part):
@@ -166,8 +172,11 @@ def get_clean_symbol_name(name):
 
 
 def get_symbol_default_bound_name(name):
-	if not isinstance(name, str):
-		name = name.naked_name()  # no namespace
+	if isinstance(name, str):  # no namespace
+		name = strip_namespace(name)
+	else:
+		name = name.naked_name()
+
 	return get_clean_symbol_name(name)
 
 
