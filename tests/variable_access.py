@@ -18,6 +18,7 @@ simple_struct s;
 
 namespace ns {
 	int v{14};
+	float u{7.f};
 }
 ''', True, False)
 
@@ -27,6 +28,8 @@ namespace ns {
 
 	gen.bind_variables(['int v', 'simple_struct s'])
 	gen.bind_variable('int ns::v', bound_name='w')
+
+	gen.bind_variable('float ns::u')
 
 	gen.finalize()
 	return gen.get_output()
@@ -44,6 +47,8 @@ my_test.s.v = 9
 assert my_test.s.v == 9
 
 assert my_test.w == 14
+
+assert my_test.u == 7
 '''
 
 test_lua = '''\
@@ -58,4 +63,6 @@ my_test.s.v = 9
 assert(my_test.s.v == 9)
 
 assert(my_test.w == 14)
+
+assert(my_test.u == 7)
 '''
