@@ -12,7 +12,7 @@ before_install:
 
 install:
   - pip install pypeg2
-  - pip install coverage=4.0.3
+  - pip install coverage
   - pip install PyYAML==5.1
   - pip install python-coveralls==2.9.1
 
