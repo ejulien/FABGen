@@ -444,6 +444,7 @@ class FABGen:
 		self.verbose = True
 		self.embedded = False
 		self.check_self_type_in_ops = False
+		self.defines = []
 
 	def apply_api_prefix(self, symbol):
 		return apply_api_prefix(symbol)
@@ -538,6 +539,10 @@ class FABGen:
 
 	def add_custom_free_code(self, code):
 		self._custom_free_code += code
+
+	#
+	def defined(self, symbol):
+		return symbol in self.defines
 
 	#
 	def begin_type(self, conv, features, nobind=False):
