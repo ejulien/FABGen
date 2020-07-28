@@ -33,6 +33,7 @@ parser.add_argument('--prefix', help='Prefix to append to all public symbols')
 parser.add_argument('--embedded', help='Specify that the generated binding is for embedding and not expanding the target language', action='store_true')
 parser.add_argument('--doc_md_folder', type=str, help='Retrieve symbol documentation using its bound name from a folder containing an MD file for each documented symbol')
 parser.add_argument('--no_fabgen_api', help='Do not generate the fabgen.h API file', action='store_true')
+parser.add_argument('--defines', type=str, help='Comma-separated list of strings that can be queried by the user binding script', default='')
 args = parser.parse_args()
 
 
@@ -74,6 +75,8 @@ if args.prefix:
 
 # setup documentation hook
 def setup_generator(generator):
+	generator.defines = split(args.defines, ',')
+
 	if args.doc_md_folder:
 		def md_doc_hook(name):
 			symbol_md_path = os.path.join(args.doc_md_folder, name + '.md')
