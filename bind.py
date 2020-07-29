@@ -75,7 +75,7 @@ if args.prefix:
 
 # setup documentation hook
 def setup_generator(generator):
-	generator.defines = split(args.defines, ',')
+	generator.defines = args.defines.split(',')
 
 	if args.doc_md_folder:
 		def md_doc_hook(name):
