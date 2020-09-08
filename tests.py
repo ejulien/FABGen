@@ -19,6 +19,7 @@ start_path = os.path.dirname(__file__)
 parser = argparse.ArgumentParser(description='Run generator unit tests.')
 parser.add_argument('--pybase', dest='python_base_path', help='Path to the Python interpreter')
 parser.add_argument('--luabase', dest='lua_base_path', help='Path to the Lua interpreter')
+parser.add_argument('--go', dest='go_build', help='Build GO')
 parser.add_argument('--debug', dest='debug_test', help='Generate a working solution to debug a test')
 parser.add_argument('--x64', dest='x64', help='Build for 64 bit architecture', action='store_true', default=False)
 parser.add_argument('--linux', dest='linux', help='Build on Linux', action='store_true', default=False)
@@ -343,6 +344,36 @@ class LuaTestBed:
 		return success
 
 
+class GoTestBed:
+	def build_and_test_extension(self, work_path, module, sources):
+		test_path = os.path.join(work_path, 'test.go')
+		with open(test_path, 'w') as file:
+			file.write(module.test_lua)
+
+		# TODO Check on linux
+		if False and args.linux:
+			pass
+		else:
+			build_path = os.path.join(work_path, 'build')
+			os.mkdir(build_path)
+			os.chdir(build_path)
+
+		print("Executing Go test...")
+		os.chdir(work_path)
+
+		success = True
+		try:
+		 	subprocess.check_output('go mod init fabgen', shell=True, stderr=subprocess.STDOUT)
+		 	subprocess.check_output('go test -run ""', shell=True, stderr=subprocess.STDOUT)
+		except subprocess.CalledProcessError as e:
+			print(e.output.decode('utf-8'))
+			success = False
+
+		print("Cleanup...")
+
+		return success
+
+
 # Clang format
 def create_clang_format_file(work_path):
 	with open(os.path.join(work_path, '_clang-format'), 'w') as file:
@@ -375,6 +406,11 @@ if args.lua_base_path:
 	gen = lang.lua.LuaGenerator()
 	gen.verbose = False
 	run_tests(gen, test_names, LuaTestBed())
+
+if args.go_build:
+	gen = lang.go.GoGenerator()
+	gen.verbose = False
+	run_tests(gen, test_names, GoTestBed())
 
 
 #
