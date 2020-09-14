@@ -78,3 +78,27 @@ def bind_std(gen):
 
 	gen.bind_type(GoFloatConverter('float32')).nobind = True	
 	gen.typedef('float', 'float32')
+	
+	class GoBoolConverter(lang.go.GoTypeConverterCommon):
+		def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None, needs_c_storage_class=False):
+			super().__init__(type, to_c_storage_type, bound_name, from_c_storage_type, needs_c_storage_class)
+			self.go_type = "C.bool"
+
+		def get_type_glue(self, gen, module_name):
+			return ''
+
+		def get_type_api(self, module_name):
+			return ''
+
+		def to_c_call(self, in_var, out_var_p, is_pointer):
+			if is_pointer:
+				out = f"{out_var_p.replace('&', '_')}, idFin{out_var_p.replace('&', '_')} := wrapBool({in_var})\n"
+				out += f"defer idFin{out_var_p.replace('&', '_')}()\n"
+			else:
+				out = f"{out_var_p.replace('&', '_')} := C.bool({in_var})\n"
+			return out
+
+		def from_c_call(self, out_var, expr, ownership):
+			return "bool(%s)" % (out_var)
+
+	gen.bind_type(GoBoolConverter('bool')).nobind = True
