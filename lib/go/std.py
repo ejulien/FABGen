@@ -24,6 +24,10 @@ def bind_std(gen):
 	gen.typedef('const char *', 'string')
 
 	class GoIntConverter(lang.go.GoTypeConverterCommon):
+		def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None, needs_c_storage_class=False):
+			super().__init__(type, to_c_storage_type, bound_name, from_c_storage_type, needs_c_storage_class)
+			self.go_type = "C.int"
+
 		def get_type_glue(self, gen, module_name):
 			return ''
 
@@ -51,6 +55,10 @@ def bind_std(gen):
 
 
 	class GoFloatConverter(lang.go.GoTypeConverterCommon):
+		def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None, needs_c_storage_class=False):
+			super().__init__(type, to_c_storage_type, bound_name, from_c_storage_type, needs_c_storage_class)
+			self.go_type = "C.float"
+
 		def get_type_glue(self, gen, module_name):
 			return ''
 

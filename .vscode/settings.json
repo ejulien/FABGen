@@ -3,6 +3,5 @@
 	"python.linting.pylintEnabled": false,
 	"files.associations": {
 		"xkeycheck.h": "c"
-	},
-	"python.pythonPath": "C:\\Python38\\python.exe"
+	}
 }

@@ -13,6 +13,10 @@ import gen
 
 
 class GoTypeConverterCommon(gen.TypeConverter):
+	def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None, needs_c_storage_class=False):		
+		super().__init__(type, to_c_storage_type, bound_name, from_c_storage_type, needs_c_storage_class)
+		self.go_type = None
+
 	def get_type_api(self, module_name):
 		out = '// type API for %s\n' % self.ctype
 		if self.c_storage_class:
@@ -303,11 +307,11 @@ uint32_t %s(void* p) {
 							if has_previous_ret_arg:
 								go += ' ,'
 
-							arg_bound_name = argin['conv'].bound_name
-							if arg_bound_name.endswith('_nobind') and argin['conv'].nobind:
+							arg_bound_name = arg['conv'].bound_name
+							if arg_bound_name.endswith('_nobind') and arg['conv'].nobind:
 								arg_bound_name = arg_bound_name[:-len('_nobind')]
-							if (argin['carg'].ctype.is_pointer() or (hasattr(argin['carg'].ctype, 'ref') and argin['carg'].ctype.ref == "&")) and argin['conv'].bound_name != "string":
-								arg_bound_name = "*" + arg_bound_name
+							# if (arg['carg'].ctype.is_pointer() or (hasattr(arg['carg'].ctype, 'ref') and arg['carg'].ctype.ref == "&")) and arg['conv'].bound_name != "string":
+							# 	arg_bound_name = "*" + arg_bound_name
 
 							go += arg_bound_name
 							has_previous_ret_arg = True
@@ -325,30 +329,46 @@ uint32_t %s(void* p) {
 					if c_call != "":
 						go += c_call
 					else:
-						go += f"{argin['carg'].name}_out := {argin['carg'].name}\n"
+						# if the value is not arg in out
+						if proto["features"] and "arg_in_out" in proto["features"] and str(argin['carg'].name) not in proto["features"]["arg_in_out"]:
+							go += f"{argin['carg'].name}_out := {argin['carg'].name}\n"
+				
+			# declare arg out
+			if 'arg_out' in proto['features']:
+				i = 0
+				for arg in proto['args']:
+					if str(arg['carg'].name) in proto['features']['arg_out']:
+						arg_bound_name = arg['conv'].bound_name
+						if arg_bound_name.endswith('_nobind') and arg['conv'].nobind:
+							arg_bound_name = arg_bound_name[:-len('_nobind')]
+
+						if arg['conv'].go_type is not None:
+							arg_bound_name = arg['conv'].go_type
+
+						go += f"var OUTPUT{i} {arg_bound_name}\n"
+						i += 1
 
 			# begin call binding function
 			if retval != '':
-				go += "retval := C.HG%s" % name.title().strip().replace('_', '')
+				go += "retval := "
+			go += "C.HG%s" % name.title().strip().replace('_', '')
 			
 			go += '('
 			if len(proto['args']):
 				has_previous_arg = False
-				for argin in proto['argsin']:
+				i = 0
+				for arg in proto['args']:
 					if has_previous_arg:
 						go += ' ,'
-					go += f"{argin['carg'].name}ToC"
+						
+					if 'arg_out' in proto['features'] and str(arg['carg'].name) in proto['features']['arg_out']:
+						if (arg['carg'].ctype.is_pointer() or (hasattr(arg['carg'].ctype, 'ref') and arg['carg'].ctype.ref == "&")) and arg['conv'].bound_name != "string":
+							go += "&"
+						go += f"OUTPUT{i}"
+						i += 1
+					else:
+						go += f"{arg['carg'].name}ToC"
 					has_previous_arg = True
-
-				if 'arg_out' in proto['features']:
-					i = 0
-					for arg in proto['args']:
-						if str(arg['carg'].name) in proto['features']['arg_out']:
-							if has_previous_arg:
-								go += ' ,'
-							go += 'OUTPUT%d' % (i)
-							has_previous_arg = True
-							i += 1
 			go += ')\n'
 			if retval != '':
 				# check if need convert from c
@@ -365,9 +385,35 @@ uint32_t %s(void* p) {
 					proto['rval']['conv'].bound_name != "string":
 					retval_go = f"(*{proto['rval']['conv'].bound_name})(unsafe.Pointer({retval_go}))\n"
 
-				go += f"return {retval_go}\n"
-				
-			go += '}\n'
+				go += f"return {retval_go}"
+			
+			# return arg out
+			if 'arg_out' in proto['features']:
+				if retval == '':
+					go += "return "
+				i = 0
+				for arg in proto['args']:
+					if str(arg['carg'].name) in proto['features']['arg_out']:
+						if retval != '' or i > 0:
+							go += ", "
+							
+						# check if need convert from c
+						retval_go = f"OUTPUT{i}"
+						if (not arg['carg'].ctype.is_pointer() and \
+							not (hasattr(arg['carg'].ctype, 'ref') and arg['carg'].ctype.ref == "&")) or \
+							arg['conv'].bound_name == "string":
+							conversion_ret = arg['conv'].from_c_call("retval", "", "") 
+							if conversion_ret != "":
+								retval_go = conversion_ret
+
+
+						#if (arg['carg'].ctype.is_pointer() or (hasattr(arg['carg'].ctype, 'ref') and arg['carg'].ctype.ref == "&")) and arg['conv'].bound_name != "string":
+						#	retval_go = f"(*{arg['conv'].bound_name})(unsafe.Pointer({retval_go}))"
+
+						go += retval_go
+						i += 1
+
+			go += '\n}\n'
 
 		return go
 
@@ -406,6 +452,8 @@ uint32_t %s(void* p) {
 				for argin in proto['args']:
 					if has_previous_arg:
 						go += ' ,'
+					if len(argin['conv'].members) > 0:
+						go += "struct "
 					go += '%s ' % argin['conv'].ctype
 					if argin['carg'].ctype.is_pointer() or (hasattr(argin['carg'].ctype, 'ref') and argin['carg'].ctype.ref == "&"):
 						go += "*"
@@ -454,6 +502,7 @@ uint32_t %s(void* p) {
 				'#endif\n'
 
 		go_h += '#include <stdint.h>\n' \
+			'#include <stdbool.h>\n' \
 			'#include <stddef.h>\n' \
 			'#include "fabgen.h"\n\n'
 
@@ -462,20 +511,20 @@ uint32_t %s(void* p) {
 				continue
 
 
-			go_h += "typedef struct {\n"
+			go_h += f"struct {conv.bound_name};\n"
 			if conv.methods or conv.members:
 				# base	inheritance is done in go file with interface
 				# for base in conv._bases:
 				# 	go_h += '<inherits uid="%s"/>\n' % base.bound_name
 				# static members
-				for member in conv.static_members:
-					go_h += f"{self.select_ctype_conv(member['ctype']).bound_name} {member['name']};\n"
-				# members
-				for member in conv.members:
-					go_h += f"{self.select_ctype_conv(member['ctype']).bound_name} {member['name']};\n"
+				# for member in conv.static_members:
+				# 	go_h += f"{self.select_ctype_conv(member['ctype']).bound_name} {member['name']};\n"
+				# # members
+				# for member in conv.members:
+				# 	go_h += f"{self.select_ctype_conv(member['ctype']).bound_name} {member['name']};\n"
 				# constructors
-				if conv.constructor:
-					go_h += self.__extract_method(conv.bound_name, conv.constructor, bound_name="Constructor")
+				# if conv.constructor:
+				# 	go_h += self.__extract_method(conv.bound_name, conv.constructor, bound_name="Constructor")
 				# arithmetic operators
 				for arithmetic in conv.arithmetic_ops:
 					bound_name = 'operator_' + gen.get_clean_symbol_name(arithmetic['op'])
@@ -490,7 +539,7 @@ uint32_t %s(void* p) {
 				# methods
 				for method in conv.methods:
 					go_h += self.__extract_method(conv.bound_name, method)
-			go_h += f"}} HG{conv.bound_name};\n"
+			#go_h += f"}} HG{conv.bound_name};\n"
 			
 		# enum
 		for bound_name, enum in self._enums.items():
@@ -512,7 +561,6 @@ uint32_t %s(void* p) {
 		# cpp
 		go_c = '// go wrapper c\n' \
 				'#include \"wrapper.h\"\n'
-
 		go_c += self._source
 
 		for conv in self._bound_types:
@@ -564,14 +612,17 @@ uint32_t %s(void* p) {
 		# .go
 		go_bind = 'package harfang\n' \
 				'// #include "wrapper.h"\n' \
+				'// #cgo CFLAGS: -I .\n' \
 				'import "C"\n\n' \
 				'import "unsafe"\n'
+#// #cgo CFLAGS: -Iyour-include-path
+#// #cgo LDFLAGS: -Lyour-library-path -lyour-library-name-minus-the-lib-part
 
 		for conv in self._bound_types:
 			if conv.nobind:
 				continue
 			
-			go_bind += f"type {conv.bound_name.title()} C.HG{conv.bound_name.title()}\n"
+			go_bind += f"type {conv.bound_name.title()} C.struct_{conv.bound_name.title()}\n"
 			# if conv.methods or conv.members:
 			# 	# base
 			# 	for base in conv._bases:
