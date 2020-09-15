@@ -73,7 +73,7 @@ assert(my_test.add_int_by_reference(3, 4) == 7)
 
 
 test_go = '''\
-package fabgen
+package harfang
 
 import (
 	"testing"

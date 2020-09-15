@@ -46,6 +46,7 @@ def bind_std(gen):
 			return "int(%s)" % (out_var)
 
 	gen.bind_type(GoIntConverter('int')).nobind = True
+	gen.typedef('int16_t', 'int')
 	gen.typedef('int32_t', 'int')
 	gen.typedef('int64_t', 'int')
 	gen.typedef('char32_t', 'int')

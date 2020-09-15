@@ -12,6 +12,10 @@ import gen
 
 
 def clean_name(name):
+	return str(name).strip().replace('_', '')
+
+
+def clean_name_with_title(name):
 	return str(name).title().strip().replace('_', '')
 
 
@@ -287,7 +291,7 @@ uint32_t %s(void* p) {
 		# GET
 		go += f"// Get{name} ...\n" \
 				f"func (a *{classname}) Get{name}() {arg_bound_name} {{\n" 
-		go += f"v := C.HG{classname}Get{name}(a.h)\n"
+		go += f"v := C.Wrap{classname}Get{name}(a.h)\n"
 		
 		# check if need convert from c
 		retval_go = "v"
@@ -311,7 +315,7 @@ uint32_t %s(void* p) {
 		else:
 			go += "vToC = v"
 
-		go += f"	C.HG{classname}Set{name}(a.h, vToC)\n"
+		go += f"	C.Wrap{classname}Set{name}(a.h, vToC)\n"
 		go += "}\n"
 
 		return go
@@ -330,7 +334,7 @@ uint32_t %s(void* p) {
 			arg_bound_name = "*" + arg_bound_name
 
 		# GET
-		go += f"{arg_bound_name} HG{classname}Get{name}(HG{classname} h)"
+		go += f"{arg_bound_name} Wrap{classname}Get{name}(Wrap{classname} h)"
 
 		if is_in_header:
 			go += ";\n"
@@ -338,7 +342,7 @@ uint32_t %s(void* p) {
 			go += f"{{ return (({classname}*)h)->{name};}}\n"
 
 		# SET
-		go += f"void HG{classname}Set{name}(HG{classname} h, {arg_bound_name} v)"
+		go += f"void Wrap{classname}Set{name}(Wrap{classname} h, {arg_bound_name} v)"
 
 		if is_in_header:
 			go += ";\n"
@@ -360,18 +364,22 @@ uint32_t %s(void* p) {
 		uid = classname + bound_name if classname else bound_name
 
 		protos = self._build_protos(method['protos'])
-		for proto in protos:
+		for id_proto, proto in enumerate(protos):
 			retval = ''
 
 			if proto['rval']['conv']:
 				retval = proto['rval']['conv'].bound_name
 
-			go += '// ' + clean_name(name) + ' ...\n'
+			go += '// ' + clean_name_with_title(name) + ' ...\n'
 
 			go += "func "
 			if not is_global:
 				go += f"(a *{classname}) "
-			go += f"{clean_name(name)}"
+			go += f"{clean_name_with_title(name)}"
+
+			# add number in case of multiple proto, in go, you can't have overload or default parameter
+			if len(protos) > 1:
+				go += f"{id_proto}"
 
 			# add input(s) declaration
 			go += '('
@@ -446,7 +454,11 @@ uint32_t %s(void* p) {
 			# declare arg out
 			if retval != '':
 				go += "retval := "
-			go += "C.HG%s" % clean_name(name)
+			go += "C.Wrap%s" % clean_name_with_title(name)
+
+			# add number in case of multiple proto, in go, you can't have overload or default parameter
+			if len(protos) > 1:
+				go += f"{id_proto}"
 			
 			go += '('
 			if not is_global:
@@ -533,7 +545,7 @@ uint32_t %s(void* p) {
 		uid = classname + bound_name if classname else bound_name
 
 		protos = self._build_protos(method['protos'])
-		for proto in protos:
+		for id_proto, proto in enumerate(protos):
 			retval = 'void'
 
 			if proto['rval']['storage_ctype']:
@@ -545,7 +557,11 @@ uint32_t %s(void* p) {
 
 			if is_in_header:
 				go += 'extern '
-			go += '%s HG%s' % (retval, name.title().strip().replace('_', ''))
+			go += '%s Wrap%s' % (retval, clean_name_with_title(name))
+
+			# add number in case of multiple proto, in go, you can't have overload or default parameter
+			if len(protos) > 1:
+				go += f"{id_proto}"
 
 			go += '('
 			if len(proto['args']):
@@ -554,7 +570,7 @@ uint32_t %s(void* p) {
 					if has_previous_arg:
 						go += ' ,'
 					if argin['conv'].is_type_class():
-						go += "HG"
+						go += "Wrap"
 					go += '%s ' % argin['conv'].ctype
 					if not argin['conv'].is_type_class() and (argin['carg'].ctype.is_pointer() or (hasattr(argin['carg'].ctype, 'ref') and argin['carg'].ctype.ref == "&")):
 						go += "*"
@@ -608,15 +624,19 @@ uint32_t %s(void* p) {
 		go_h += '#include <stdint.h>\n' \
 			'#include <stdbool.h>\n' \
 			'#include <stddef.h>\n' \
+			'#include <memory.h>\n' \
+			'#include <stdlib.h>\n' \
 			'#include "fabgen.h"\n\n'
+			
+		go_h += 'typedef int WrapBool;\n'
 
 		for conv in self._bound_types:
 			if conv.nobind:
 				continue
 
-			go_h += f"typedef void* HG{conv.bound_name};\n" \
-					f"HG{conv.bound_name} HG{conv.bound_name}Init();\n" \
-					f"void HG{conv.bound_name}Free(HG{conv.bound_name});\n"
+			go_h += f"typedef void* Wrap{conv.bound_name};\n" \
+					f"Wrap{conv.bound_name} Wrap{conv.bound_name}Init();\n" \
+					f"void Wrap{conv.bound_name}Free(Wrap{conv.bound_name});\n"
 
 			if conv.methods or conv.members:
 				# base	inheritance is done in go file with interface
@@ -645,7 +665,7 @@ uint32_t %s(void* p) {
 				# methods
 				for method in conv.methods:
 					go_h += self.__extract_method(conv.bound_name, method)
-			#go_h += f"}} HG{conv.bound_name};\n"
+			#go_h += f"}} Wrap{conv.bound_name};\n"
 			
 		# enum
 		for bound_name, enum in self._enums.items():
@@ -673,11 +693,11 @@ uint32_t %s(void* p) {
 			if conv.nobind:
 				continue
 
-			go_c += f"// bind HG{conv.bound_name} methods\n" \
-				f"HG{conv.bound_name} HG{conv.bound_name}Init(){{" \
+			go_c += f"// bind Wrap{conv.bound_name} methods\n" \
+				f"Wrap{conv.bound_name} Wrap{conv.bound_name}Init(){{" \
 				f"return (void*)(new {conv.bound_name}());" \
 				f"}}\n"
-			go_c += f"void HG{conv.bound_name}Free(HG{conv.bound_name} h){{" \
+			go_c += f"void Wrap{conv.bound_name}Free(Wrap{conv.bound_name} h){{" \
 				f"delete ({conv.bound_name}*)h;" \
 				f"}}\n" 
 
@@ -728,6 +748,12 @@ uint32_t %s(void* p) {
 				'// #cgo CFLAGS: -I .\n' \
 				'import "C"\n\n' \
 				'import "unsafe"\n'
+
+		with open("lib/go/WrapperConverter.go", "r") as file:
+			lines = file.readlines()
+			go_bind += ''.join(lines)
+			go_bind += "\n"
+
 #// #cgo CFLAGS: -Iyour-include-path
 #// #cgo LDFLAGS: -Lyour-library-path -lyour-library-name-minus-the-lib-part
 
@@ -737,17 +763,17 @@ uint32_t %s(void* p) {
 			
 			go_bind += f"// {conv.bound_name.title()} ...\n" \
 						f"type {conv.bound_name.title()} struct{{\n" \
-						f"	h C.HG{conv.bound_name.title()}\n" \
+						f"	h C.Wrap{conv.bound_name.title()}\n" \
 						"}\n" \
 						f"// New{conv.bound_name.title()} ...\n" \
 						f"func New{conv.bound_name.title()}() *{conv.bound_name.title()} {{\n" \
 						f"	ret := new({conv.bound_name.title()})\n" \
-						f"	ret.h = C.HG{conv.bound_name.title()}Init() \n" \
+						f"	ret.h = C.Wrap{conv.bound_name.title()}Init() \n" \
 						f"return ret\n" \
 						f"}}\n" \
 						f"// Free ...\n" \
 						f"func (a *{conv.bound_name.title()}) Free(){{\n" \
-						f"	C.HG{conv.bound_name.title()}Free(a.h)\n" \
+						f"	C.Wrap{conv.bound_name.title()}Free(a.h)\n" \
 						f"}}\n" \
 
 			if conv.methods or conv.members:

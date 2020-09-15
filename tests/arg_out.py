@@ -83,3 +83,40 @@ r, v = my_test.in_out_value(5)
 assert(r == true)
 assert(v == 20)
 '''
+
+test_go = '''\
+package harfang
+
+import (
+	"testing"
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	a := NewA()
+	defer a.Free()
+	a = ModifyInOutStruct(a)
+	assert.Equal(t, a.Getv(), 3, "should be the same.")
+	
+	c, b := OutValuesFunctionCall(2, 3)
+	assert.Equal(t, *c, 16, "should be the same.")
+	assert.Equal(t, *b, 42, "should be the same.")
+
+	r, c, b := OutValuesFunctionCallRval0(2)
+	assert.Equal(t, r, 2, "should be the same.")
+	assert.Equal(t, *c, 16, "should be the same.")
+	assert.Equal(t, *b, 28, "should be the same.")
+
+	r, c, b = OutValuesFunctionCallRval1(2, 2)
+	assert.Equal(t, r, 4, "should be the same.")
+	assert.Equal(t, *c, 16, "should be the same.")
+	assert.Equal(t, *b, 28, "should be the same.")
+
+	w := 5
+	rb, v := InOutValue(&w)
+	assert.Equal(t, rb, true, "should be the same.")
+	assert.Equal(t, *v, 20, "should be the same.")
+	
+}
+'''

@@ -12,6 +12,7 @@ import os
 
 import lang.cpython
 import lang.lua
+import lang.go
 
 
 start_path = os.path.dirname(__file__)
@@ -19,7 +20,7 @@ start_path = os.path.dirname(__file__)
 parser = argparse.ArgumentParser(description='Run generator unit tests.')
 parser.add_argument('--pybase', dest='python_base_path', help='Path to the Python interpreter')
 parser.add_argument('--luabase', dest='lua_base_path', help='Path to the Lua interpreter')
-parser.add_argument('--go', dest='go_build', help='Build GO')
+parser.add_argument('--go', dest='go_build', help='Build GO', action="store_true")
 parser.add_argument('--debug', dest='debug_test', help='Generate a working solution to debug a test')
 parser.add_argument('--x64', dest='x64', help='Build for 64 bit architecture', action='store_true', default=False)
 parser.add_argument('--linux', dest='linux', help='Build on Linux', action='store_true', default=False)
@@ -37,9 +38,9 @@ if args.python_base_path:
 # -- CMake generator
 if not args.linux:
 	if args.x64:
-		cmake_generator = 'Visual Studio 15 2017 Win64'
+		cmake_generator = 'Visual Studio 16 2019'
 	else:
-		cmake_generator = 'Visual Studio 15 2017'
+		cmake_generator = 'Visual Studio 16 2019'
 
 	print("Using CMake generator: %s" % cmake_generator)
 
@@ -346,9 +347,13 @@ class LuaTestBed:
 
 class GoTestBed:
 	def build_and_test_extension(self, work_path, module, sources):
+		if not hasattr(module, "test_go"):
+			print("Can't find test_go")
+			return False
+
 		test_path = os.path.join(work_path, 'test.go')
 		with open(test_path, 'w') as file:
-			file.write(module.test_lua)
+			file.write(module.test_go)
 
 		# TODO Check on linux
 		if False and args.linux:
@@ -363,7 +368,7 @@ class GoTestBed:
 
 		success = True
 		try:
-		 	subprocess.check_output('go mod init fabgen', shell=True, stderr=subprocess.STDOUT)
+		 	subprocess.check_output('go mod init harfang', shell=True, stderr=subprocess.STDOUT)
 		 	subprocess.check_output('go test -run ""', shell=True, stderr=subprocess.STDOUT)
 		except subprocess.CalledProcessError as e:
 			print(e.output.decode('utf-8'))
