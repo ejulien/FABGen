@@ -67,3 +67,31 @@ assert(my_test.NE_a == 0)
 assert(my_test.NE_b == 1)
 assert(my_test.NE_c == 4096)
 '''
+
+test_go = '''\
+package harfang
+
+import (
+	"testing"
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	assert.Equal(t, GEa, GlobalEnum(0), "should be the same.")
+	assert.Equal(t, GEb, GlobalEnum(1), "should be the same.")
+	assert.Equal(t, GEc, GlobalEnum(8), "should be the same.")
+
+	assert.Equal(t, SEa, StructEnum(0), "should be the same.")
+	assert.Equal(t, SEb, StructEnum(128), "should be the same.")
+	assert.Equal(t, SEc, StructEnum(512), "should be the same.")
+
+	assert.Equal(t, TEa, TypedEnum(0), "should be the same.")
+	assert.Equal(t, TEb, TypedEnum(1), "should be the same.")
+	assert.Equal(t, TEc, TypedEnum(16384), "should be the same.")
+
+	assert.Equal(t, NEa, NamedEnum(0), "should be the same.")
+	assert.Equal(t, NEb, NamedEnum(1), "should be the same.")
+	assert.Equal(t, NEc, NamedEnum(4096), "should be the same.")
+}
+'''

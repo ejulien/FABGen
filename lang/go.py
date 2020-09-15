@@ -669,10 +669,7 @@ uint32_t %s(void* p) {
 			
 		# enum
 		for bound_name, enum in self._enums.items():
-			go_h += '<enum global="1" name="%s" uid="%s">\n' % (bound_name, bound_name)
-			for name in enum.keys():
-				go_h += '<entry name="%s"/>\n' % name
-			go_h +=  '</enum>\n'
+			go_h += f"extern int Get{bound_name}(const int id);\n"
 
 		# functions
 		for func in self._bound_functions:
@@ -731,10 +728,11 @@ uint32_t %s(void* p) {
 
 		# enum
 		for bound_name, enum in self._enums.items():
-			go_c += '<enum global="1" name="%s" uid="%s">\n' % (bound_name, bound_name)
-			for name in enum.keys():
-				go_c += '<entry name="%s"/>\n' % name
-			go_c +=  '</enum>\n'
+			enum_vars = []
+			for name, value in enum.items():
+				enum_vars.append(f"{value}")
+			go_c += f"static const int Wrap{bound_name} [] = {{ {', '.join(enum_vars)} }};\n"
+			go_c += f"int Get{bound_name}(const int id) {{ return Wrap{bound_name}[id];}}\n"
 
 		# functions
 		for func in self._bound_functions:
@@ -806,10 +804,11 @@ uint32_t %s(void* p) {
 
 		# enum
 		for bound_name, enum in self._enums.items():
-			go_bind += '<enum global="1" name="%s" uid="%s">\n' % (bound_name, bound_name)
-			for name in enum.keys():
-				go_bind += '<entry name="%s"/>\n' % name
-			go_bind +=  '</enum>\n'
+			go_bind += f"type {bound_name} int\n" \
+						"var (\n"
+			for id, name in enumerate(enum.keys()):
+				go_bind += f"	{clean_name(name)} =  {bound_name}(C.Get{bound_name}({id}))\n"
+			go_bind +=  ')\n'
 
 		# functions
 		for func in self._bound_functions:
