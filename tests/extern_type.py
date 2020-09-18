@@ -24,6 +24,6 @@ test_lua = '''\
 my_test = require "my_test"
 '''
 
-test_go = '''\
-package harfang
-'''
+# test_go = '''\
+# package harfang
+# '''

@@ -66,3 +66,30 @@ d = my_test.get_obj2()
 
 assert(a == d)
 '''
+
+test_go = '''\
+package harfang
+
+import (
+	"reflect"
+	"testing"
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {	
+	a := GetObj0()
+	b := GetObj0()
+
+	assert.True(t, reflect.DeepEqual(a, b), "should be the equal.")
+
+	c := GetObj1()
+
+	assert.True(t, !reflect.DeepEqual(a, c), "should be different.")
+	assert.True(t, !reflect.DeepEqual(b, c), "should be different.")
+
+	d := GetObj2()
+
+	assert.True(t, reflect.DeepEqual(a, d), "should be the equal.")
+}
+'''

@@ -290,8 +290,8 @@ uint32_t %s(void* p) {
 
 		# GET
 		go += f"// Get{name} ...\n" \
-				f"func (a *{classname}) Get{name}() {arg_bound_name} {{\n" 
-		go += f"v := C.Wrap{classname}Get{name}(a.h)\n"
+				f"func (a *{clean_name_with_title(classname)}) Get{name}() {arg_bound_name} {{\n" 
+		go += f"v := C.Wrap{clean_name_with_title(classname)}Get{name}(a.h)\n"
 		
 		# check if need convert from c
 		retval_go = "v"
@@ -307,47 +307,57 @@ uint32_t %s(void* p) {
 
 		# SET
 		go += f"// Set{name} ...\n" \
-				f"func (a *{classname}) Set{name}(v {arg_bound_name}) {{\n" 
+				f"func (a *{clean_name_with_title(classname)}) Set{name}(v {arg_bound_name}) {{\n" 
 		# convert to c		
-		c_call = conv.to_c_call(name, f"vToC", conv.ctype.is_pointer() or (hasattr(conv.ctype, 'ref') and conv.ctype.ref == "&"))
+		c_call = conv.to_c_call("v", f"vToC", conv.ctype.is_pointer() or (hasattr(conv.ctype, 'ref') and conv.ctype.ref == "&"))
 		if c_call != "":
 			go += c_call
 		else:
 			go += "vToC = v"
 
-		go += f"	C.Wrap{classname}Set{name}(a.h, vToC)\n"
+		go += f"	C.Wrap{clean_name_with_title(classname)}Set{name}(a.h, vToC)\n"
 		go += "}\n"
 
 		return go
 			
-	def __extract_get_set_member(self, classname, member, static=False, name=None, bound_name=None, is_global=False, is_in_header=False):
+	def __extract_get_set_member(self, classname, convClass, member, static=False, name=None, bound_name=None, is_global=False, is_in_header=False):
 		go = ""
 		conv = self.select_ctype_conv(member['ctype'])
 
 		if name is None:
 			name = str(member["name"])
 		
-		arg_bound_name = conv.bound_name
+		cleanClassname = clean_name_with_title(classname)
+
+		arg_bound_name = str(conv.ctype)
 		if arg_bound_name.endswith('_nobind') and conv.nobind:
 			arg_bound_name = arg_bound_name[:-len('_nobind')]
 		if (conv.ctype.is_pointer() or (hasattr(conv.ctype, 'ref') and conv.ctype.ref == "&")) and conv.bound_name != "string":
 			arg_bound_name = "*" + arg_bound_name
 
 		# GET
-		go += f"{arg_bound_name} Wrap{classname}Get{name}(Wrap{classname} h)"
+		go += f"{arg_bound_name} Wrap{cleanClassname}Get{name}(Wrap{cleanClassname} h)"
 
 		if is_in_header:
 			go += ";\n"
 		else:
-			go += f"{{ return (({classname}*)h)->{name};}}\n"
+			if 'proxy' in convClass._features:
+				go += f"{{\n	auto v = _type_tag_cast(h, {convClass.type_tag}, {convClass._features['proxy'].wrapped_conv.type_tag});\n"
+				go += f"	return (({convClass._features['proxy'].wrapped_conv.bound_name}*)v)->{name};\n}}\n"
+			else:
+				go += f"{{ return (({classname}*)h)->{name};\n}}\n"
 
 		# SET
-		go += f"void Wrap{classname}Set{name}(Wrap{classname} h, {arg_bound_name} v)"
+		go += f"void Wrap{cleanClassname}Set{name}(Wrap{cleanClassname} h, {arg_bound_name} v)"
 
 		if is_in_header:
 			go += ";\n"
 		else:
-			go += f"{{ (({classname}*)h)->{name} = v;}}\n"
+			if 'proxy' in convClass._features:
+				go += f"{{\n	auto w = _type_tag_cast(h, {convClass.type_tag}, {convClass._features['proxy'].wrapped_conv.type_tag});\n"
+				go += f"	(({convClass._features['proxy'].wrapped_conv.bound_name}*)w)->{name} = v;\n}}\n"
+			else:
+				go += f"{{ (({classname}*)h)->{name} = v;}}\n"
 		return go
 			
 	def __extract_method_go(self, classname, method, static=False, name=None, bound_name=None, is_global=False):
@@ -370,11 +380,15 @@ uint32_t %s(void* p) {
 			if proto['rval']['conv']:
 				retval = proto['rval']['conv'].bound_name
 
-			go += '// ' + clean_name_with_title(name) + ' ...\n'
+			go += '// ' + clean_name_with_title(name)
+			# add number in case of multiple proto, in go, you can't have overload or default parameter
+			if len(protos) > 1:
+				go += f"{id_proto}"
+			go += ' ...\n'
 
 			go += "func "
 			if not is_global:
-				go += f"(a *{classname}) "
+				go += f"(a *{clean_name_with_title(classname)}) "
 			go += f"{clean_name_with_title(name)}"
 
 			# add number in case of multiple proto, in go, you can't have overload or default parameter
@@ -391,6 +405,8 @@ uint32_t %s(void* p) {
 						arg_bound_name = arg_bound_name[:-len('_nobind')]
 					if (argin['carg'].ctype.is_pointer() or (hasattr(argin['carg'].ctype, 'ref') and argin['carg'].ctype.ref == "&")) and argin['conv'].bound_name != "string":
 						arg_bound_name = "*" + arg_bound_name
+					if argin['conv'].is_type_class():
+						arg_bound_name = clean_name_with_title(arg_bound_name)
 
 					if has_previous_arg:
 						go += ' ,'
@@ -408,6 +424,8 @@ uint32_t %s(void* p) {
 					arg_bound_name = arg_bound_name[:-len('_nobind')]
 				if (proto['rval']['storage_ctype'].is_pointer() or (hasattr(proto['rval']['storage_ctype'], 'ref') and proto['rval']['storage_ctype'].ref == "&")) and proto['rval']['conv'].bound_name != "string":
 					arg_bound_name = "*" + arg_bound_name
+				if proto['rval']['conv'].is_type_class():
+					arg_bound_name = clean_name_with_title(arg_bound_name)
 				go += arg_bound_name
 				has_previous_ret_arg = True
 			
@@ -423,6 +441,8 @@ uint32_t %s(void* p) {
 							arg_bound_name = arg_bound_name[:-len('_nobind')]
 						if (arg['carg'].ctype.is_pointer() or (hasattr(arg['carg'].ctype, 'ref') and arg['carg'].ctype.ref == "&")) and arg['conv'].bound_name != "string":
 							arg_bound_name = "*" + arg_bound_name
+						if proto['rval']['conv'] is not None and proto['rval']['conv'].is_type_class():
+							arg_bound_name = arg_bound_name.title()
 
 						go += arg_bound_name
 						has_previous_ret_arg = True
@@ -485,11 +505,21 @@ uint32_t %s(void* p) {
 					conversion_ret = proto['rval']['conv'].from_c_call("retval", "", "") 
 					if conversion_ret != "":
 						retval_go = conversion_ret
-				
+
+				# if proto['rval']['conv'].is_type_class():
+				# 	retval_go = retval_go.title()
+
 				if (proto['rval']['storage_ctype'].is_pointer() or \
 					(hasattr(proto['rval']['storage_ctype'], 'ref') and proto['rval']['storage_ctype'].ref == "&")) and \
 					proto['rval']['conv'].bound_name != "string":
-					retval_go = f"(*{proto['rval']['conv'].bound_name})(unsafe.Pointer({retval_go}))\n"
+					
+					# if it's a class, a pointer, only out, create the class special
+					if proto['rval']['conv'].is_type_class():
+						retval_boundname = proto['rval']['conv'].bound_name
+						retval_boundname = clean_name_with_title(retval_boundname)
+						retval_go = f"&{retval_boundname}{{h:{retval_go}}}\n"
+					else:
+						retval_go = f"(*{proto['rval']['conv'].bound_name})(unsafe.Pointer({retval_go}))\n"
 
 				go += f"return {retval_go}"
 			
@@ -507,10 +537,14 @@ uint32_t %s(void* p) {
 						has_previous_arg = True
 							
 						# add name
-						retval_go = clean_name(str(arg['carg'].name))+"ToC"
-
-						if arg['conv'].is_type_class():
+						# in var name if it's in arg in out
+						if 'arg_in_out' in proto['features'] and str(arg['carg'].name) in proto['features']['arg_in_out']:
 							retval_go = clean_name(str(arg['carg'].name))
+						else:
+							retval_go = clean_name(str(arg['carg'].name))+"ToC"
+						
+						# if arg['conv'].is_type_class():
+						# 	retval_go = clean_name(str(arg['carg'].name)).title()
 							
 						# check if need convert from c
 						if (not arg['carg'].ctype.is_pointer() and \
@@ -521,8 +555,19 @@ uint32_t %s(void* p) {
 								retval_go = conversion_ret
 
 						if (arg['carg'].ctype.is_pointer() or (hasattr(arg['carg'].ctype, 'ref') and arg['carg'].ctype.ref == "&")) and \
-							arg['conv'].bound_name != "string" and not arg['conv'].is_type_class():
-							retval_go = f"(*{arg['conv'].bound_name})(unsafe.Pointer({retval_go}))"
+							arg['conv'].bound_name != "string":
+							
+							if not arg['conv'].is_type_class():
+								retval_go = f"(*{arg['conv'].bound_name})(unsafe.Pointer({retval_go}))"
+							else:
+								# special arg out pointer class
+								if 'arg_out' in proto['features'] and str(arg['carg'].name) in proto['features']['arg_out']:
+									arg_bound_name = arg['conv'].bound_name
+									if arg_bound_name.endswith('_nobind') and arg['conv'].nobind:
+										arg_bound_name = arg_bound_name[:-len('_nobind')]
+									arg_bound_name = arg_bound_name.title()
+
+									retval_go = f"(*{arg_bound_name})(unsafe.Pointer({retval_go}))"
 
 						go += retval_go
 
@@ -535,7 +580,7 @@ uint32_t %s(void* p) {
 		go = ""
 
 		if bound_name is None:
-			bound_name = method['bound_name']
+			bound_name = method['name']
 		if name is None:
 			name = bound_name
 
@@ -548,9 +593,11 @@ uint32_t %s(void* p) {
 		for id_proto, proto in enumerate(protos):
 			retval = 'void'
 
-			if proto['rval']['storage_ctype']:
+			if str(proto['rval']['storage_ctype']) != "void":
+				if proto['rval']['conv'] is not None and proto['rval']['conv'].is_type_class():
+					retval = "Wrap" + clean_name_with_title(proto['rval']['conv'].bound_name)
 				# transform & to *
-				if hasattr(proto['rval']['storage_ctype'], 'ref') and proto['rval']['storage_ctype'].ref == "&":
+				elif hasattr(proto['rval']['storage_ctype'], 'ref') and proto['rval']['storage_ctype'].ref == "&":
 					retval = proto['rval']['conv'].bound_name + " *"
 				else: 
 					retval =  proto['rval']['storage_ctype']
@@ -569,9 +616,11 @@ uint32_t %s(void* p) {
 				for argin in proto['args']:
 					if has_previous_arg:
 						go += ' ,'
+
 					if argin['conv'].is_type_class():
-						go += "Wrap"
-					go += '%s ' % argin['conv'].ctype
+						go += f"Wrap{clean_name_with_title(argin['conv'].ctype)} "
+					else:
+						go += '%s ' % argin['conv'].ctype
 					if not argin['conv'].is_type_class() and (argin['carg'].ctype.is_pointer() or (hasattr(argin['carg'].ctype, 'ref') and argin['carg'].ctype.ref == "&")):
 						go += "*"
 					go += ' %s' %  argin['carg'].name
@@ -582,13 +631,15 @@ uint32_t %s(void* p) {
 			if is_in_header:
 				go += ';\n'
 			else:
-				go += '{'
+				go += '{\n'
+
 				if retval != 'void':
-					go += 'return '
-					
+					go += "	auto ret = "
+
 				# transform & to *
 				if hasattr(proto['rval']['storage_ctype'], 'ref') and proto['rval']['storage_ctype'].ref == "&":
 					go += "&"
+
 				go += "%s" % name
 				
 				go += '('
@@ -605,7 +656,17 @@ uint32_t %s(void* p) {
 						go += '%s' % argin['carg'].name
 						has_previous_arg = True
 
-				go += ');'
+				go += ');\n'
+				
+				if retval != 'void':
+					# if proto['rval']['conv'] is not None and 'proxy' in proto['rval']['conv']._features:
+					# 	go += f"	return _type_tag_cast("
+					# 	if not proto['rval']['conv'].ctype.is_pointer() and (not hasattr(proto['rval']['storage_ctype'], 'ref') or proto['rval']['storage_ctype'].ref != "*"):
+					# 		go += "&"
+					# 	go += f"ret, {proto['rval']['conv'].type_tag}, {proto['rval']['conv']._features['proxy'].wrapped_conv.type_tag});\n"
+					# else:
+					go += f"	return ret;\n"
+						
 				go += '}\n'
 
 		return go
@@ -634,9 +695,8 @@ uint32_t %s(void* p) {
 			if conv.nobind:
 				continue
 
-			go_h += f"typedef void* Wrap{conv.bound_name};\n" \
-					f"Wrap{conv.bound_name} Wrap{conv.bound_name}Init();\n" \
-					f"void Wrap{conv.bound_name}Free(Wrap{conv.bound_name});\n"
+			cleanBoundName = clean_name_with_title(conv.bound_name)
+			go_h += f"typedef void* Wrap{cleanBoundName};\n"
 
 			if conv.methods or conv.members:
 				# base	inheritance is done in go file with interface
@@ -644,13 +704,15 @@ uint32_t %s(void* p) {
 				# 	go_h += '<inherits uid="%s"/>\n' % base.bound_name
 				# static members
 				for member in conv.static_members:
-					go_h += self.__extract_get_set_member(conv.bound_name, member, static=True, is_in_header=True)
+					go_h += self.__extract_get_set_member(conv.bound_name, conv, member, static=True, is_in_header=True)
 				# members
 				for member in conv.members:
-					go_h += self.__extract_get_set_member(conv.bound_name, member, is_in_header=True)
+					go_h += self.__extract_get_set_member(conv.bound_name, conv, member, is_in_header=True)
 				# constructors
-				# if conv.constructor:
-				# 	go_h += self.__extract_method(conv.bound_name, conv.constructor, bound_name="Constructor")
+				if conv.constructor:
+					#go_h += self.__extract_method(cleanBoundName, conv.constructor, bound_name="Constructor")					
+					go_h += f"Wrap{cleanBoundName} Wrap{cleanBoundName}Init();\n" \
+							f"void Wrap{cleanBoundName}Free(Wrap{cleanBoundName});\n"
 				# arithmetic operators
 				for arithmetic in conv.arithmetic_ops:
 					bound_name = 'operator_' + gen.get_clean_symbol_name(arithmetic['op'])
@@ -683,20 +745,16 @@ uint32_t %s(void* p) {
 
 		# cpp
 		go_c = '// go wrapper c\n' \
-				'#include \"wrapper.h\"\n'
+				'#include \"wrapper.h\"\n' \
+				'#include <memory>\n'
 		go_c += self._source
 
 		for conv in self._bound_types:
 			if conv.nobind:
 				continue
 
-			go_c += f"// bind Wrap{conv.bound_name} methods\n" \
-				f"Wrap{conv.bound_name} Wrap{conv.bound_name}Init(){{" \
-				f"return (void*)(new {conv.bound_name}());" \
-				f"}}\n"
-			go_c += f"void Wrap{conv.bound_name}Free(Wrap{conv.bound_name} h){{" \
-				f"delete ({conv.bound_name}*)h;" \
-				f"}}\n" 
+			cleanBoundName = clean_name_with_title(conv.bound_name)
+			go_c += f"// bind Wrap{cleanBoundName} methods\n"
 
 			if conv.methods or conv.members:
 				# base	inheritance is done in go file with interface
@@ -704,13 +762,19 @@ uint32_t %s(void* p) {
 				# 	go_c += '<inherits uid="%s"/>\n' % base.bound_name
 				# static members
 				for member in conv.static_members:
-					go_c += self.__extract_get_set_member(conv.bound_name, member, static=True)
+					go_c += self.__extract_get_set_member(conv.bound_name, conv, member, static=True)
 				# members
 				for member in conv.members:
-					go_c += self.__extract_get_set_member(conv.bound_name, member)
-				# # constructors
-				# if conv.constructor:
+					go_c += self.__extract_get_set_member(conv.bound_name, conv, member)
+				# constructors
+				if conv.constructor:
 				# 	go_c += self.__extract_method(conv.bound_name, conv.constructor, bound_name="Constructor")
+					go_c += f"Wrap{cleanBoundName} Wrap{cleanBoundName}Init(){{" \
+						f"return (void*)(new {conv.bound_name}());" \
+					f"}}\n" \
+					f"void Wrap{cleanBoundName}Free(Wrap{cleanBoundName} h){{" \
+						f"delete ({conv.bound_name}*)h;" \
+					f"}}\n" 
 				# arithmetic operators
 				for arithmetic in conv.arithmetic_ops:
 					bound_name = 'operator_' + gen.get_clean_symbol_name(arithmetic['op'])
@@ -759,20 +823,11 @@ uint32_t %s(void* p) {
 			if conv.nobind:
 				continue
 			
-			go_bind += f"// {conv.bound_name.title()} ...\n" \
-						f"type {conv.bound_name.title()} struct{{\n" \
-						f"	h C.Wrap{conv.bound_name.title()}\n" \
-						"}\n" \
-						f"// New{conv.bound_name.title()} ...\n" \
-						f"func New{conv.bound_name.title()}() *{conv.bound_name.title()} {{\n" \
-						f"	ret := new({conv.bound_name.title()})\n" \
-						f"	ret.h = C.Wrap{conv.bound_name.title()}Init() \n" \
-						f"return ret\n" \
-						f"}}\n" \
-						f"// Free ...\n" \
-						f"func (a *{conv.bound_name.title()}) Free(){{\n" \
-						f"	C.Wrap{conv.bound_name.title()}Free(a.h)\n" \
-						f"}}\n" \
+			cleanBoundName = clean_name_with_title(conv.bound_name)
+			go_bind += f"// {cleanBoundName} ...\n" \
+						f"type {cleanBoundName} struct{{\n" \
+						f"	h C.Wrap{cleanBoundName}\n" \
+						"}\n" 
 
 			if conv.methods or conv.members:
 			# 	# base
@@ -784,9 +839,19 @@ uint32_t %s(void* p) {
 				# members
 				for member in conv.members:
 					go_bind += self.__extract_get_set_member_go(conv.bound_name, member, static=False)
-			# 	# constructors
-			# 	if conv.constructor:
-			# 		go_bind += self.__extract_method(conv.bound_name, conv.constructor, bound_name="Constructor")
+				# constructors
+				if conv.constructor:
+					# go_bind += self.__extract_method(conv.bound_name, conv.constructor, bound_name="Constructor")
+					go_bind += f"// New{cleanBoundName} ...\n" \
+					f"func New{cleanBoundName}() *{cleanBoundName} {{\n" \
+					f"	ret := new({cleanBoundName})\n" \
+					f"	ret.h = C.Wrap{cleanBoundName}Init() \n" \
+					f"return ret\n" \
+					f"}}\n" \
+					f"// Free ...\n" \
+					f"func (a *{cleanBoundName}) Free(){{\n" \
+					f"	C.Wrap{cleanBoundName}Free(a.h)\n" \
+					f"}}\n"
 			# 	# arithmetic operators
 			# 	for arithmetic in conv.arithmetic_ops:
 			# 		bound_name = 'operator_' + gen.get_clean_symbol_name(arithmetic['op'])

@@ -11,7 +11,8 @@ def bind_stl(gen):
 	gen.add_include('string', True)
 
 
-# def bind_function_T(gen, type, bound_name=None):
+def bind_function_T(gen, type, bound_name=None):
+	return
 # 	class PythonStdFunctionConverter(lang.cpython.PythonTypeConverterCommon):
 # 		def get_type_glue(self, gen, module_name):
 # 			func = self.ctype.scoped_typename.parts[-1].template.function
