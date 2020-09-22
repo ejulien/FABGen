@@ -180,11 +180,14 @@ class XMLGenerator(gen.FABGen):
 					xml += '<parm name="%s" type="%s"/>\n' % (argin['carg'].name, arg_bound_name)
 
 				if 'arg_out' in proto['features']:
-					i = 0
-					for arg in proto['args']:
+					for i, arg in enumerate(proto['args']):
 						if str(arg['carg'].name) in proto['features']['arg_out']:
 							xml += '<parm name="OUTPUT%d" type="%s"/>\n' % (i, arg['conv'].bound_name)
-							i += 1
+
+				if 'arg_in_out' in proto['features']:
+					for i, arg in enumerate(proto['args']):
+						if str(arg['carg'].name) in proto['features']['arg_in_out']:
+							xml += '<parm name="OUTPUT%d" type="%s"/>\n' % (i, arg['conv'].bound_name)
 
 				xml += '</function>\n'
 			else:
