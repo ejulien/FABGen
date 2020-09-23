@@ -2,6 +2,7 @@
 	"version": "0.2.0",
 	"configurations": [
 
+
 		{
 			"name": "go_test",
 			"type": "python",
@@ -11,14 +12,33 @@
 			"program": "${workspaceRoot}/go_test.py",
 			"cwd": "${workspaceRoot}",
 			"args": [],
-			"env": null,
-			"envFile": "${workspaceRoot}/.env",
-			"debugOptions": [
-				"WaitOnAbnormalExit",
-				"WaitOnNormalExit",
-				"RedirectOutput"
-			]
+			"env": {}
 		},
+        {
+            "name": "Launch GO test",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "remotePath": "",
+            "port": 2345,
+            "host": "127.0.0.1",
+            "cwd": "${workspaceRoot}",
+            "program": "${workspaceRoot}",
+            "env": {},
+            "args": [
+				"-test.run",
+				"Test",
+				],
+            "showLog": false,
+            "dlvLoadConfig": {
+                "followPointers": true,
+                "maxVariableRecurse": 3,
+                "maxStringLen": 400,
+                "maxArrayValues": 400,
+                "maxStructFields": -1,
+                "showGlobalVariables": "false"
+            }
+        },
 		{
 			"name": "Go: Tests",
 			"type": "python",

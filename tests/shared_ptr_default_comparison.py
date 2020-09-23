@@ -71,7 +71,6 @@ test_go = '''\
 package harfang
 
 import (
-	"reflect"
 	"testing"
 	"github.com/stretchr/testify/assert"
 )
@@ -81,15 +80,15 @@ func Test(t *testing.T) {
 	a := GetObj0()
 	b := GetObj0()
 
-	assert.True(t, reflect.DeepEqual(a, b), "should be the equal.")
+	assert.True(t, a.Equal(b), "should be the equal.")
 
 	c := GetObj1()
 
-	assert.True(t, !reflect.DeepEqual(a, c), "should be different.")
-	assert.True(t, !reflect.DeepEqual(b, c), "should be different.")
+	assert.True(t, !a.Equal(c), "should be different.")
+	assert.True(t, !b.Equal(c), "should be different.")
 
 	d := GetObj2()
 
-	assert.True(t, reflect.DeepEqual(a, d), "should be the equal.")
+	assert.True(t, a.Equal(d), "should be the equal.")
 }
 '''

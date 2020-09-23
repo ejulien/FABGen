@@ -96,7 +96,7 @@ import (
 func Test(t *testing.T) {
 	a := NewA()
 	defer a.Free()
-	a = ModifyInOutStruct(a)
+	a = *ModifyInOutStruct(&a)
 	assert.Equal(t, a.Getv(), 3, "should be the same.")
 	
 	c, b := OutValuesFunctionCall(2, 3)
