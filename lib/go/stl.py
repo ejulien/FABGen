@@ -12,9 +12,8 @@ def bind_stl(gen):
 
 
 def bind_function_T(gen, type, bound_name=None):
-	return
-# 	class PythonStdFunctionConverter(lang.cpython.PythonTypeConverterCommon):
-# 		def get_type_glue(self, gen, module_name):
+	class GoStdFunctionConverter(lang.go.GoTypeConverterCommon):
+		def get_type_glue(self, gen, module_name):
 # 			func = self.ctype.scoped_typename.parts[-1].template.function
 
 # 			# check C
@@ -45,34 +44,26 @@ def bind_function_T(gen, type, bound_name=None):
 # 			else:
 # 				to_c += '%s(ref->Get());\n' % gen.apply_api_prefix(rbind_helper)
 
-# 			to_c += '''\
-# 	};
-# }
-# '''
+# 			to_c += ""
 
 # 			# from C
-# 			from_c = '''\
-# PyObject *%s(void *obj, OwnershipPolicy) {
-# 	Py_INCREF(Py_None);
-# 	return Py_None; // TODO
-# }
-# ''' % (self.from_c_func)
+# 			from_c = ""
 
-# 			return check + to_c + from_c
+			return "" #check + to_c + from_c
 
-# 	return gen.bind_type(PythonStdFunctionConverter(type))
+	return gen.bind_type(GoStdFunctionConverter(type))
 
 
-# class GoSliceToStdVectorConverter(lang.go.GoTypeConverterCommon):
-# 	def __init__(self, type, T_conv):
-# 		native_type = 'std::vector<%s>' % T_conv.ctype
-# 		super().__init__(type, native_type, None, native_type)
-# 		self.T_conv = T_conv
+class GoSliceToStdVectorConverter(lang.go.GoTypeConverterCommon):
+	def __init__(self, type, T_conv):
+		native_type = 'std::vector<%s>' % T_conv.ctype
+		super().__init__(type, native_type, None, native_type)
+		self.T_conv = T_conv
 
-# 	def get_type_glue(self, gen, module_name):
-# 		out = 'bool %s(PyObject *o) { return PySequence_Check(o) ? true : false; }\n' % self.check_func
+	def get_type_glue(self, gen, module_name):
+		out = ''
 
-# 		type_ = ('%s*' % self.T_conv.ctype) if self.T_conv.ctype.is_pointer() else self.T_conv.to_c_storage_ctype
+		type_ = ('%s*' % self.T_conv.ctype) if self.T_conv.ctype.is_pointer() else self.T_conv.to_c_storage_ctype
 		
 # 		out += '''void %s(PyObject *o, void *obj) {
 # 	std::vector<%s> *sv = (std::vector<%s> *)obj;
@@ -99,4 +90,4 @@ def bind_function_T(gen, type, bound_name=None):
 # 	}
 # 	return out;
 # }\n''' % (self.from_c_func, self.T_conv.ctype, self.T_conv.ctype, self.T_conv.from_c_func)
-# 		return out
+		return out

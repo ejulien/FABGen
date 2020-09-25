@@ -32,6 +32,24 @@
 		"xutility": "cpp",
 		"memory": "cpp",
 		"atomic": "cpp",
-		"typeinfo": "cpp"
+		"typeinfo": "cpp",
+		"unordered_map": "cpp",
+		"cmath": "cpp",
+		"functional": "cpp",
+		"ios": "cpp",
+		"iostream": "cpp",
+		"istream": "cpp",
+		"iterator": "cpp",
+		"list": "cpp",
+		"ostream": "cpp",
+		"stdexcept": "cpp",
+		"streambuf": "cpp",
+		"system_error": "cpp",
+		"xfacet": "cpp",
+		"xhash": "cpp",
+		"xiosbase": "cpp",
+		"xlocale": "cpp",
+		"xlocinfo": "cpp",
+		"xlocnum": "cpp"
 	}
 }

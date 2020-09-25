@@ -43,16 +43,17 @@ def bind_std(gen):
 			return out
 
 		def from_c_call(self, out_var, expr, ownership):
-			return "int(%s)" % (out_var)
+			return "int32(%s)" % (out_var)
 
-	gen.bind_type(GoIntConverter('int')).nobind = True
-	gen.typedef('int16_t', 'int')
-	gen.typedef('int32_t', 'int')
-	gen.typedef('int64_t', 'int')
-	gen.typedef('char32_t', 'int')
-	gen.typedef('unsigned int32_t', 'int')
-	gen.typedef('uint32_t', 'int')
-	gen.typedef('size_t', 'int')
+	gen.bind_type(GoIntConverter('int32')).nobind = True
+	gen.typedef('int', 'int32')
+	gen.typedef('int16_t', 'int32')
+	gen.typedef('int32_t', 'int32')
+	gen.typedef('int64_t', 'int32')
+	gen.typedef('char32_t', 'int32')
+	gen.typedef('unsigned int32_t', 'int32')
+	gen.typedef('uint32_t', 'int32')
+	gen.typedef('size_t', 'int32')
 
 
 	class GoFloatConverter(lang.go.GoTypeConverterCommon):
