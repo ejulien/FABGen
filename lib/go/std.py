@@ -36,8 +36,7 @@ def bind_std(gen):
 
 		def to_c_call(self, in_var, out_var_p, is_pointer):
 			if is_pointer:
-				out = f"{out_var_p.replace('&', '_')}, idFin{out_var_p.replace('&', '_')} := wrapInt({in_var})\n"
-				out += f"defer idFin{out_var_p.replace('&', '_')}()\n"
+				out = f"{out_var_p.replace('&', '_')} := (*C.int)(unsafe.Pointer({in_var}))\n"
 			else:
 				out = f"{out_var_p.replace('&', '_')} := C.int({in_var})\n"
 			return out
@@ -69,8 +68,7 @@ def bind_std(gen):
 
 		def to_c_call(self, in_var, out_var_p, is_pointer):
 			if is_pointer:
-				out = f"{out_var_p.replace('&', '_')}, idFin{out_var_p.replace('&', '_')} := wrapFloat32({in_var})\n"
-				out += f"defer idFin{out_var_p.replace('&', '_')}()\n"
+				out = f"{out_var_p.replace('&', '_')} := (*C.float)(unsafe.Pointer({in_var}))\n"
 			else:
 				out = f"{out_var_p.replace('&', '_')} := C.float({in_var})\n"
 			return out

@@ -21,12 +21,12 @@ func wrapBool(goValue *bool) (wrapped *C.WrapBool, finisher func()) {
 	return
 }
 
-func wrapInt(goValue *int) (wrapped *C.int, finisher func()) {
+func wrapInt(goValue *int32) (wrapped *C.int, finisher func()) {
 	if goValue != nil {
 		cValue := C.int(*goValue)
 		wrapped = &cValue
 		finisher = func() {
-			*goValue = int(cValue)
+			*goValue = int32(cValue)
 		}
 	} else {
 		finisher = func() {}

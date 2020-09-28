@@ -90,8 +90,8 @@ func Test(t *testing.T) {
 	assert.Equal(t, *ReturnIntByReference(), 9, "should be the same.")
 	
 	assert.Equal(t, AddIntByValue(3, 4), 7, "should be the same.")
-	a := 3
-	b := 4
+	a := int32(3)
+	b := int32(4)
 	assert.Equal(t, AddIntByPointer(&a, &b), 7, "should be the same.")
 	assert.Equal(t, AddIntByReference(&a, &b), 7, "should be the same.")
 }

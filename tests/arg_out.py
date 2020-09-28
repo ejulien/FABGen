@@ -113,7 +113,7 @@ func Test(t *testing.T) {
 	assert.Equal(t, *c, 16, "should be the same.")
 	assert.Equal(t, *b, 28, "should be the same.")
 
-	w := 5
+	w := int32(5)
 	rb, v := InOutValue(&w)
 	assert.Equal(t, rb, true, "should be the same.")
 	assert.Equal(t, *v, 20, "should be the same.")
