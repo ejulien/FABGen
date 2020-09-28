@@ -1305,7 +1305,7 @@ if (%s) {
 			self.bind_static_member(conv, member, features)
 
 	#
-	def bind_variable(self, var, features=[], bound_name=None):
+	def bind_variable(self, var, features=[], bound_name=None, group=None):
 		arg = self.parse_named_ctype(var)
 
 		if bound_name == None:
@@ -1330,20 +1330,20 @@ if (%s) {
 		else:
 			setter_proxy_name = None
 
-		self._bound_variables.append({'name': arg.name, 'bound_name': bound_name, 'ctype': arg.ctype, 'getter': getter_proxy_name, 'setter': setter_proxy_name})
+		self._bound_variables.append({'name': arg.name, 'bound_name': bound_name, 'ctype': arg.ctype, 'getter': getter_proxy_name, 'setter': setter_proxy_name, 'group': group})
 
-	def bind_variables(self, vars, features=[]):
+	def bind_variables(self, vars, features=[], group=None):
 		for var in vars:
-			self.bind_variable(var, features)
+			self.bind_variable(var, features, None, group)
 
 	#
-	def bind_constant(self, type, name, value):
+	def bind_constant(self, type, name, value, group=None):
 		self.insert_binding_code('static const %s %s = %s;\n' % (type, name, value))
-		self.bind_variable('const %s %s' % (type, name))
+		self.bind_variable('const %s %s' % (type, name), [], None, group)
 
-	def bind_constants(self, type, names_values):
+	def bind_constants(self, type, names_values, group=None):
 		for nv in names_values:
-			self.bind_constant(type, nv[0], nv[1])
+			self.bind_constant(type, nv[0], nv[1], group)
 
 	#
 	def bind_arithmetic_op(self, conv, op, rval, args, features=[]):
