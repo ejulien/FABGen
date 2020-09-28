@@ -165,6 +165,9 @@ class XMLGenerator(gen.FABGen):
 
 			xml += '<function name="%s" returns="%s" uid="%s"' % (name, retval, uid)
 
+			if 'rval_constants_group' in proto['features']:
+				xml += ' returns_constants_group="%s"' % proto['features']['rval_constants_group']
+
 			if is_global:
 				xml += ' global="1"'
 			if static:
