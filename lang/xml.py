@@ -173,11 +173,16 @@ class XMLGenerator(gen.FABGen):
 			if len(proto['args']):
 				xml += '>\n'
 
+				constants_group = proto['features']['constants_group'] if 'constants_group' in proto['features'] else {}
+
 				for argin in proto['argsin']:
-					arg_bound_name = argin['conv'].bound_name
-					if arg_bound_name.endswith('_nobind') and argin['conv'].nobind:
-						arg_bound_name = arg_bound_name[:-len('_nobind')]
-					xml += '<parm name="%s" type="%s"/>\n' % (argin['carg'].name, arg_bound_name)
+					arg_name = str(argin['carg'].name)
+					arg_type_bound_name = argin['conv'].bound_name
+
+					xml += '<parm name="%s" type="%s"' % (arg_name, arg_type_bound_name)
+					if arg_name in constants_group:
+						xml += ' constants_group="%s"' % constants_group[arg_name]
+					xml += '/>\n'
 
 				if 'arg_out' in proto['features']:
 					for i, arg in enumerate(proto['args']):
@@ -238,7 +243,24 @@ class XMLGenerator(gen.FABGen):
 			xml += '<enum global="1" name="%s" uid="%s">\n' % (bound_name, bound_name)
 			for name in enum.keys():
 				xml += '<entry name="%s"/>\n' % name
-			xml +=  '</enum>\n'
+			xml += '</enum>\n'
+
+		# constants (per group)
+		constants_groups = {}
+
+		for var in self._bound_variables:
+			group = var['group']
+			if group is not None:
+				if group not in constants_groups:
+					constants_groups[group] = [var]
+				else:
+					constants_groups[group].append(var)
+
+		for group, constants in constants_groups.items():
+			xml += '<constants global="1" name="%s" uid="%s">\n' % (group, group)
+			for constant in constants:
+				xml += '<entry name="%s"/>\n' % constant['bound_name']
+			xml += '</constants>\n'
 
 		# functions
 		for func in self._bound_functions:
