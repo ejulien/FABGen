@@ -1,13 +1,11 @@
-# FABGen - The FABulous binding Generator for CPython and Lua
-#	Copyright (C) 2018 Emmanuel Julien
+# FABGen - The FABulous binding Generator for CPython and Lua and Go
+#	Copyright (C) 2020 Thomas Simonnet
 
-import lang.cpython
+import lang.go
 
 
 def bind_stl(gen):
-	return
 	gen.add_include('vector', True)
-
 	gen.add_include('string', True)
 
 
@@ -56,38 +54,28 @@ def bind_function_T(gen, type, bound_name=None):
 
 class GoSliceToStdVectorConverter(lang.go.GoTypeConverterCommon):
 	def __init__(self, type, T_conv):
-		native_type = 'std::vector<%s>' % T_conv.ctype
+		native_type = f"std::vector<{T_conv.ctype}>"
 		super().__init__(type, native_type, None, native_type)
 		self.T_conv = T_conv
 
 	def get_type_glue(self, gen, module_name):
-		out = ''
+		return ''
+	#c	
+# WrapVectorOfInt WrapConstructorVectorOfInt1(size_t len, int *buf) { return (void *)(new std::vector<int>(buf, buf + len)); }
 
-		type_ = ('%s*' % self.T_conv.ctype) if self.T_conv.ctype.is_pointer() else self.T_conv.to_c_storage_ctype
-		
-# 		out += '''void %s(PyObject *o, void *obj) {
-# 	std::vector<%s> *sv = (std::vector<%s> *)obj;
+	# h	
+# extern WrapVectorOfInt WrapConstructorVectorOfInt1(size_t len, int *buf);
+	
+	# go
+	# sh := (*reflect.SliceHeader)(unsafe.Pointer(&sequence))
+	# retval := C.WrapConstructorVectorOfInt1(C.size_t(sh.Len), (*C.int)(unsafe.Pointer(sh.Data)))
 
-# 	Py_ssize_t size = PySequence_Length(o);
-# 	sv->resize(size);
-# 	for (Py_ssize_t i = 0; i < size; ++i) {
-# 		PyObject *itm = PySequence_GetItem(o, i);
-# 		%s v;
-# 		%s(itm, &v);
-# 		(*sv)[i] = %s;
-# 		Py_DECREF(itm);
-# 	}
-# }\n''' % (self.to_c_func, self.T_conv.ctype, self.T_conv.ctype, type_, self.T_conv.to_c_func, self.T_conv.prepare_var_from_conv('v', ''))
-
-# 		out += '''PyObject *%s(void *obj, OwnershipPolicy) {
-# 	std::vector<%s> *sv = (std::vector<%s> *)obj;
-
-# 	size_t size = sv->size();
-# 	PyObject *out = PyList_New(size);
-# 	for (size_t i = 0; i < size; ++i) {
-# 		PyObject *p = %s(&sv->at(i), Copy);
-# 		PyList_SetItem(out, i, p);
-# 	}
-# 	return out;
-# }\n''' % (self.from_c_func, self.T_conv.ctype, self.T_conv.ctype, self.T_conv.from_c_func)
+	def to_c_call(self, in_var, out_var_p, is_pointer):
+		if is_pointer:
+				out = f"{out_var_p.replace('&', '_')} := (*C.WrapBool)(unsafe.Pointer({in_var}))\n"
+		else:
+			out = f"{out_var_p.replace('&', '_')} := C.bool({in_var})\n"
 		return out
+
+	def from_c_call(self, out_var, expr, ownership):
+		return "bool(%s)" % (out_var)

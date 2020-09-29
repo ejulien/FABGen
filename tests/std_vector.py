@@ -30,6 +30,9 @@ int consume_pointer_to_int(const int *p) {
 	elif gen.get_language() == 'Lua':
 		gen.bind_type(lib.lua.stl.LuaTableToStdVectorConverter('LuaTableOfInt', int_conv))
 		gen.bind_type(lib.lua.stl.LuaTableToStdVectorConverter('LuaTableOfInt_ptr', int_ptr))
+	elif gen.get_language() == 'Go':
+		gen.bind_type(lib.go.stl.GoSliceToStdVectorConverter('GoSliceOfInt', int_conv))
+		gen.bind_type(lib.go.stl.GoSliceToStdVectorConverter('GoSliceOfInt_ptr', int_ptr))
 
 	std_vector_int = gen.begin_class('std::vector<int>', features={'sequence': lib.std.VectorSequenceFeature(int_conv)})
 
@@ -37,6 +40,8 @@ int consume_pointer_to_int(const int *p) {
 		gen.bind_constructor(std_vector_int, ['?PySequenceOfInt sequence'])
 	elif gen.get_language() == 'Lua':
 		gen.bind_constructor(std_vector_int, ['?LuaTableOfInt sequence'])
+	elif gen.get_language() == 'Go':
+		gen.bind_constructor(std_vector_int, ['?GoSliceOfInt sequence'])
 
 	gen.bind_method(std_vector_int, 'size', 'int', [])
 	gen.bind_method(std_vector_int, 'push_back', 'void', ['int v'])
@@ -56,6 +61,8 @@ int consume_pointer_to_int(const int *p) {
 		gen.bind_constructor(std_vector_int_ptr, ['?PySequenceOfInt_ptr sequence'])
 	elif gen.get_language() == 'Lua':
 		gen.bind_constructor(std_vector_int_ptr, ['?LuaTableOfInt_ptr sequence'])
+	elif gen.get_language() == 'Go':
+		gen.bind_constructor(std_vector_int_ptr, ['?GoSliceOfInt_ptr sequence'])
 
 	gen.bind_method(std_vector_int_ptr, 'size', 'int', [])
 	gen.bind_method(std_vector_int_ptr, 'push_back', 'void', ['int* v'])
@@ -176,4 +183,66 @@ v_ptr:push_back(v:data())
 assert(v_ptr:size() == 2)
 assert(#v_ptr == 2)
 
+'''
+
+test_go = '''\
+package harfang
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	v := NewVectorOfInt0()
+
+	assert.Equal(t, v.Size(), int32(0), "should be the same.")
+	assert.Equal(t, v.Len(), int32(0), "should be the same.")
+
+	v.PushBack(5)
+	v.PushBack(1)
+	v.PushBack(9)
+
+	assert.Equal(t, v.Size(), int32(3), "should be the same.")
+	assert.Equal(t, v.Len(), int32(3), "should be the same.")
+
+	assert.Equal(t, *v.At(1), int32(1), "should be the same.")
+	assert.Equal(t, *v.At(2), int32(9), "should be the same.")
+	assert.Equal(t, *v.At(0), int32(5), "should be the same.")
+
+	assert.Equal(t, v.Get(1), int32(1), "should be the same.")
+	assert.Equal(t, v.Get(2), int32(9), "should be the same.")
+	assert.Equal(t, v.Get(0), int32(5), "should be the same.")
+
+	v.Set(1, 16)
+
+	assert.Equal(t, v.Get(2), int32(9), "should be the same.")
+	assert.Equal(t, v.Get(0), int32(5), " should be the same.")
+	assert.Equal(t, v.Get(1), int32(16), "should be the same.")
+
+	v.Set(0, v.Get(0)*4)
+
+	assert.Equal(t, v.Get(0), int32(20), "should be the same.")
+
+	assert.Equal(t, ConsumePointerToInt(v.Data()), int32(16), "should be the same.")
+
+	// implicit cast to const int *
+//	assert.Equal(t, ConsumePointerToInt(v), int32(16), "should be the same.")
+
+	// // construct from GoSlice
+	w := NewVectorOfInt1([]int32{5, 2, 8})
+
+	assert.Equal(t, w.Get(0), int32(5), "should be the same.")
+	assert.Equal(t, w.Get(1), int32(2), "should be the same.")
+	assert.Equal(t, w.Get(2), int32(8), "should be the same.")
+
+	vPtr := NewVectorOfIntPtr()
+	vPtr.PushBack(nil)
+	vPtr.PushBack(v.Data())
+
+	assert.Equal(t, vPtr.Size(), int32(2), "should be the same.")
+	assert.Equal(t, vPtr.Len(), int32(2), "should be the same.")
+}
 '''
