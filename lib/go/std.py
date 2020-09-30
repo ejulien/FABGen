@@ -51,6 +51,7 @@ def bind_std(gen):
 	gen.typedef('int64_t', 'int32')
 	gen.typedef('char32_t', 'int32')
 	gen.typedef('unsigned int32_t', 'int32')
+	gen.typedef('unsigned int', 'int32')
 	gen.typedef('uint32_t', 'int32')
 	gen.typedef('size_t', 'int32')
 

@@ -10,6 +10,7 @@ import argparse
 
 import gen
 import lang.lua
+import lang.go
 import lang.cpython
 import lang.xml
 
@@ -26,6 +27,7 @@ parser = argparse.ArgumentParser(description='FABGen')
 parser.add_argument('script', nargs=1)
 parser.add_argument('--lua', help='Bind to Lua 5.2+', action='store_true')
 parser.add_argument('--cpython', help='Bind to CPython', action='store_true')
+parser.add_argument('--go', help='Bind to Go', action='store_true')
 parser.add_argument('--xml', help='Bind to CPython', action='store_true')
 parser.add_argument('--out', help='Path to output generated files', required=True)
 parser.add_argument('--out_prefix', help='Prefix to append to output generated files name', default='')
@@ -99,6 +101,9 @@ if args.cpython:
 
 if args.lua:
 	output_binding(setup_generator(lang.lua.LuaGenerator()))
+
+if args.go:
+	output_binding(setup_generator(lang.go.GoGenerator()))
 
 if args.xml:
 	output_binding(setup_generator(lang.xml.XMLGenerator()))

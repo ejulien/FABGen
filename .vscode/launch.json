@@ -281,6 +281,22 @@
 				"WaitOnNormalExit",
 				"RedirectOutput"
 			]
+		},
+		{
+			"name": "All: GO Bind Harfang",
+			"type": "python",
+			"request": "launch",
+			"stopOnEntry": false,
+			"pythonPath": "${command:python.interpreterPath}",
+			"program": "${workspaceRoot}/bind.py",
+			"cwd": "${workspaceRoot}",
+			"args": ["C:/boulot/works/nengine_gamestart/moteur_harfang_bgfx/binding/bind_harfang.py", "--go", "--out", "C:/boulot/works/nengine_gamestart/moteur_harfang_bgfx/extern/FABGen/"],
+			"envFile": "${workspaceRoot}/.env",
+			"debugOptions": [
+				"WaitOnAbnormalExit",
+				"WaitOnNormalExit",
+				"RedirectOutput"
+			]
 		}
 	]
 }

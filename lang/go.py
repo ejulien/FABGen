@@ -16,11 +16,13 @@ def route_lambda(name):
 	return lambda args: '%s(%s);' % (name, ', '.join(args))
 
 def clean_name(name):
-	return str(name).strip().replace('_', '')
-
+	new_name = str(name).strip().replace('_', '').replace(':', '')
+	if new_name in ["type"]:
+		return new_name + "_"
+	return new_name
 
 def clean_name_with_title(name):
-	return str(name).title().strip().replace('_', '')
+	return str(name).title().strip().replace('_', '').replace(':', '')
 
 
 class GoTypeConverterCommon(gen.TypeConverter):
@@ -174,7 +176,7 @@ class GoGenerator(gen.FABGen):
 		self.bind_type(DummyTypeConverter('uint64_t')).nobind = True
 		self.bind_type(DummyTypeConverter('intptr_t')).nobind = True
 		self.bind_type(DummyTypeConverter('double', bound_name='float64')).nobind = True
-	#	self.bind_type(DummyTypeConverter('std::string')).nobind = True
+		self.bind_type(DummyTypeConverter('std::string')).nobind = True
 		
 		self._source += self.get_binding_api_declaration()
 		# self._header += '#include "fabgen.h"\n'
@@ -299,6 +301,11 @@ uint32_t %s(void* p) {
 				return type
 		return None
 
+	def _get_conv(self, conv_name):
+		if conv_name in self._FABGen__type_convs:
+			return self.get_conv(conv_name)
+		return None
+
 	def __arg_from_c_to_go(self, val, retval_name):
 		src = ""
 		# check if need convert from c
@@ -348,8 +355,10 @@ uint32_t %s(void* p) {
 				stars += "*" * (len(val['conv']['storage_ctype'].ref)-1)
 
 		# get base conv (without pointer)
-		base_conv = self.get_conv(str(val['conv'].ctype.scoped_typename))
-		if hasattr(base_conv, "go_type"):
+		base_conv = self._get_conv(str(val['conv'].ctype.scoped_typename))
+		if base_conv is None:
+			c_call = f"{clean_name(arg_out_name).replace('&', '_')} := ({stars}{str(val['conv'].bound_name)})(unsafe.Pointer({clean_name(arg_name)}))\n"
+		elif hasattr(base_conv, "go_type"):
 			c_call = f"{clean_name(arg_out_name).replace('&', '_')} := ({stars}{base_conv.go_type})(unsafe.Pointer({clean_name(arg_name)}))\n"
 		else:
 			c_call = f"{clean_name(arg_out_name).replace('&', '_')} := ({stars}{base_conv.bound_name})(unsafe.Pointer({clean_name(arg_name)}))\n"
@@ -363,8 +372,11 @@ uint32_t %s(void* p) {
 			if  ('carg' in val and (val['carg'].ctype.is_pointer() or (hasattr(val['carg'].ctype, 'ref') and any(s in val['carg'].ctype.ref for s in ["&", "*"]))) and val['conv'].bound_name != "string") or \
 				('storage_ctype' in val and (val['storage_ctype'].is_pointer() or (hasattr(val['storage_ctype'], 'ref') and any(s in val['storage_ctype'].ref for s in ["&", "*"]))) and val['conv'].bound_name != "string") or \
 				isinstance(val['conv'], GoPtrTypeConverter):
-				base_conv = self.get_conv(str(val['conv'].ctype.scoped_typename))
-				arg_bound_name = base_conv.bound_name
+				base_conv = self._get_conv(str(val['conv'].ctype.scoped_typename))
+				if base_conv is None:
+					arg_bound_name = str(val['conv'].bound_name)
+				else:
+					arg_bound_name = base_conv.bound_name
 			else:
 				arg_bound_name = val['conv'].bound_name
 
@@ -396,8 +408,11 @@ uint32_t %s(void* p) {
 			if  ('carg' in val and (val['carg'].ctype.is_pointer() or (hasattr(val['carg'].ctype, 'ref') and any(s in val['carg'].ctype.ref for s in ["&", "*"]))) and val['conv'].bound_name != "string") or \
 				('storage_ctype' in val and (val['storage_ctype'].is_pointer() or (hasattr(val['storage_ctype'], 'ref') and any(s in val['storage_ctype'].ref for s in ["&", "*"]))) and val['conv'].bound_name != "string") or \
 				isinstance(val['conv'], GoPtrTypeConverter):
-				base_conv = self.get_conv(str(val['conv'].ctype.scoped_typename))
-				arg_bound_name = str(base_conv.ctype)
+				base_conv = self._get_conv(str(val['conv'].ctype.scoped_typename))
+				if base_conv is None:
+					arg_bound_name = str(val['conv'].bound_name)
+				else:
+					arg_bound_name = str(base_conv.ctype)
 				arg_bound_name += "*"
 				if 'carg' in val and hasattr(val['carg'].ctype, 'ref'):
 					arg_bound_name += "*" * (len(val['carg'].ctype.ref)-1)
@@ -437,7 +452,7 @@ uint32_t %s(void* p) {
 		if c_call != "":
 			go += c_call
 		else:
-			go += "vToC := v"
+			go += "vToC := v\n"
 
 		go += f"	C.Wrap{classname}SetOperator(pointer.h, C.int(id), vToC)\n"
 		go += "}\n"
@@ -540,7 +555,7 @@ uint32_t %s(void* p) {
 		if c_call != "":
 			go += c_call
 		else:
-			go += "vToC := v"
+			go += "vToC := v\n"
 
 		go += f"	C.Wrap{clean_name_with_title(classname)}Set{name}(pointer.h, vToC)\n"
 		go += "}\n"
@@ -748,6 +763,9 @@ uint32_t %s(void* p) {
 					if ('arg_out' in proto['features'] and str(arg['carg'].name) in proto['features']['arg_out']) or \
 						('arg_in_out' in proto['features'] and str(arg['carg'].name) in proto['features']['arg_in_out']):
 						if retval != '' or has_previous_arg:
+							# check and remove \n just in case
+							if go[-1] == "\n":
+								go = go[:-1]
 							go += ", "
 						has_previous_arg = True
 							
@@ -874,7 +892,7 @@ uint32_t %s(void* p) {
 
 				args = []
 				# if another route is set
-				if "route" in proto["features"]:
+				if "route" in proto["features"] and convClass is not None:
 					args.append(f"({convClass.ctype}*)this_")
 					
 				if len(proto['args']):
@@ -975,8 +993,11 @@ uint32_t %s(void* p) {
 						else:
 							# check the convert from the base (in case of ptr)
 							if wrapped_conv.ctype.is_pointer() or (hasattr(wrapped_conv.ctype, 'ref') and any(s in wrapped_conv.ctype.ref for s in ["&", "*"])):
-								base_conv = self.get_conv(str(wrapped_conv.ctype.scoped_typename))
-								type_bound_name = str(base_conv.ctype)
+								base_conv = self._get_conv(str(wrapped_conv.ctype.scoped_typename))
+								if base_conv is None:
+									type_bound_name = str(wrapped_conv.bound_name)
+								else:
+									type_bound_name = str(base_conv.ctype)
 							else:
 								type_bound_name =  str(wrapped_conv.ctype)
 							go += f"	return ({type_bound_name}*)cast_a == ({type_bound_name}*)cast_b;\n"
@@ -1005,6 +1026,7 @@ uint32_t %s(void* p) {
 			'#include <stdbool.h>\n' \
 			'#include <stddef.h>\n' \
 			'#include <memory.h>\n' \
+			'#include <string.h>\n' \
 			'#include <stdlib.h>\n' \
 			'#include "fabgen.h"\n\n'
 			
