@@ -60,3 +60,30 @@ assert(s.a, 1)
 assert(s.b, 7)
 assert(s.c, 2)
 '''
+
+test_go = '''\
+package harfang
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	s := NewSimpleStruct()
+
+	assert.Equal(t, s.Geta(), int32(3), "should be the same.")
+	assert.Equal(t, s.Getb(), int32(11), "should be the same.")
+	assert.Equal(t, s.Getc(), int32(1), "should be the same.")
+
+	s.Seta(1)
+	s.Setb(7)
+	s.Setc(2)
+
+	assert.Equal(t, s.Geta(), int32(1), "should be the same.")
+	assert.Equal(t, s.Getb(), int32(7), "should be the same.")
+	assert.Equal(t, s.Getc(), int32(2), "should be the same.")
+}
+'''

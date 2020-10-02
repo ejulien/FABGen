@@ -18,11 +18,35 @@ def route_lambda(name):
 def clean_name(name):
 	new_name = str(name).strip().replace('_', '').replace(':', '')
 	if new_name in ["type"]:
-		return new_name + "_"
+		return new_name + "Go"
 	return new_name
 
 def clean_name_with_title(name):
-	return str(name).title().strip().replace('_', '').replace(':', '')
+	new_name = ""
+	if "_" in name:
+		# redo a special string.title()
+		next_is_forced_uppercase = True
+		for c in name:
+			if c in ['*', '&']:
+				new_name += c
+			elif c in ['_', '-']:
+				next_is_forced_uppercase = True
+			else:
+				if next_is_forced_uppercase:
+					next_is_forced_uppercase = False
+					new_name += c.capitalize()
+				else:
+					new_name += c
+	else:
+		# make sur the first letter is captialize
+		first_letter_checked = False
+		for c in name:
+			if c in ['*', '&'] or first_letter_checked:
+				new_name += c
+			elif not first_letter_checked:
+				first_letter_checked = True
+				new_name += c.capitalize()
+	return new_name.strip().replace('_', '').replace(':', '')
 
 
 class GoTypeConverterCommon(gen.TypeConverter):
@@ -176,7 +200,7 @@ class GoGenerator(gen.FABGen):
 		self.bind_type(DummyTypeConverter('uint64_t')).nobind = True
 		self.bind_type(DummyTypeConverter('intptr_t')).nobind = True
 		self.bind_type(DummyTypeConverter('double', bound_name='float64')).nobind = True
-		self.bind_type(DummyTypeConverter('std::string')).nobind = True
+		# self.bind_type(DummyTypeConverter('std::string')).nobind = True
 		
 		self._source += self.get_binding_api_declaration()
 		# self._header += '#include "fabgen.h"\n'
@@ -347,12 +371,14 @@ uint32_t %s(void* p) {
 		
 		return src, retval_name
 		
-	def __arg_from_go_to_c(self, val, arg_name, arg_out_name):
-		stars = "*"
+	def __arg_from_go_to_c(self, val, arg_name, arg_out_name, start_stars=0):
+		stars = "*"*start_stars
 		if 'carg' in val and hasattr(val['carg'].ctype, 'ref'):
-				stars += "*" * (len(val['carg'].ctype.ref)-1)
+				stars += "*" * (len(val['carg'].ctype.ref))
 		elif 'storage_ctype' in val and hasattr(val['storage_ctype'], 'ref'):
-				stars += "*" * (len(val['conv']['storage_ctype'].ref)-1)
+				stars += "*" * (len(val['conv']['storage_ctype'].ref))
+		elif hasattr(val['conv'].ctype, 'ref'):
+				stars += "*" * (len(val['conv'].ctype.ref))
 
 		# get base conv (without pointer)
 		base_conv = self._get_conv(str(val['conv'].ctype.scoped_typename))
@@ -395,7 +421,8 @@ uint32_t %s(void* p) {
 					stars += "*" * (len(val['storage_ctype'].ref)-1)
 			arg_bound_name = stars + arg_bound_name
 
-		if val['conv'].is_type_class():
+		if val['conv'].is_type_class() or \
+			isinstance(val['conv'], lib.go.stl.GoSliceToStdVectorConverter):
 			arg_bound_name = clean_name_with_title(arg_bound_name)
 		return arg_bound_name
 		
@@ -526,39 +553,66 @@ uint32_t %s(void* p) {
 			arg_bound_name = arg_bound_name[:-len('_nobind')]
 		if (conv.ctype.is_pointer() or (hasattr(conv.ctype, 'ref') and conv.ctype.ref == "&")) and conv.bound_name != "string":
 			arg_bound_name = "*" + arg_bound_name
-
-		# GET
-		go += f"// Get{name} ...\n" \
-				f"func (pointer *{clean_name_with_title(classname)}) Get{name}() {arg_bound_name} {{\n" 
-		go += f"v := C.Wrap{clean_name_with_title(classname)}Get{name}(pointer.h)\n"
 		
-		# check if need convert from c
-		retval_go = "v"
-		if (not conv.ctype.is_pointer() and not (hasattr(conv.ctype, 'ref') and conv.ctype.ref == "&")) or \
-			conv.bound_name == "string":
-			conversion_ret = conv.from_c_call("v", "", "") 
-			if conversion_ret != "":
-				retval_go = conversion_ret
+		def create_get_set(do_static):
+			# GET
+			go = f"// Get{name} ...\n" \
+					f"func "
+			if do_static:
+				go += f"{clean_name_with_title(classname)}"
+			else:
+				go += f"(pointer *{clean_name_with_title(classname)}) "
 
-		go += f"return {retval_go}\n"
+			go += f"Get{name}() {arg_bound_name} {{\n" 
+			go += f"v := C.Wrap{clean_name_with_title(classname)}Get{name}("
+			if not static:
+				go += "pointer.h"
+			go += ")\n"
+			
+			# check if need convert from c
+			retval_go = "v"
+			if (not conv.ctype.is_pointer() and not (hasattr(conv.ctype, 'ref') and conv.ctype.ref == "&")) or \
+				conv.bound_name == "string":
+				conversion_ret = conv.from_c_call("v", "", "") 
+				if conversion_ret != "":
+					retval_go = conversion_ret
 
-		go += "}\n"
+			go += f"return {retval_go}\n"
 
-		# SET
-		go += f"// Set{name} ...\n" \
-				f"func (pointer *{clean_name_with_title(classname)}) Set{name}(v {arg_bound_name}) {{\n" 
-		# convert to c		
-		if isinstance(conv, GoPtrTypeConverter):
-			c_call = self.__arg_from_go_to_c({"conv":conv}, "v", f"vToC")
-		else:
-			c_call = conv.to_c_call("v", f"vToC", conv.ctype.is_pointer() or (hasattr(conv.ctype, 'ref') and any(s in conv.ctype.ref for s in ["&", "*"])))
-		if c_call != "":
-			go += c_call
-		else:
-			go += "vToC := v\n"
+			go += "}\n"
 
-		go += f"	C.Wrap{clean_name_with_title(classname)}Set{name}(pointer.h, vToC)\n"
-		go += "}\n"
+			# SET
+			go += f"// Set{name} ...\n" \
+					f"func "
+					
+			if do_static:
+				go += f"{clean_name_with_title(classname)}"
+			else:
+				go += f"(pointer *{clean_name_with_title(classname)}) "
+				
+			go += f"Set{name}(v {arg_bound_name}) {{\n" 
+
+			# convert to c
+			if isinstance(conv, GoPtrTypeConverter):
+				c_call = self.__arg_from_go_to_c({"conv":conv}, "v", f"vToC")
+			else:
+				c_call = conv.to_c_call("v", f"vToC", conv.ctype.is_pointer() or (hasattr(conv.ctype, 'ref') and any(s in conv.ctype.ref for s in ["&", "*"])))
+			if c_call != "":
+				go += c_call
+			else:
+				go += "vToC := v\n"
+
+			go += f"	C.Wrap{clean_name_with_title(classname)}Set{name}("
+			if not static:
+				go += "pointer.h, "
+			go += "vToC)\n"
+			go += "}\n"
+			return go
+
+		# create twice, with and without static, to use it with the class and standalone
+		go += create_get_set(False)
+		if static:
+			go += create_get_set(True)
 
 		return go
 			
@@ -578,7 +632,10 @@ uint32_t %s(void* p) {
 			arg_bound_name = "*" + arg_bound_name
 
 		# GET
-		go += f"{arg_bound_name} Wrap{cleanClassname}Get{name}(Wrap{cleanClassname} h)"
+		go += f"{arg_bound_name} Wrap{cleanClassname}Get{name}("
+		if not static:
+			go += f"Wrap{cleanClassname} h"
+		go += ")"
 
 		if is_in_header:
 			go += ";\n"
@@ -588,23 +645,32 @@ uint32_t %s(void* p) {
 			if hasattr(conv.ctype, 'ref') and conv.ctype.ref in ["&", "*&"]:
 				prefix = "&"
 
-			if 'proxy' in convClass._features:
-				go += f"{{\n	auto v = _type_tag_cast(h, {convClass.type_tag}, {convClass._features['proxy'].wrapped_conv.type_tag});\n"
-				go += f"	return {prefix}(({convClass._features['proxy'].wrapped_conv.bound_name}*)v)->{name};\n}}\n"
+			if static:
+				go += f"{{ return {prefix}{classname}::{name};\n}}\n"
 			else:
-				go += f"{{ return {prefix}(({classname}*)h)->{name};\n}}\n"
+				if 'proxy' in convClass._features:
+					go += f"{{\n	auto v = _type_tag_cast(h, {convClass.type_tag}, {convClass._features['proxy'].wrapped_conv.type_tag});\n"
+					go += f"	return {prefix}(({convClass._features['proxy'].wrapped_conv.bound_name}*)v)->{name};\n}}\n"
+				else:
+					go += f"{{ return {prefix}(({classname}*)h)->{name};\n}}\n"
 				
 		# SET
-		go += f"void Wrap{cleanClassname}Set{name}(Wrap{cleanClassname} h, {arg_bound_name} v)"
+		go += f"void Wrap{cleanClassname}Set{name}("
+		if not static:
+			go += f"Wrap{cleanClassname} h, "
+		go += f"{arg_bound_name} v)"
 
 		if is_in_header:
 			go += ";\n"
 		else:
-			if 'proxy' in convClass._features:
-				go += f"{{\n	auto w = _type_tag_cast(h, {convClass.type_tag}, {convClass._features['proxy'].wrapped_conv.type_tag});\n"
-				go += f"	(({convClass._features['proxy'].wrapped_conv.bound_name}*)w)->{name} = v;\n}}\n"
+			if static:
+				go += f"{{ {classname}::{name} = v;\n}}\n"
 			else:
-				go += f"{{ (({classname}*)h)->{name} = v;}}\n"
+				if 'proxy' in convClass._features:
+					go += f"{{\n	auto w = _type_tag_cast(h, {convClass.type_tag}, {convClass._features['proxy'].wrapped_conv.type_tag});\n"
+					go += f"	(({convClass._features['proxy'].wrapped_conv.bound_name}*)w)->{name} = v;\n}}\n"
+				else:
+					go += f"{{ (({classname}*)h)->{name} = v;}}\n"
 		return go
 		
 	def __extract_method_go(self, classname, convClass, method, static=False, name=None, bound_name=None, is_global=False, is_constructor=False):
@@ -699,7 +765,7 @@ uint32_t %s(void* p) {
 							c_call = f"{clean_name(arg['carg'].name)}ToC := (*reflect.SliceHeader)(unsafe.Pointer(&{clean_name(arg['carg'].name)}))\n"
 							c_call += f"{clean_name(arg['carg'].name)}ToCSize := C.size_t({clean_name(arg['carg'].name)}ToC.Len)\n"
 
-							c_call += self.__arg_from_go_to_c({"conv":arg["conv"].T_conv}, f"{clean_name(arg['carg'].name)}ToC.Data", f"{clean_name(arg['carg'].name)}ToCBuf")
+							c_call += self.__arg_from_go_to_c({"conv":arg["conv"].T_conv}, f"{clean_name(arg['carg'].name)}ToC.Data", f"{clean_name(arg['carg'].name)}ToCBuf", 1)
 						elif isinstance(arg["conv"], GoPtrTypeConverter):
 							c_call = self.__arg_from_go_to_c(arg, arg['carg'].name, f"{arg['carg'].name}ToC")
 						else:
@@ -954,10 +1020,11 @@ uint32_t %s(void* p) {
 						# type class, not a pointer
 						if proto['rval']['conv'] is not None and proto['rval']['conv'].is_type_class() and \
 							not proto['rval']['conv'].ctype.is_pointer() and (not hasattr(proto['rval']['storage_ctype'], 'ref') or not any(s in proto['rval']['storage_ctype'].ref for s in ["&", "*"])):
-								go += "	if(!ret)\n" \
-									"		return nullptr;\n"
-									
+								# special shared ptr
 								if 'proxy' in proto['rval']['conv']._features:
+									go += "	if(!ret)\n" \
+										"		return nullptr;\n"
+									
 									# go += "	auto " + proto['rval']['conv']._features['proxy'].unwrap("(&ret)", "retPointerFromProxy")
 									go += "	auto " + proto['rval']['conv']._features['proxy'].wrap("ret", "retPointer")
 								else:
@@ -1012,9 +1079,32 @@ uint32_t %s(void* p) {
 					else:
 						self.bind_method(conv, 'Equal', 'bool', [f"{conv.bound_name} *b"], {'route': route_lambda(f"_{conv.bound_name}_Equal")})
 
+			# add down cast
+			for base in conv._bases:
+				self.add_cast(base, conv, lambda in_var, out_var: '%s = (%s *)((%s *)%s);\n' % (out_var, conv.ctype, base.ctype, in_var))
+
+
 		super().finalize()
 
 		self.output_binding_api()
+
+		# helper to add from itself and from parent class
+		def extract_conv_and_bases(convs_to_extract, extract_func, bases_convs_to_extract):
+			go  = ""
+			saved_names = []
+			for conv_to_extract in convs_to_extract:
+				saved_names.append(conv_to_extract["name"])
+				go += extract_func(conv_to_extract)
+				
+			# add static member get set for base class
+			for base_convs_to_extract in bases_convs_to_extract:
+				for conv_to_extract in base_convs_to_extract:
+					# add only if it's not already in the current class
+					if conv_to_extract["name"] not in saved_names:
+						saved_names.append(conv_to_extract["name"])
+						go += extract_func(conv_to_extract)
+			return go
+
 
 		# .h
 		go_h = '#pragma once\n' \
@@ -1043,15 +1133,16 @@ uint32_t %s(void* p) {
 			if "sequence" in conv._features:
 				go_h += self.__extract_sequence(conv, is_in_header=True)
 
-			# base	inheritance is done in go file with interface
-			# for base in conv._bases:
-			# 	go_h += '<inherits uid="%s"/>\n' % base.bound_name
 			# static members
-			for member in conv.static_members:
-				go_h += self.__extract_get_set_member(conv.bound_name, conv, member, static=True, is_in_header=True)
+			go_h += extract_conv_and_bases(conv.static_members, 
+									lambda member: self.__extract_get_set_member(conv.bound_name, conv, member, static=True, is_in_header=True), 
+									[base_class.static_members for base_class in conv._bases])
+
 			# members
-			for member in conv.members:
-				go_h += self.__extract_get_set_member(conv.bound_name, conv, member, is_in_header=True)
+			go_h += extract_conv_and_bases(conv.members, 
+									lambda member: self.__extract_get_set_member(conv.bound_name, conv, member, is_in_header=True), 
+									[base_class.members for base_class in conv._bases])
+
 			# constructors
 			if conv.constructor:
 				go_h += self.__extract_method(cleanBoundName, conv, conv.constructor, bound_name=f"constructor_{conv.bound_name}", is_in_header=True, is_global=True, is_constructor=True)
@@ -1062,16 +1153,20 @@ uint32_t %s(void* p) {
 			for arithmetic in conv.arithmetic_ops:
 				bound_name = 'operator_' + gen.get_clean_symbol_name(arithmetic['op'])
 				go_h += self.__extract_method(conv.bound_name, conv, arithmetic, name='operator'+arithmetic['op'], bound_name=bound_name)
+
 			# comparison_ops
 			for comparison in conv.comparison_ops:
 				bound_name = 'operator_' + gen.get_clean_symbol_name(comparison['op'])
 				go_h += self.__extract_method(conv.bound_name, conv, comparison, name='operator'+comparison['op'], bound_name=bound_name)
+
 			# static methods
-			for method in conv.static_methods:
-				go_h += self.__extract_method(conv.bound_name, conv, method, static=True)
+			go_h += extract_conv_and_bases(conv.static_methods, 
+									lambda method: self.__extract_method(conv.bound_name, conv, method, static=True, is_in_header=True), 
+									[base_class.static_methods for base_class in conv._bases])
 			# methods
-			for method in conv.methods:
-				go_h += self.__extract_method(conv.bound_name, conv, method, is_in_header=True)
+			go_h += extract_conv_and_bases(conv.methods, 
+									lambda method: self.__extract_method(conv.bound_name, conv, method, is_in_header=True), 
+									[base_class.methods for base_class in conv._bases])
 				
 			
 		# enum
@@ -1108,16 +1203,17 @@ uint32_t %s(void* p) {
 
 			if "sequence" in conv._features:
 				go_c += self.__extract_sequence(conv)
-
-			# base	inheritance is done in go file with interface
-			# for base in conv._bases:
-			# 	go_c += '<inherits uid="%s"/>\n' % base.bound_name
+			
 			# static members
-			for member in conv.static_members:
-				go_c += self.__extract_get_set_member(conv.bound_name, conv, member, static=True)
+			go_c += extract_conv_and_bases(conv.static_members, 
+									lambda member: self.__extract_get_set_member(conv.bound_name, conv, member, static=True), 
+									[base_class.static_members for base_class in conv._bases])
+
 			# members
-			for member in conv.members:
-				go_c += self.__extract_get_set_member(conv.bound_name, conv, member)
+			go_c += extract_conv_and_bases(conv.members, 
+									lambda member: self.__extract_get_set_member(conv.bound_name, conv, member), 
+									[base_class.members for base_class in conv._bases])
+
 			# constructors
 			if conv.constructor:
 				go_c += self.__extract_method(conv.bound_name, conv, conv.constructor, bound_name=f"constructor_{conv.bound_name}", is_global=True, is_constructor=True)
@@ -1127,9 +1223,6 @@ uint32_t %s(void* p) {
 						f"delete ({conv.ctype}*)h;" \
 						f"}}\n" 
 
-#  bool WrapEqualSint(WrapSint a, WrapSint b){
-# 	 return (*(std::shared_ptr<int> *)a  )== (*(std::shared_ptr<int> *)b);
-#  }
 			# arithmetic operators
 			for arithmetic in conv.arithmetic_ops:
 				bound_name = 'operator_' + gen.get_clean_symbol_name(arithmetic['op'])
@@ -1138,12 +1231,15 @@ uint32_t %s(void* p) {
 			for comparison in conv.comparison_ops:
 				bound_name = 'operator_' + gen.get_clean_symbol_name(comparison['op'])
 				go_c += self.__extract_method(conv.bound_name, conv, comparison, name='operator'+comparison['op'], bound_name=bound_name)
+				
 			# static methods
-			for method in conv.static_methods:
-				go_c += self.__extract_method(conv.bound_name, conv, method, static=True)
+			go_c += extract_conv_and_bases(conv.static_methods, 
+									lambda method: self.__extract_method(conv.bound_name, conv, method, static=True), 
+									[base_class.static_methods for base_class in conv._bases])
 			# methods
-			for method in conv.methods:
-				go_c += self.__extract_method(conv.bound_name, conv, method)
+			go_c += extract_conv_and_bases(conv.methods, 
+									lambda method: self.__extract_method(conv.bound_name, conv, method), 
+									[base_class.methods for base_class in conv._bases])
 
 		# enum
 		for bound_name, enum in self._enums.items():
@@ -1165,9 +1261,16 @@ uint32_t %s(void* p) {
 				'// #cgo CFLAGS: -I . -g3 -Wall -Wno-unused-variable -Wno-unused-function\n' \
 				'// #cgo CXXFLAGS: -std=c++14\n' \
 				'import "C"\n\n' \
-				'import (\n' \
-				'	_ "reflect"\n' \
-				'	"unsafe"\n' \
+				'import (\n'
+		
+		# check if relflect package is needed
+		for conv in self._FABGen__type_convs.values():
+			# special Slice
+			if isinstance(conv, lib.go.stl.GoSliceToStdVectorConverter):
+				go_bind += '	"reflect"\n'
+				break
+
+		go_bind += '	"unsafe"\n' \
 				')\n'
 
 		with open("lib/go/WrapperConverter.go", "r") as file:
@@ -1187,45 +1290,41 @@ uint32_t %s(void* p) {
 			# special Slice
 			if isinstance(conv, lib.go.stl.GoSliceToStdVectorConverter):
 				arg_boung_name = self.__get_arg_bound_name_to_go({"conv":conv.T_conv})
-				go_bind += f"// {clean_name(conv.bound_name)} ...\n" \
-							f"type {clean_name(conv.bound_name)} []{arg_boung_name}\n\n"
+				go_bind += f"// {clean_name_with_title(conv.bound_name)} ...\n" \
+							f"type {clean_name_with_title(conv.bound_name)} []{arg_boung_name}\n\n"
 
 
 			if conv.is_type_class():
 				go_bind += f"// {cleanBoundName} ...\n" \
 							f"type {cleanBoundName} struct{{\n" \
 							f"	h C.Wrap{cleanBoundName}\n" \
-							"}\n" 
+							"}\n"
 			
 			if "sequence" in conv._features:
 				go_bind += self.__extract_sequence_go(conv)
 
-		# 	# base
-		# 	for base in conv._bases:
-		# 		go_bind += "{base.bound_name}\n"
 			# static members
-			for member in conv.static_members:
-				go_bind += self.__extract_get_set_member_go(conv.bound_name, member, static=True)
+			go_bind += extract_conv_and_bases(conv.static_members, 
+									lambda member: self.__extract_get_set_member_go(conv.bound_name, member, static=True), 
+									[base_class.static_members for base_class in conv._bases])
+
 			# members
-			for member in conv.members:
-				go_bind += self.__extract_get_set_member_go(conv.bound_name, member, static=False)
+			go_bind += extract_conv_and_bases(conv.members, 
+									lambda member: self.__extract_get_set_member_go(conv.bound_name, member, static=False), 
+									[base_class.members for base_class in conv._bases])
+
 			# constructors
 			if conv.constructor:
 				go_bind += self.__extract_method_go(conv.bound_name, conv, conv.constructor, bound_name=f"{conv.bound_name}", is_global=True, is_constructor=True)
 				go_bind += f"// Free ...\n" \
-				f"func (pointer *{cleanBoundName}) Free(){{\n" \
+				f"func (pointer {cleanBoundName}) Free(){{\n" \
 				f"	C.Wrap{cleanBoundName}Free(pointer.h)\n" \
 				f"}}\n"
 				
 				go_bind += f"// IsNil ...\n" \
-				f"func (pointer *{cleanBoundName}) IsNil() bool{{\n" \
+				f"func (pointer {cleanBoundName}) IsNil() bool{{\n" \
 				f"	return pointer.h == C.Wrap{cleanBoundName}(nil)\n" \
 				f"}}\n"
-
-# // Equal ...
-# func (a *Sint) Equal(b *Sint) bool {
-# 	return bool(C.WrapEqualSint(a.h, b.h))
-# }
 
 				# runtime.SetFinalizer(funcret, func(ctx *Ret) { C.free(ctx.bufptr) })
 		# 	# arithmetic operators
@@ -1236,12 +1335,15 @@ uint32_t %s(void* p) {
 		# 	for comparison in conv.comparison_ops:
 		# 		bound_name = 'operator_' + gen.get_clean_symbol_name(comparison['op'])
 		# 		go_bind += self.__extract_method(conv.bound_name, comparison, name='operator'+comparison['op'], bound_name=bound_name)
+
 		# 	# static methods
-			for method in conv.static_methods:
-				go_bind += self.__extract_method_go(conv.bound_name, conv, method, static=True)
+			go_bind += extract_conv_and_bases(conv.static_methods, 
+									lambda method: self.__extract_method_go(conv.bound_name, conv, method, static=True), 
+									[base_class.static_methods for base_class in conv._bases])
 			# methods
-			for method in conv.methods:
-				go_bind += self.__extract_method_go(conv.bound_name, conv, method)
+			go_bind += extract_conv_and_bases(conv.methods, 
+									lambda method: self.__extract_method_go(conv.bound_name, conv, method), 
+									[base_class.methods for base_class in conv._bases])
 
 		# enum
 		for bound_name, enum in self._enums.items():

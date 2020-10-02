@@ -85,26 +85,27 @@ package harfang
 
 import (
 	"testing"
+
 	"github.com/stretchr/testify/assert"
 )
 
 // Test ...
 func Test(t *testing.T) {
-	assert.Equal(t, GetInt(), 8, "should be the same.")
+	assert.Equal(t, GetInt(), int32(8), "should be the same.")
 
-	assert.Equal(t, GetGlobalInt(), 0, "should be the same.")
+	assert.Equal(t, GetGlobalInt(), int32(0), "should be the same.")
 
 	SetGlobalInt()
-	assert.Equal(t, GetGlobalInt(), 8, "should be the same.")
+	assert.Equal(t, GetGlobalInt(), int32(8), "should be the same.")
 
 	// overload
-	assert.Equal(t, Get0(), 0, "should be the same.")
-	assert.Equal(t, Get1(2), 1, "should be the same.")
-	assert.Equal(t, Get2(4, 3), 12, "should be the same.")
-	assert.Equal(t, Get3(4, 3, 2), 14, "should be the same.")
+	assert.Equal(t, Get0(), int32(0), "should be the same.")
+	assert.Equal(t, Get1(2), int32(1), "should be the same.")
+	assert.Equal(t, Get2(4, 3), int32(12), "should be the same.")
+	assert.Equal(t, Get3(4, 3, 2), int32(14), "should be the same.")
 
 	// optional argument
-	assert.Equal(t, GetGlobalIntMultiplied0(), 15, "should be the same.")
-	assert.Equal(t, GetGlobalIntMultiplied1(2), 6, "should be the same.")
+	assert.Equal(t, GetGlobalIntMultiplied0(), int32(15), "should be the same.")
+	assert.Equal(t, GetGlobalIntMultiplied1(2), int32(6), "should be the same.")
 }
 '''

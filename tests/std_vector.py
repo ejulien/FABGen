@@ -238,7 +238,7 @@ func Test(t *testing.T) {
 	assert.Equal(t, w.Get(1), int32(2), "should be the same.")
 	assert.Equal(t, w.Get(2), int32(8), "should be the same.")
 
-	vPtr := NewVectorOfIntPtr()
+	vPtr := NewVectorOfIntPtr0()
 	vPtr.PushBack(nil)
 	vPtr.PushBack(v.Data())
 
