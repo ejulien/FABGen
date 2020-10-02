@@ -7,6 +7,12 @@ import lang.go
 def bind_stl(gen):
 	gen.add_include('vector', True)
 	gen.add_include('string', True)
+	
+	# class GoStringConverter(lang.go.GoTypeConverterCommon):
+	# 	def get_type_glue(self, gen, module_name):
+	# 		return ''
+
+	# gen.bind_type(GoStringConverter('std::string'))
 
 
 def bind_function_T(gen, type, bound_name=None):

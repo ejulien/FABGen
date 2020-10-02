@@ -21,7 +21,9 @@ def bind_std(gen):
 			return "C.GoString(%s)" % (out_var)
 
 	gen.bind_type(GoConstCharPtrConverter("string")).nobind = True
+	gen.typedef('char *', 'string')
 	gen.typedef('const char *', 'string')
+	gen.typedef('std::string', 'string')
 
 	class GoIntConverter(lang.go.GoTypeConverterCommon):
 		def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None, needs_c_storage_class=False):

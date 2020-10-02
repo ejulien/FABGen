@@ -66,3 +66,28 @@ assert(my_test.w == 14)
 
 assert(my_test.u == 7)
 '''
+
+test_go = '''\
+package harfang
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	assert.Equal(t, Getv(), int32(2), "should be the same.")
+	Setv(int32(5))
+	assert.Equal(t, Getv(), int32(5), "should be the same.")
+
+	assert.Equal(t, Gets().Getv(), int32(4), "should be the same.")
+	Gets().Setv(int32(9))
+	assert.Equal(t, Gets().Getv(), int32(9), "should be the same.")
+
+	assert.Equal(t, Getw(), int32(14), "should be the same.")
+
+	assert.Equal(t, Getu(), float32(7), "should be the same.")
+}
+'''
