@@ -31,3 +31,19 @@ my_test = require "my_test"
 assert(my_test.get_int() == 8)
 assert(my_test.get_float() == 8)
 '''
+
+test_go = """\
+package harfang
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	assert.Equal(t, GetInt(), int32(8), "should be the same.")
+	assert.Equal(t, GetFloat(), float32(8), "should be the same.")
+}
+"""

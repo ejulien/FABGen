@@ -337,7 +337,7 @@ uint32_t %s(void* p) {
 			return self.get_conv(conv_name)
 		return None
 
-	def __arg_from_cpp_to_c(self, val, retval_name, is_static):
+	def __arg_from_cpp_to_c(self, val, retval_name, just_copy):
 		src = ""
 		# type class, not a pointer
 		if val['conv'] is not None and val['conv'].is_type_class() and \
@@ -349,12 +349,15 @@ uint32_t %s(void* p) {
 					
 					# go += "	auto " + val['conv']._features['proxy'].unwrap("(&ret)", "retPointerFromProxy")
 					src += "	auto " + val['conv']._features['proxy'].wrap("ret", "retPointer")
+				# special std::future 
+				elif val["conv"] is not None and "std::future" in str(val["conv"].ctype):
+			 		src += f"	auto retPointer = new std::future<int>(std::move(ret));\n"
 				else:
 					# class, not pointer, but static
-					if is_static:
+					if just_copy:
 						src += f"	auto retPointer = ret;\n"
 					else:
-						src += f"	auto retPointer = new {val['conv'].bound_name}(ret);\n"
+						src += f"	auto retPointer = new {val['conv'].ctype}(ret);\n"
 				retval_name = f"(Wrap{clean_name_with_title(val['conv'].bound_name)})(retPointer)"
 		else:
 			# special std::string (convert to const char*)
@@ -631,31 +634,33 @@ uint32_t %s(void* p) {
 			go += "}\n"
 
 			# SET
-			go += f"// Set{name} ...\n" \
-					f"func "
-					
-			if do_static:
-				go += f"{clean_name_with_title(classname)}"
-			else:
-				go += f"(pointer {clean_name_with_title(classname)}) "
+			# add set only if the member is not const
+			if not member["ctype"].const:
+				go += f"// Set{name} ...\n" \
+						f"func "
+						
+				if do_static:
+					go += f"{clean_name_with_title(classname)}"
+				else:
+					go += f"(pointer {clean_name_with_title(classname)}) "
 
-			go += f"Set{name}(v {arg_bound_name}) {{\n"
+				go += f"Set{name}(v {arg_bound_name}) {{\n"
 
-			# convert to c
-			if isinstance(conv, GoPtrTypeConverter):
-				c_call = self.__arg_from_go_to_c({"conv": conv}, "v", f"vToC")
-			else:
-				c_call = conv.to_c_call("v", f"vToC", conv.ctype.is_pointer() or (hasattr(conv.ctype, "ref") and any(s in conv.ctype.ref for s in ["&", "*"])))
-			if c_call != "":
-				go += c_call
-			else:
-				go += "vToC := v\n"
+				# convert to c
+				if isinstance(conv, GoPtrTypeConverter):
+					c_call = self.__arg_from_go_to_c({"conv": conv}, "v", f"vToC")
+				else:
+					c_call = conv.to_c_call("v", f"vToC", conv.ctype.is_pointer() or (hasattr(conv.ctype, "ref") and any(s in conv.ctype.ref for s in ["&", "*"])))
+				if c_call != "":
+					go += c_call
+				else:
+					go += "vToC := v\n"
 
-			go += f"	C.Wrap{clean_name_with_title(classname)}Set{name}("
-			if not static and not is_global:
-				go += "pointer.h, "
-			go += "vToC)\n"
-			go += "}\n"
+				go += f"	C.Wrap{clean_name_with_title(classname)}Set{name}("
+				if not static and not is_global:
+					go += "pointer.h, "
+				go += "vToC)\n"
+				go += "}\n"
 			return go
 
 		# create twice, with and without static, to use it with the class and standalone
@@ -699,46 +704,46 @@ uint32_t %s(void* p) {
 			go += "{"
 			# check if the value is a ref
 			prefix = ""
-			if hasattr(conv.ctype, "ref") and conv.ctype.ref in ["&", "*&"]:
+			if (hasattr(conv.ctype, "ref") and conv.ctype.ref in ["&", "*&"]) or \
+				conv.is_type_class():
 				prefix = "&"
 
 			if static or is_global:
-				if conv.is_type_class():
-					go += f"	auto ret = &{classname}::{c_name};\n"
-				else:
-					go += f"	auto ret = {classname}::{c_name};\n"
+				go += f"	auto ret = {prefix}{classname}::{c_name};\n"
 			else:
 				if convClass is not None and "proxy" in convClass._features:
 					go += f"\n	auto v = _type_tag_cast(h, {convClass.type_tag}, {convClass._features['proxy'].wrapped_conv.type_tag});\n"
-					go += f"	auto ret = {prefix}(({convClass._features['proxy'].wrapped_conv.bound_name}*)v)->{c_name};\n"
+					go += f"	auto ret = {prefix}(({convClass._features['proxy'].wrapped_conv.ctype}*)v)->{c_name};\n"
 				else:
-					go += f"	auto ret = {prefix}(({classname}*)h)->{c_name};\n"
+					go += f"	auto ret = {prefix}(({convClass.ctype}*)h)->{c_name};\n"
 
-			src, retval_c = self.__arg_from_cpp_to_c({"conv": conv}, "ret", static or is_global)
+			src, retval_c = self.__arg_from_cpp_to_c({"conv": conv}, "ret", True)
 			go += src
 			go += f"return {retval_c};\n}}\n"
 
 		# SET
-		go += f"void Wrap{cleanClassname}Set{name.replace(':', '')}("
-		if not static and not is_global:
-			go += f"Wrap{cleanClassname} h, "
-		go += f"{arg_bound_name} v)"
+		# add set only if the member is not const
+		if not member["ctype"].const:
+			go += f"void Wrap{cleanClassname}Set{name.replace(':', '')}("
+			if not static and not is_global:
+				go += f"Wrap{cleanClassname} h, "
+			go += f"{arg_bound_name} v)"
 
-		if is_in_header:
-			go += ";\n"
-		else:
-
-			src, retval = self.__arg_from_c_to_cpp({"conv": conv}, "v")
-			go += src
-
-			if static or is_global:
-				go += f"{{ {classname}::{c_name} = {retval};\n}}\n"
+			if is_in_header:
+				go += ";\n"
 			else:
-				if convClass is not None and "proxy" in convClass._features:
-					go += f"{{\n	auto w = _type_tag_cast(h, {convClass.type_tag}, {convClass._features['proxy'].wrapped_conv.type_tag});\n"
-					go += f"	(({convClass._features['proxy'].wrapped_conv.bound_name}*)w)->{c_name} = {retval};\n}}\n"
+
+				src, retval = self.__arg_from_c_to_cpp({"conv": conv}, "v")
+				go += src
+
+				if static or is_global:
+					go += f"{{ {classname}::{c_name} = {retval};\n}}\n"
 				else:
-					go += f"{{ (({classname}*)h)->{c_name} = {retval};}}\n"
+					if convClass is not None and "proxy" in convClass._features:
+						go += f"{{\n	auto w = _type_tag_cast(h, {convClass.type_tag}, {convClass._features['proxy'].wrapped_conv.type_tag});\n"
+						go += f"	(({convClass._features['proxy'].wrapped_conv.bound_name}*)w)->{c_name} = {retval};\n}}\n"
+					else:
+						go += f"{{ (({convClass.ctype}*)h)->{c_name} = {retval};}}\n"
 		return go
 
 	def __extract_method_go(self, classname, convClass, method, static=False, name=None, bound_name=None, is_global=False, is_constructor=False):
@@ -957,9 +962,10 @@ uint32_t %s(void* p) {
 		go = ""
 
 		if bound_name is None:
-			bound_name = method["name"]
+			bound_name = method["bound_name"]
 		if name is None:
 			name = bound_name
+		wrap_name = bound_name
 
 		if bound_name == "OpenVRStateToViewState":
 			bound_name = bound_name
@@ -984,7 +990,7 @@ uint32_t %s(void* p) {
 
 			if is_in_header:
 				go += "extern "
-			go += "%s Wrap%s" % (retval, clean_name_with_title(bound_name))
+			go += "%s Wrap%s" % (retval, clean_name_with_title(wrap_name))
 
 			# not global, add the Name of the class to be sure to avoid double name function name
 			if not is_global:
@@ -1052,7 +1058,7 @@ uint32_t %s(void* p) {
 					elif "sequence" in convClass._features:
 						go += f"	return (void*)(new {convClass.ctype}({','.join(args)}));\n"
 					else:
-						go += f"	return (void*)(new {convClass.bound_name}({','.join(args)}));\n"
+						go += f"	return (void*)(new {convClass.ctype}({','.join(args)}));\n"
 				else:
 					# if there is return value
 					if retval != "void":
@@ -1073,14 +1079,14 @@ uint32_t %s(void* p) {
 								go += "->"
 							else:
 								go += "."
-
+								
 						go += name
 
 						# add function's arguments
 						go += f"({','.join(args)});\n"
 
 					if retval != "void":
-						src, retval_c = self.__arg_from_cpp_to_c(proto["rval"], "ret", static or is_global)
+						src, retval_c = self.__arg_from_cpp_to_c(proto["rval"], "ret", static)
 						go += src
 						go += f"return {retval_c};\n"
 				go += "}\n"
@@ -1151,6 +1157,7 @@ uint32_t %s(void* p) {
 			for base_convs_to_extract in bases_convs_to_extract:
 				for conv_to_extract in base_convs_to_extract:
 					# add only if it's not already in the current class
+					n = ""
 					if "name" in conv_to_extract:
 						n = conv_to_extract["name"]
 					elif "op" in conv_to_extract:
@@ -1228,7 +1235,7 @@ uint32_t %s(void* p) {
 
 		# functions
 		for func in self._bound_functions:
-			go_h += self.__extract_method("", None, func, is_global=True, is_in_header=True)
+			go_h += self.__extract_method("", None, func, name=func["name"], is_global=True, is_in_header=True)
 
 		# global variables
 		for var in self._bound_variables:
@@ -1303,17 +1310,17 @@ uint32_t %s(void* p) {
 		for bound_name, enum in self._enums.items():
 			enum_vars = []
 			for name, value in enum.items():
-				enum_vars.append(f"{value}")
+				enum_vars.append(f"(int){value}")
 			go_c += f"static const int Wrap{bound_name} [] = {{ {', '.join(enum_vars)} }};\n"
 			go_c += f"int Get{bound_name}(const int id) {{ return Wrap{bound_name}[id];}}\n"
 
 		# functions
 		for func in self._bound_functions:
-			go_c += self.__extract_method("", None, func, is_global=True)
+			go_c += self.__extract_method("", None, func, name=func["name"], is_global=True)
 
 		# global variables
 		for var in self._bound_variables:
-			go_c += self.__extract_get_set_member("", None, var, is_global=True)
+			go_c += self.__extract_get_set_member("", None, var, is_global=True, static=True)
 
 		self.go_c = go_c
 
@@ -1335,7 +1342,7 @@ uint32_t %s(void* p) {
 		go_bind += '	"unsafe"\n' \
 				')\n'
 
-		with open("lib/go/WrapperConverter.go", "r") as file:
+		with open("lib/go/WrapperConverter.go_", "r") as file:
 			lines = file.readlines()
 			go_bind += "".join(lines)
 			go_bind += "\n"

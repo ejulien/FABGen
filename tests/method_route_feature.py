@@ -38,3 +38,19 @@ my_test = require "my_test"
 o = my_test.Object()
 assert(o:Get(4) == 15)
 '''
+
+test_go = """\
+package harfang
+
+import (
+	"testing"
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	o := NewObject()
+	assert.Equal(t, o.Get(4), int32(15), "should be the same.")
+}
+"""
+

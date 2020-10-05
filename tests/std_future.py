@@ -59,3 +59,22 @@ assert(future:valid() == true)
 future:wait()
 assert(future:get() == 8)
 '''
+
+test_go = """\
+package harfang
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	future := GetFutureValue()
+	assert.True(t, future.Valid(), "should be the same.")
+
+	future.Wait()
+	assert.Equal(t, future.Get(), int32(8), "should be the same.")
+}
+"""

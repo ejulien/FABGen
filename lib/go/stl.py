@@ -77,11 +77,7 @@ class GoSliceToStdVectorConverter(lang.go.GoTypeConverterCommon):
 	# retval := C.WrapConstructorVectorOfInt1(C.size_t(sh.Len), (*C.int)(unsafe.Pointer(sh.Data)))
 
 	def to_c_call(self, in_var, out_var_p, is_pointer):
-		if is_pointer:
-				out = f"{out_var_p.replace('&', '_')} := (*C.WrapBool)(unsafe.Pointer({in_var}))\n"
-		else:
-			out = f"{out_var_p.replace('&', '_')} := C.bool({in_var})\n"
-		return out
+		return ""
 
 	def from_c_call(self, out_var, expr, ownership):
-		return "bool(%s)" % (out_var)
+		return ""

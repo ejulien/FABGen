@@ -92,12 +92,12 @@ func Test(t *testing.T) {
 	sp := GetSharedPtrToSimpleStruct()
 	
 	assert.Equal(t, sp.Getu(), float32(4.0), "should be the same.")
-	assert.Equal(t, sp.Getv(), 7, "should be the same.")
+	assert.Equal(t, sp.Getv(), int32(7), "should be the same.")
 
 	sp2 := NewSsimpleStruct(9.0)
 
 	assert.Equal(t, sp2.Getu(), float32(9.0), "should be the same.")
-	assert.Equal(t, sp2.Getv(), 90, "should be the same.")
+	assert.Equal(t, sp2.Getv(), int32(90), "should be the same.")
 
 	spn := GetEmptySharedPtr()
 

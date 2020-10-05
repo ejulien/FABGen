@@ -52,3 +52,20 @@ s = my_test.enclosing_template_int()
 n = my_test.GetNestedStructInt(s)
 assert(n.v == 9)
 '''
+
+test_go = """\
+package harfang
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	s := NewEnclosingTemplateInt()
+	n := GetNestedStructInt(&s)
+	assert.Equal(t, n.Getv(), int32(9), "should be the same.")
+}
+"""

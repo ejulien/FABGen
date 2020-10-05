@@ -97,3 +97,43 @@ assert(s.a == 2)
 
 --expect_eq(s.d, 9)
 '''
+
+test_go = """\
+package harfang
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	s := ReturnSimpleStructByPointer()
+
+	assert.Equal(t, s.Geta(), int32(7), "should be the same.")
+	assert.Equal(t, s.Getb(), float32(17.5), "should be the same.")
+	assert.Equal(t, s.Getc(), true, "should be the same.")
+	assert.Equal(t, s.Getd(), int32(9), "should be the same.")
+	assert.Equal(t, s.Gettext_field(), "some content", "should be the same.")
+
+	s.Seta(-2)
+	s.Setb(-4.5)
+	s.Setc(false)
+
+	assert.Equal(t, s.Geta(), int32(-2), "should be the same.")
+	assert.Equal(t, s.Getb(), float32(-4.5), "should be the same.")
+	assert.Equal(t, s.Getc(), false, "should be the same.")
+
+	s.Seta(s.Geta() + 4)
+	assert.Equal(t, s.Geta(), int32(2), "should be the same.")
+
+	// # write to const member
+	//  can't set d because it's a const
+	// check if it didn't bind it
+	_, writeToConstFailed := interface{}(s).(interface{ Setd() })
+	assert.Equal(t, writeToConstFailed, false, "should be the same.")
+
+	assert.Equal(t, s.Getd(), int32(9), "should be the same.")
+}
+"""

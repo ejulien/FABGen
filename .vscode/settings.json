@@ -53,6 +53,11 @@
 		"xlocnum": "cpp",
 		"chrono": "cpp",
 		"ratio": "cpp",
-		"thread": "cpp"
+		"thread": "cpp",
+		"future": "cpp",
+		"algorithm": "cpp",
+		"condition_variable": "cpp",
+		"resumable": "cpp",
+		"mutex": "cpp"
 	}
 }
