@@ -124,29 +124,6 @@ class GoPtrTypeConverter(gen.TypeConverter):
 
 #
 
-
-class DummyExternTypeConverter(gen.TypeConverter):
-	def __init__(self, type, to_c_storage_type=None, bound_name=None, module=None):
-		super().__init__(type, to_c_storage_type, bound_name, None, None)
-
-		self.module = module  # store module
-
-	def get_type_api(self, module_name):
-		return ""
-
-	def to_c_call(self, in_var, out_var_p, is_pointer):
-		return ""
-
-	def from_c_call(self, out_var, expr, ownership):
-		return ""
-
-	def check_call(self, in_var):
-		return ""
-
-	def get_type_glue(self, gen, module_name):
-		return ""
-
-
 class GoClassTypeDefaultConverter(GoTypeConverterCommon):
 	def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None, needs_c_storage_class=False):
 		super().__init__(type, to_c_storage_type, bound_name, from_c_storage_type, needs_c_storage_class)
@@ -171,10 +148,49 @@ class GoClassTypeDefaultConverter(GoTypeConverterCommon):
 		return ""
 
 
+class GoExternTypeConverter(GoTypeConverterCommon):
+	def __init__(self, type, to_c_storage_type, bound_name, module):
+		super().__init__(type, to_c_storage_type, bound_name)
+		self.module = module
+
+	def get_type_api(self, module_name):
+		return ''
+
+	def to_c_call(self, in_var, out_var_p):
+		out = ''
+		if self.c_storage_class:
+			c_storage_var = 'storage_%s' % out_var_p.replace('&', '_')
+			out += '%s %s;\n' % (self.c_storage_class, c_storage_var)
+			out += '(*%s)(%s, (void *)%s, %s);\n' % (self.to_c_func, in_var, out_var_p, c_storage_var)
+		else:
+			out += '(*%s)(%s, (void *)%s);\n' % (self.to_c_func, in_var, out_var_p)
+		return out
+
+	def from_c_call(self, out_var, expr, ownership):
+		return "%s = (*%s)((void *)%s, %s);\n" % (out_var, self.from_c_func, expr, ownership)
+
+	def check_call(self, in_var):
+		return "(*%s)(%s)" % (self.check_func, in_var)
+
+	def get_type_glue(self, gen, module_name):
+		out = '// extern type API for %s\n' % self.ctype
+		if self.c_storage_class:
+			out += 'struct %s;\n' % self.c_storage_class
+		out += 'bool (*%s)(void *o) = nullptr;\n' % self.check_func
+		if self.c_storage_class:
+			out += 'void (*%s)(void *o, void *obj, %s &storage) = nullptr;\n' % (self.to_c_func, self.c_storage_class)
+		else:
+			out += 'void (*%s)(void *o, void *obj) = nullptr;\n' % self.to_c_func
+		out += 'void *(*%s)(void *obj, OwnershipPolicy) = nullptr;\n' % self.from_c_func
+		out += '\n'
+		return out
+
+
+
 class GoGenerator(gen.FABGen):
 	default_ptr_converter = GoPtrTypeConverter
 	default_class_converter = GoClassTypeDefaultConverter
-	default_extern_converter = DummyExternTypeConverter
+	default_extern_converter = GoExternTypeConverter
 
 	def __init__(self):
 		super().__init__()
