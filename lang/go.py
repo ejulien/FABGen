@@ -459,7 +459,7 @@ uint32_t %s(void* p) {
 				arg_bound_name = val["conv"].bound_name
 
 		if arg_bound_name.endswith("_nobind") and val["conv"].nobind:
-			arg_bound_name = arg_bound_name[: -len("_nobind")]
+			arg_bound_name = arg_bound_name[:-len("_nobind")]
 
 		# if it's a pointer
 		if  ('carg' in val and (val['carg'].ctype.is_pointer() or (hasattr(val['carg'].ctype, 'ref') and any(s in val['carg'].ctype.ref for s in ["&", "*"]))) and val['conv'].bound_name != "string") or \
@@ -553,7 +553,7 @@ uint32_t %s(void* p) {
 
 		arg_bound_name = str(internal_conv.ctype)
 		if arg_bound_name.endswith("_nobind") and internal_conv.nobind:
-			arg_bound_name = arg_bound_name[: -len("_nobind")]
+			arg_bound_name = arg_bound_name[:-len("_nobind")]
 		if (hasattr(internal_conv.ctype, "ref") and internal_conv.ctype.ref == "&") and internal_conv.bound_name != "string":
 			arg_bound_name = arg_bound_name + "*"
 
@@ -820,7 +820,7 @@ uint32_t %s(void* p) {
 					if "arg_out" in proto["features"] and str(arg["carg"].name) in proto["features"]["arg_out"]:
 						arg_bound_name = arg["conv"].bound_name
 						if arg_bound_name.endswith("_nobind") and arg["conv"].nobind:
-							arg_bound_name = arg_bound_name[: -len("_nobind")]
+							arg_bound_name = arg_bound_name[:-len("_nobind")]
 						if (arg["carg"].ctype.is_pointer() or (hasattr(arg["carg"].ctype, "ref") and arg["carg"].ctype.ref == "&")) and arg["conv"].bound_name != "string":
 							arg_bound_name = f"new({arg_bound_name})"
 						go += f"{clean_name(arg['carg'].name)} := {arg_bound_name}\n"
@@ -892,7 +892,7 @@ uint32_t %s(void* p) {
 				if retval == "":
 					go += "return "
 				has_previous_arg = False
-					
+
 				for arg in proto['args']:
 					if ('arg_out' in proto['features'] and str(arg['carg'].name) in proto['features']['arg_out']) or \
 						('arg_in_out' in proto['features'] and str(arg['carg'].name) in proto['features']['arg_in_out']):
@@ -923,7 +923,7 @@ uint32_t %s(void* p) {
 						# 	retval_go = "rGO"
 
 						# check if need convert from c
-							
+
 						# check if need convert from c
 						if (not arg['carg'].ctype.is_pointer() and \
 							not (hasattr(arg['carg'].ctype, 'ref') and arg['carg'].ctype.ref == "&")) or \
@@ -942,7 +942,7 @@ uint32_t %s(void* p) {
 								if "arg_out" in proto["features"] and str(arg["carg"].name) in proto["features"]["arg_out"]:
 									arg_bound_name = arg["conv"].bound_name
 									if arg_bound_name.endswith("_nobind") and arg["conv"].nobind:
-										arg_bound_name = arg_bound_name[: -len("_nobind")]
+										arg_bound_name = arg_bound_name[:-len("_nobind")]
 									arg_bound_name = arg_bound_name.title()
 
 									retval_go = f"(*{arg_bound_name})(unsafe.Pointer({retval_go}))"
@@ -1141,15 +1141,22 @@ uint32_t %s(void* p) {
 			go = ""
 			saved_names = []
 			for conv_to_extract in convs_to_extract:
-				saved_names.append(conv_to_extract["name"])
+				if "name" in conv_to_extract:
+					saved_names.append(conv_to_extract["name"])
+				elif "op" in conv_to_extract:
+					saved_names.append(conv_to_extract["op"])
 				go += extract_func(conv_to_extract)
 
 			# add static member get set for base class
 			for base_convs_to_extract in bases_convs_to_extract:
 				for conv_to_extract in base_convs_to_extract:
 					# add only if it's not already in the current class
-					if conv_to_extract["name"] not in saved_names:
-						saved_names.append(conv_to_extract["name"])
+					if "name" in conv_to_extract:
+						n = conv_to_extract["name"]
+					elif "op" in conv_to_extract:
+						n = conv_to_extract["op"]
+					if n not in saved_names:
+						saved_names.append(n)
 						go += extract_func(conv_to_extract)
 			return go
 
@@ -1181,13 +1188,13 @@ uint32_t %s(void* p) {
 				go_h += self.__extract_sequence(conv, is_in_header=True)
 
 			# static members
-			go_h += extract_conv_and_bases(conv.static_members, 
-									lambda member: self.__extract_get_set_member(conv.bound_name, conv, member, static=True, is_in_header=True), 
+			go_h += extract_conv_and_bases(conv.static_members, \
+									lambda member: self.__extract_get_set_member(conv.bound_name, conv, member, static=True, is_in_header=True), \
 									[base_class.static_members for base_class in conv._bases])
 
 			# members
-			go_h += extract_conv_and_bases(conv.members, 
-									lambda member: self.__extract_get_set_member(conv.bound_name, conv, member, is_in_header=True), 
+			go_h += extract_conv_and_bases(conv.members, \
+									lambda member: self.__extract_get_set_member(conv.bound_name, conv, member, is_in_header=True), \
 									[base_class.members for base_class in conv._bases])
 
 			# constructors
@@ -1196,22 +1203,22 @@ uint32_t %s(void* p) {
 				go_h += f"void Wrap{cleanBoundName}Free(Wrap{cleanBoundName});\n"
 
 			# arithmetic operators
-			for arithmetic in conv.arithmetic_ops:
-				bound_name = 'operator_' + gen.get_clean_symbol_name(arithmetic['op'])
-				go_h += self.__extract_method(conv.bound_name, conv, arithmetic, name='operator'+arithmetic['op'], bound_name=bound_name, is_in_header=True)
+			go_h += extract_conv_and_bases(conv.arithmetic_ops, \
+									lambda arithmetic: self.__extract_method(conv.bound_name, conv, arithmetic, is_in_header=True, name='operator'+arithmetic['op'], bound_name='operator_' + gen.get_clean_symbol_name(arithmetic['op'])), \
+									[base_class.arithmetic_ops for base_class in conv._bases])
 
 			# comparison_ops
-			for comparison in conv.comparison_ops:
-				bound_name = 'operator_' + gen.get_clean_symbol_name(comparison['op'])
-				go_h += self.__extract_method(conv.bound_name, conv, comparison, name='operator'+comparison['op'], bound_name=bound_name, is_in_header=True)
+			go_h += extract_conv_and_bases(conv.comparison_ops, \
+									lambda comparison: self.__extract_method(conv.bound_name, conv, comparison, is_in_header=True, name='operator'+comparison['op'], bound_name='operator_' + gen.get_clean_symbol_name(comparison['op'])), \
+									[base_class.comparison_ops for base_class in conv._bases])
 
 			# static methods
-			go_h += extract_conv_and_bases(conv.static_methods, 
-									lambda method: self.__extract_method(conv.bound_name, conv, method, static=True, is_in_header=True), 
+			go_h += extract_conv_and_bases(conv.static_methods, \
+									lambda method: self.__extract_method(conv.bound_name, conv, method, static=True, is_in_header=True), \
 									[base_class.static_methods for base_class in conv._bases])
 			# methods
-			go_h += extract_conv_and_bases(conv.methods, 
-									lambda method: self.__extract_method(conv.bound_name, conv, method, is_in_header=True), 
+			go_h += extract_conv_and_bases(conv.methods, \
+									lambda method: self.__extract_method(conv.bound_name, conv, method, is_in_header=True), \
 									[base_class.methods for base_class in conv._bases])
 				
 			
@@ -1255,13 +1262,13 @@ uint32_t %s(void* p) {
 				go_c += self.__extract_sequence(conv)
 			
 			# static members
-			go_c += extract_conv_and_bases(conv.static_members, 
-									lambda member: self.__extract_get_set_member(conv.bound_name, conv, member, static=True), 
+			go_c += extract_conv_and_bases(conv.static_members, \
+									lambda member: self.__extract_get_set_member(conv.bound_name, conv, member, static=True), \
 									[base_class.static_members for base_class in conv._bases])
 
 			# members
-			go_c += extract_conv_and_bases(conv.members, 
-									lambda member: self.__extract_get_set_member(conv.bound_name, conv, member), 
+			go_c += extract_conv_and_bases(conv.members, \
+									lambda member: self.__extract_get_set_member(conv.bound_name, conv, member), \
 									[base_class.members for base_class in conv._bases])
 
 			# constructors
@@ -1274,21 +1281,22 @@ uint32_t %s(void* p) {
 						f"}}\n" 
 
 			# arithmetic operators
-			for arithmetic in conv.arithmetic_ops:
-				bound_name = "operator_" + gen.get_clean_symbol_name(arithmetic["op"])
-				go_c += self.__extract_method(conv.bound_name, conv, arithmetic, name="operator" + arithmetic["op"], bound_name=bound_name)
+			go_c += extract_conv_and_bases(conv.arithmetic_ops, \
+									lambda arithmetic: self.__extract_method(conv.bound_name, conv, arithmetic, name="operator" + arithmetic["op"], bound_name="operator_" + gen.get_clean_symbol_name(arithmetic["op"])), \
+									[base_class.arithmetic_ops for base_class in conv._bases])
+
 			# comparison_ops
-			for comparison in conv.comparison_ops:
-				bound_name = "operator_" + gen.get_clean_symbol_name(comparison["op"])
-				go_c += self.__extract_method(conv.bound_name, conv, comparison, name="operator" + comparison["op"], bound_name=bound_name)
+			go_c += extract_conv_and_bases(conv.comparison_ops, \
+									lambda comparison: self.__extract_method(conv.bound_name, conv, comparison, name="operator" + comparison["op"], bound_name="operator_" + gen.get_clean_symbol_name(comparison["op"])), \
+									[base_class.comparison_ops for base_class in conv._bases])
 
 			# static methods
-			go_c += extract_conv_and_bases(conv.static_methods, 
-									lambda method: self.__extract_method(conv.bound_name, conv, method, static=True), 
+			go_c += extract_conv_and_bases(conv.static_methods, \
+									lambda method: self.__extract_method(conv.bound_name, conv, method, static=True), \
 									[base_class.static_methods for base_class in conv._bases])
 			# methods
-			go_c += extract_conv_and_bases(conv.methods, 
-									lambda method: self.__extract_method(conv.bound_name, conv, method), 
+			go_c += extract_conv_and_bases(conv.methods, \
+									lambda method: self.__extract_method(conv.bound_name, conv, method), \
 									[base_class.methods for base_class in conv._bases])
 
 		# enum
@@ -1357,13 +1365,13 @@ uint32_t %s(void* p) {
 				go_bind += self.__extract_sequence_go(conv)
 
 			# static members
-			go_bind += extract_conv_and_bases(conv.static_members, 
-									lambda member: self.__extract_get_set_member_go(conv.bound_name, member, static=True), 
+			go_bind += extract_conv_and_bases(conv.static_members, \
+									lambda member: self.__extract_get_set_member_go(conv.bound_name, member, static=True), \
 									[base_class.static_members for base_class in conv._bases])
 
 			# members
-			go_bind += extract_conv_and_bases(conv.members, 
-									lambda member: self.__extract_get_set_member_go(conv.bound_name, member, static=False), 
+			go_bind += extract_conv_and_bases(conv.members, \
+									lambda member: self.__extract_get_set_member_go(conv.bound_name, member, static=False), \
 									[base_class.members for base_class in conv._bases])
 
 			# constructors
@@ -1381,21 +1389,21 @@ uint32_t %s(void* p) {
 
 				# runtime.SetFinalizer(funcret, func(ctx *Ret) { C.free(ctx.bufptr) })
 			# arithmetic operators
-			for arithmetic in conv.arithmetic_ops:
-				bound_name = 'operator_' + gen.get_clean_symbol_name(arithmetic['op'])
-				go_bind += self.__extract_method_go(conv.bound_name, conv, arithmetic, static=True, bound_name=bound_name)
+			go_bind += extract_conv_and_bases(conv.arithmetic_ops, \
+									lambda arithmetic: self.__extract_method_go(conv.bound_name, conv, arithmetic, bound_name='operator_' + gen.get_clean_symbol_name(arithmetic['op'])), \
+									[base_class.arithmetic_ops for base_class in conv._bases])
 			# comparison_ops
-			for comparison in conv.comparison_ops:
-				bound_name = 'operator_' + gen.get_clean_symbol_name(comparison['op'])
-				go_bind += self.__extract_method_go(conv.bound_name, conv, comparison, static=True, bound_name=bound_name)
+			go_bind += extract_conv_and_bases(conv.comparison_ops, \
+									lambda comparison: self.__extract_method_go(conv.bound_name, conv, comparison, bound_name='operator_' + gen.get_clean_symbol_name(comparison['op'])), \
+									[base_class.comparison_ops for base_class in conv._bases])
 
 			# static methods
-			go_bind += extract_conv_and_bases(conv.static_methods, 
-									lambda method: self.__extract_method_go(conv.bound_name, conv, method, static=True), 
+			go_bind += extract_conv_and_bases(conv.static_methods, \
+									lambda method: self.__extract_method_go(conv.bound_name, conv, method, static=True), \
 									[base_class.static_methods for base_class in conv._bases])
 			# methods
-			go_bind += extract_conv_and_bases(conv.methods, 
-									lambda method: self.__extract_method_go(conv.bound_name, conv, method), 
+			go_bind += extract_conv_and_bases(conv.methods, \
+									lambda method: self.__extract_method_go(conv.bound_name, conv, method), \
 									[base_class.methods for base_class in conv._bases])
 
 		# enum
