@@ -6,6 +6,10 @@ import lang.go
 
 def bind_std(gen):
 	class GoConstCharPtrConverter(lang.go.GoTypeConverterCommon):
+		def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None, needs_c_storage_class=False):
+			super().__init__(type, to_c_storage_type, bound_name, from_c_storage_type, needs_c_storage_class)
+			self.go_to_c_type = "*C.char"
+			
 		def get_type_glue(self, gen, module_name):
 			return ''
 
@@ -28,7 +32,8 @@ def bind_std(gen):
 	class GoIntConverter(lang.go.GoTypeConverterCommon):
 		def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None, needs_c_storage_class=False):
 			super().__init__(type, to_c_storage_type, bound_name, from_c_storage_type, needs_c_storage_class)
-			self.go_type = "C.int"
+			self.go_to_c_type = "C.int"
+			self.go_type = "int32"
 
 		def get_type_glue(self, gen, module_name):
 			return ''
@@ -46,22 +51,45 @@ def bind_std(gen):
 		def from_c_call(self, out_var, expr, ownership):
 			return "int32(%s)" % (out_var)
 
-	gen.bind_type(GoIntConverter('int32')).nobind = True
-	gen.typedef('int', 'int32')
-	gen.typedef('int16_t', 'int32')
-	gen.typedef('int32_t', 'int32')
-	gen.typedef('int64_t', 'int32')
-	gen.typedef('char32_t', 'int32')
-	gen.typedef('unsigned int32_t', 'int32')
-	gen.typedef('unsigned int', 'int32')
-	gen.typedef('uint32_t', 'int32')
-	gen.typedef('size_t', 'int32')
+	gen.bind_type(GoIntConverter('int32'))
+	gen.bind_type(GoIntConverter('int'))
+	gen.bind_type(GoIntConverter('int16_t'))
+	gen.bind_type(GoIntConverter('int32_t'))
+	gen.bind_type(GoIntConverter('int64_t'))
+	gen.bind_type(GoIntConverter('char32_t'))
+	gen.bind_type(GoIntConverter('unsigned int32_t'))
+	gen.bind_type(GoIntConverter('unsigned int'))
+	gen.bind_type(GoIntConverter('uint32_t'))
 
+	class GoSizeTConverter(lang.go.GoTypeConverterCommon):
+		def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None, needs_c_storage_class=False):
+			super().__init__(type, to_c_storage_type, bound_name, from_c_storage_type, needs_c_storage_class)
+			self.go_to_c_type = "C.size_t"
+			self.go_type = "int32"
+
+		def get_type_glue(self, gen, module_name):
+			return ''
+
+		def get_type_api(self, module_name):
+			return ''
+
+		def to_c_call(self, in_var, out_var_p, is_pointer):
+			if is_pointer:
+				out = f"{out_var_p.replace('&', '_')} := (*C.size_t)(unsafe.Pointer({in_var}))\n"
+			else:
+				out = f"{out_var_p.replace('&', '_')} := C.size_t({in_var})\n"
+			return out
+
+		def from_c_call(self, out_var, expr, ownership):
+			return "int32(%s)" % (out_var)
+
+	gen.bind_type(GoSizeTConverter('size_t'))
 
 	class GoFloatConverter(lang.go.GoTypeConverterCommon):
 		def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None, needs_c_storage_class=False):
 			super().__init__(type, to_c_storage_type, bound_name, from_c_storage_type, needs_c_storage_class)
-			self.go_type = "C.float"
+			self.go_to_c_type = "C.float"
+			self.go_type = "float32"
 
 		def get_type_glue(self, gen, module_name):
 			return ''
@@ -79,13 +107,13 @@ def bind_std(gen):
 		def from_c_call(self, out_var, expr, ownership):
 			return "float32(%s)" % (out_var)
 
-	gen.bind_type(GoFloatConverter('float32')).nobind = True	
-	gen.typedef('float', 'float32')
+	gen.bind_type(GoFloatConverter('float32'))
+	gen.bind_type(GoFloatConverter('float'))
 	
 	class GoBoolConverter(lang.go.GoTypeConverterCommon):
 		def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None, needs_c_storage_class=False):
 			super().__init__(type, to_c_storage_type, bound_name, from_c_storage_type, needs_c_storage_class)
-			self.go_type = "C.bool"
+			self.go_to_c_type = "C.bool"
 
 		def get_type_glue(self, gen, module_name):
 			return ''
