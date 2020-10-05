@@ -70,3 +70,32 @@ assert(e.n.v == 48)
 e.n.v = e.n.v / 2
 assert(e.n.v == 24)
 '''
+
+test_go = '''\
+package harfang
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	n := NewNestedStruct()
+	assert.Equal(t, n.Getv(), int32(8), "should be the same.")
+	n.Setv(n.Getv() - 4)
+	assert.Equal(t, n.Getv(), int32(4), "should be the same.")
+
+	//
+	e := NewEnclosingStruct()
+	assert.Equal(t, e.Getn().Getv(), int32(8), "should be the same.")
+	e.Getn().Setv(12)
+	assert.Equal(t, e.Getn().Getv(), int32(12), "should be the same.")
+	e.Getn().Setv(e.Getn().Getv() * 4)
+	assert.Equal(t, e.Getn().Getv(), int32(48), "should be the same.")
+	e.Getn().Setv(e.Getn().Getv() / 2)
+	assert.Equal(t, e.Getn().Getv(), int32(24), "should be the same.")
+
+}
+'''

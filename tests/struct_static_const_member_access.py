@@ -48,3 +48,22 @@ assert(v.v == 3)
 assert(my_test.simple_struct.i == 5)
 assert(my_test.simple_struct.s == "some string")
 '''
+
+test_go = '''\
+package harfang
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	v := NewSimpleStruct()
+	assert.Equal(t, v.Getv(), int32(3), "should be the same.")
+
+	assert.Equal(t, SimpleStructGeti(), int32(5), "should be the same.")
+	assert.Equal(t, SimpleStructGets(), "some string", "should be the same.")
+}
+'''

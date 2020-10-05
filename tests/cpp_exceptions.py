@@ -41,3 +41,7 @@ if pcall(my_test.get_int) then
 	assert(false) -- should not succeed, as an exception is thrown from C++
 end
 '''
+
+test_go = '''\
+package harfang
+'''
