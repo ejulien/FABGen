@@ -399,6 +399,9 @@ uint32_t %s(void* p) {
 
 		elif "carg" in val and hasattr(val["carg"].ctype, "ref") and any(s in val["carg"].ctype.ref for s in ["&"]):
 			retval += "*"
+		else: # cast to be sure
+			retval += f"({val['conv'].ctype})"
+
 		retval += retval_name
 		return src, retval
 
@@ -418,6 +421,8 @@ uint32_t %s(void* p) {
 				retval_boundname = clean_name_with_title(retval_boundname)
 
 				retval_name = f"{retval_boundname}{{h:{retval_name}}}\n"
+			elif val['conv'].bound_name in self._enums.keys():# if it's an enum
+				retval_name = f"{val['conv'].bound_name}({retval_name})"
 
 		# if val['conv'].is_type_class():
 		# 	retval_name = retval_name.title()
@@ -527,7 +532,11 @@ uint32_t %s(void* p) {
 				if "storage_ctype" in val and hasattr(val["storage_ctype"], "ref"):
 					arg_bound_name += "*" * (len(val["storage_ctype"].ref) - 1)
 			else:
-				arg_bound_name = f"{val['conv'].ctype} "
+				# check if it's an enum
+				if val['conv'].bound_name in self._enums.keys():
+					arg_bound_name = f"int "
+				else:
+					arg_bound_name = f"{val['conv'].ctype} "
 				
 		return arg_bound_name
 
@@ -556,6 +565,8 @@ uint32_t %s(void* p) {
 		# convert to c
 		if isinstance(internal_conv, GoPtrTypeConverter):
 			c_call = self.__arg_from_go_to_c({"conv": internal_conv}, "v", f"vToC")
+		elif internal_conv.bound_name in self._enums.keys():# if it's an enum
+			c_call = f"vToC := C.int(v)\n"
 		else:
 			c_call = internal_conv.to_c_call("v", f"vToC", internal_conv.ctype.is_pointer() or (hasattr(internal_conv.ctype, "ref") and any(s in internal_conv.ctype.ref for s in ["&", "*"])))
 		if c_call != "":
@@ -682,6 +693,8 @@ uint32_t %s(void* p) {
 				# convert to c
 				if isinstance(conv, GoPtrTypeConverter):
 					c_call = self.__arg_from_go_to_c({"conv": conv}, "v", f"vToC")
+				elif conv.bound_name in self._enums.keys():# if it's an enum
+					c_call = f"vToC := C.int(v)\n"
 				else:
 					c_call = conv.to_c_call("v", f"vToC", conv.ctype.is_pointer() or (hasattr(conv.ctype, "ref") and any(s in conv.ctype.ref for s in ["&", "*"])))
 				if c_call != "":
@@ -1219,6 +1232,11 @@ uint32_t %s(void* p) {
 			
 		go_h += 'typedef int WrapBool;\n'
 
+		# enum
+		for bound_name, enum in self._enums.items():
+			go_h += f"extern int Get{bound_name}(const int id);\n"
+
+		# write all typedef first
 		for conv in self._bound_types:
 			if conv.nobind:
 				continue
@@ -1226,6 +1244,13 @@ uint32_t %s(void* p) {
 			cleanBoundName = clean_name_with_title(conv.bound_name)
 			if conv.is_type_class():
 				go_h += f"typedef void* Wrap{cleanBoundName};\n"
+
+		# write the rest of the classes
+		for conv in self._bound_types:
+			if conv.nobind:
+				continue
+
+			cleanBoundName = clean_name_with_title(conv.bound_name)
 
 			if "sequence" in conv._features:
 				go_h += self.__extract_sequence(conv, is_in_header=True)
@@ -1265,10 +1290,6 @@ uint32_t %s(void* p) {
 									[base_class.methods for base_class in conv._bases])
 				
 			
-		# enum
-		for bound_name, enum in self._enums.items():
-			go_h += f"extern int Get{bound_name}(const int id);\n"
-
 		# functions
 		for func in self._bound_functions:
 			go_h += self.__extract_method("", None, func, name=func["name"], is_global=True, is_in_header=True)
@@ -1293,6 +1314,15 @@ uint32_t %s(void* p) {
 
 		go_c += self._source
 
+		# enum
+		for bound_name, enum in self._enums.items():
+			enum_vars = []
+			for name, value in enum.items():
+				enum_vars.append(f"(int){value}")
+			go_c += f"static const int Wrap{bound_name} [] = {{ {', '.join(enum_vars)} }};\n"
+			go_c += f"int Get{bound_name}(const int id) {{ return Wrap{bound_name}[id];}}\n"
+
+		#  classes
 		for conv in self._bound_types:
 			if conv.nobind:
 				continue
@@ -1341,14 +1371,6 @@ uint32_t %s(void* p) {
 			go_c += extract_conv_and_bases(conv.methods, \
 									lambda method: self.__extract_method(conv.bound_name, conv, method), \
 									[base_class.methods for base_class in conv._bases])
-
-		# enum
-		for bound_name, enum in self._enums.items():
-			enum_vars = []
-			for name, value in enum.items():
-				enum_vars.append(f"(int){value}")
-			go_c += f"static const int Wrap{bound_name} [] = {{ {', '.join(enum_vars)} }};\n"
-			go_c += f"int Get{bound_name}(const int id) {{ return Wrap{bound_name}[id];}}\n"
 
 		# functions
 		for func in self._bound_functions:
