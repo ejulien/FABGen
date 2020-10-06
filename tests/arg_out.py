@@ -89,6 +89,7 @@ package harfang
 
 import (
 	"testing"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -97,26 +98,25 @@ func Test(t *testing.T) {
 	a := NewA()
 	defer a.Free()
 	a = *ModifyInOutStruct(&a)
-	assert.Equal(t, a.Getv(), 3, "should be the same.")
-	
+	assert.Equal(t, a.Getv(), int32(3), "should be the same.")
+
 	c, b := OutValuesFunctionCall(2, 3)
-	assert.Equal(t, *c, 16, "should be the same.")
-	assert.Equal(t, *b, 42, "should be the same.")
+	assert.Equal(t, *c, int32(16), "should be the same.")
+	assert.Equal(t, *b, int32(42), "should be the same.")
 
 	r, c, b := OutValuesFunctionCallRval0(2)
-	assert.Equal(t, r, 2, "should be the same.")
-	assert.Equal(t, *c, 16, "should be the same.")
-	assert.Equal(t, *b, 28, "should be the same.")
+	assert.Equal(t, r, int32(2), "should be the same.")
+	assert.Equal(t, *c, int32(16), "should be the same.")
+	assert.Equal(t, *b, int32(28), "should be the same.")
 
 	r, c, b = OutValuesFunctionCallRval1(2, 2)
-	assert.Equal(t, r, 4, "should be the same.")
-	assert.Equal(t, *c, 16, "should be the same.")
-	assert.Equal(t, *b, 28, "should be the same.")
+	assert.Equal(t, r, int32(4), "should be the same.")
+	assert.Equal(t, *c, int32(16), "should be the same.")
+	assert.Equal(t, *b, int32(28), "should be the same.")
 
 	w := int32(5)
 	rb, v := InOutValue(&w)
-	assert.Equal(t, rb, true, "should be the same.")
-	assert.Equal(t, *v, 20, "should be the same.")
-	
+	assert.True(t, rb, "should be the same.")
+	assert.Equal(t, *v, int32(20), "should be the same.")
 }
 '''
