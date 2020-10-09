@@ -1,4 +1,4 @@
-func castBool(value bool) (cast C.WrapBool) {
+/*func castBool(value bool) (cast C.WrapBool) {
 	if value {
 		cast = 1
 	}
@@ -32,7 +32,7 @@ func wrapInt(goValue *int32) (wrapped *C.int, finisher func()) {
 		finisher = func() {}
 	}
 	return
-}
+}*/
 
 func wrapFloat(goValue *float32) (wrapped *C.float, finisher func()) {
 	if goValue != nil {

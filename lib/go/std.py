@@ -100,7 +100,7 @@ def bind_std(gen):
 
 		def to_c_call(self, in_var, out_var_p, is_pointer):
 			if is_pointer:
-				out = f"{out_var_p.replace('&', '_')} := (*C.WrapBool)(unsafe.Pointer({in_var}))\n"
+				out = f"{out_var_p.replace('&', '_')} := (*C.bool)(unsafe.Pointer({in_var}))\n"
 			else:
 				out = f"{out_var_p.replace('&', '_')} := C.bool({in_var})\n"
 			return out

@@ -105,10 +105,9 @@ if args.lua:
 if args.go:
 	go_gen = lang.go.GoGenerator()
 	output_binding(setup_generator(go_gen))
-	# for path, src in go_gen.get_output().items():
-	# 	path = os.path.join(args.out, args.out_prefix + path)
-	# 	#os.system("go fmt harfang")
-	# 	os.system(f"clang-format -i \"{path}\"")
+	os.chdir(args.out)
+	os.system("go fmt harfang")
+	os.system(f"clang-format -i \"{os.path.join(args.out, 'wrapper.cpp')}\" \"{os.path.join(args.out, 'wrapper.h')}\"")
 
 if args.xml:
 	output_binding(setup_generator(lang.xml.XMLGenerator()))
