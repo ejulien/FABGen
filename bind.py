@@ -107,7 +107,7 @@ if args.go:
 	output_binding(setup_generator(go_gen))
 	os.chdir(args.out)
 	os.system("go fmt harfang")
-	os.system(f"clang-format -i \"{os.path.join(args.out, 'wrapper.cpp')}\" \"{os.path.join(args.out, 'wrapper.h')}\"")
+	os.system("clang-format -i wrapper.cpp wrapper.h")
 
 if args.xml:
 	output_binding(setup_generator(lang.xml.XMLGenerator()))

@@ -809,33 +809,44 @@ uint32_t %s(void* p) {
 			name = bound_name
 
 		name = name.replace(":", "")
+		name = clean_name_with_title(name)
 
 		arg_bound_name = self.__get_arg_bound_name_to_go({"conv": conv})
 
 		def create_get_set(do_static):
 			# GET
-			go = f"// "
-			if do_static:
-				go += f"{clean_name_with_title(classname)}"
-			go += f"Get{name} ...\n" \
-					f"func "
-			if do_static:
-				go += f"{clean_name_with_title(classname)}"
+			go = ""
+
+			# if it's a const, just write it once
+			if is_global and member["ctype"].const:
+				go += f"// {name} ...\n"
+				if self.__get_is_type_class_or_pointer_with_class(conv):
+					go += f"var {clean_name(name)} =  {arg_bound_name}{{h:C.Wrap{clean_name_with_title(classname)}Get{name}()}}\n"
+				else:
+					go += f"var {clean_name(name)} =  {arg_bound_name}(C.Wrap{clean_name_with_title(classname)}Get{name}())\n"
 			else:
-				go += f"(pointer {clean_name_with_title(classname)}) "
+				go += "// "
+				if do_static:
+					go += f"{clean_name_with_title(classname)}"
+				go += f"Get{name} ...\n"
+				go += f"func "
+				if do_static:
+					go += f"{clean_name_with_title(classname)}"
+				else:
+					go += f"(pointer {clean_name_with_title(classname)}) "
 
-			go += f"Get{name}() {arg_bound_name} {{\n"
-			go += f"v := C.Wrap{clean_name_with_title(classname)}Get{name}("
-			if not static and not is_global:
-				go += "pointer.h"
-			go += ")\n"
+				go += f"Get{name}() {arg_bound_name} {{\n"
+				go += f"v := C.Wrap{clean_name_with_title(classname)}Get{name}("
+				if not static and not is_global:
+					go += "pointer.h"
+				go += ")\n"
 
-			# check if need convert from c
-			src, retval_go = self.__arg_from_c_to_go({"conv": conv}, "v")
-			go += src
-			go += f"return {retval_go}\n"
+				# check if need convert from c
+				src, retval_go = self.__arg_from_c_to_go({"conv": conv}, "v")
+				go += src
+				go += f"return {retval_go}\n"
 
-			go += "}\n"
+				go += "}\n"
 
 			# SET
 			# add set only if the member is not const
@@ -885,6 +896,7 @@ uint32_t %s(void* p) {
 			bound_name = str(member["name"])
 		if name is None:
 			name = bound_name
+		name = clean_name_with_title(name)
 
 		c_name = str(member["name"])
 
@@ -901,6 +913,9 @@ uint32_t %s(void* p) {
 		c_arg_bound_name = c_arg_bound_name.replace("const const", "const")
 
 		# GET
+		if is_in_header:
+			go += "extern "
+
 		go += f"{c_arg_bound_name} Wrap{cleanClassname}Get{name.replace(':', '')}("
 		if not static and not is_global:
 			go += f"Wrap{cleanClassname} h"
@@ -935,6 +950,9 @@ uint32_t %s(void* p) {
 		# SET
 		# add set only if the member is not const
 		if not member["ctype"].const:
+			if is_in_header:
+				go += "extern "
+
 			go += f"void Wrap{cleanClassname}Set{name.replace(':', '')}("
 			if not static and not is_global:
 				go += f"Wrap{cleanClassname} h, "
@@ -1563,11 +1581,11 @@ uint32_t %s(void* p) {
 		self.go_c = go_c
 
 		# .go #TODO REMOVE SPECIAL FLAG TO BUILD HARFANG
+		#'// #cgo LDFLAGS: -lstdc++ -L"C:/boulot/works/nengine_gamestart/moteur_harfang_bgfx/build/hg_go/Release" -lhg_go\n' \
 		go_bind = 'package harfang\n' \
 				'// #include "wrapper.h"\n' \
 				'// #cgo CFLAGS: -I . -Wall -Wno-unused-variable -Wno-unused-function\n' \
 				'// #cgo CXXFLAGS: -std=c++14\n' \
-				#'// #cgo LDFLAGS: -lstdc++ -L"C:/boulot/works/nengine_gamestart/moteur_harfang_bgfx/build/hg_go/Release" -lhg_go\n' \
 				'// #cgo LDFLAGS: -lstdc++ -L"C:/boulot/works/nengine_gamestart/moteur_harfang_bgfx/build/hg_go/Debug" -lhg_god\n' \
 				'import "C"\n\n' \
 				'import (\n'
@@ -1655,6 +1673,7 @@ uint32_t %s(void* p) {
 
 		# enum
 		for bound_name, enum in self._enums.items():
+			go_bind += f"// {bound_name} ...\n"
 			enum_conv = self._get_conv_from_bound_name(bound_name)
 			if enum_conv is not None and hasattr(enum_conv, "go_type") and enum_conv.go_type is not None:
 				go_bind += f"type {bound_name} {enum_conv.go_type}\n"
@@ -1662,6 +1681,7 @@ uint32_t %s(void* p) {
 				go_bind += f"type {bound_name} int\n"
 			go_bind += "var (\n"
 			for id, name in enumerate(enum.keys()):
+				go_bind += f"	// {clean_name(name)} ...\n"
 				go_bind += f"	{clean_name(name)} =  {bound_name}(C.Get{bound_name}({id}))\n"
 			go_bind += ")\n"
 
