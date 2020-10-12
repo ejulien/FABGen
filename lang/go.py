@@ -417,7 +417,14 @@ uint32_t %s(void* p) {
 		src = ""
 		# check if there is special slice to convert
 		if isinstance(val["conv"], lib.go.stl.GoSliceToStdVectorConverter):
-			src += f"std::vector<{val['conv'].T_conv.ctype}> {retval_name}(({val['conv'].T_conv.ctype}*){retval_name}ToCBuf, ({val['conv'].T_conv.ctype}*){retval_name}ToCBuf + {retval_name}ToCSize);\n"
+			# special if string or const char*
+			if "GoStringConverter" in str(val["conv"].T_conv): # or \
+				# "GoConstCharPtrConverter" in str(val["conv"].T_conv):
+				src += f"std::vector<{val['conv'].T_conv.ctype}> {retval_name};\n"\
+					f"for(int i_counter_c=0; i_counter_c < {retval_name}ToCSize; ++i_counter_c)\n"\
+					f"	{retval_name}.push_back(std::string({retval_name}ToCBuf[i_counter_c]));\n"
+			else:
+				src += f"std::vector<{val['conv'].T_conv.ctype}> {retval_name}(({val['conv'].T_conv.ctype}*){retval_name}ToCBuf, ({val['conv'].T_conv.ctype}*){retval_name}ToCBuf + {retval_name}ToCSize);\n"
 
 		retval = ""
 		# very special case, std::string &
@@ -561,10 +568,21 @@ uint32_t %s(void* p) {
 			c_call = f"{clean_name(arg_name)}ToC := {arg_bound_name}({clean_name(arg_name)})\n"
 		# special Slice
 		elif isinstance(val["conv"], lib.go.stl.GoSliceToStdVectorConverter):
-			c_call = f"{clean_name(arg_name)}ToC := (*reflect.SliceHeader)(unsafe.Pointer(&{clean_name(arg_name)}))\n"
-			c_call += f"{clean_name(arg_name)}ToCSize := C.size_t({clean_name(arg_name)}ToC.Len)\n"
+			c_call = ""
+			slice_name = clean_name(arg_name)
+			# special if string or const char*
+			if "GoConstCharPtrConverter" in str(val["conv"].T_conv) or \
+				"GoStringConverter" in str(val["conv"].T_conv):	# TODO check destroy pointer C.CString
+				c_call += f"{slice_name}SpecialString := []*C.char{{}}\n"
+				c_call += f"for _, s := range {slice_name} {{\n"
+				c_call += f"	{slice_name}SpecialString = append({slice_name}SpecialString, C.CString(s))\n"
+				c_call += f"}}\n"
+				slice_name = f"{slice_name}SpecialString"
 
-			c_call += convert_got_to_c({"conv": val["conv"].T_conv}, f"{clean_name(arg_name)}ToC.Data", f"{clean_name(arg_name)}ToCBuf", 1)
+			c_call += f"{slice_name}ToC := (*reflect.SliceHeader)(unsafe.Pointer(&{slice_name}))\n"
+			c_call += f"{slice_name}ToCSize := C.size_t({slice_name}ToC.Len)\n"
+
+			c_call += convert_got_to_c({"conv": val["conv"].T_conv}, f"{slice_name}ToC.Data", f"{slice_name}ToCBuf", 1)
 		else:
 			how_many_stars = 0
 			# compute how many stars (to handle specifically the const char *)
@@ -1036,10 +1054,10 @@ uint32_t %s(void* p) {
 				go += self.__get_arg_bound_name_to_go(proto["rval"])
 				has_previous_ret_arg = True
 			
+			# only add arg output, NOT ARG IN OUT (pass them by pointer, not return them)
 			if len(proto['args']):
 				for arg in proto['args']:
-					if ('arg_out' in proto['features'] and str(arg['carg'].name) in proto['features']['arg_out']) or \
-						('arg_in_out' in proto['features'] and str(arg['carg'].name) in proto['features']['arg_in_out']):
+					if 'arg_out' in proto['features'] and str(arg['carg'].name) in proto['features']['arg_out']:
 						if has_previous_ret_arg:
 							go += " ,"
 
@@ -1100,7 +1118,11 @@ uint32_t %s(void* p) {
 
 					# special Slice
 					if isinstance(arg["conv"], lib.go.stl.GoSliceToStdVectorConverter):
-						go += f"{clean_name(arg['carg'].name)}ToCSize, {clean_name(arg['carg'].name)}ToCBuf"
+						slice_name = clean_name(arg['carg'].name)
+						if "GoConstCharPtrConverter" in str(arg["conv"].T_conv) or \
+							"GoStringConverter" in str(arg["conv"].T_conv):	
+							slice_name = f"{slice_name}SpecialString"
+						go += f"{slice_name}ToCSize, {slice_name}ToCBuf"
 					else:
 						# if (arg['carg'].ctype.is_pointer() or (hasattr(arg['carg'].ctype, 'ref') and arg['carg'].ctype.ref == "&")) and \
 						# 	arg['conv'].bound_name != "string" and not arg['conv'].is_type_class():
@@ -1117,11 +1139,10 @@ uint32_t %s(void* p) {
 				ret_args.append(retval_go)
 
 			# return arg out
-			if "arg_out" in proto["features"] or "arg_in_out" in proto["features"]:
+			# only add arg output, NOT ARG IN OUT (pass them by pointer, not return them)
+			if "arg_out" in proto["features"]:
 				for arg in proto['args']:
-					if ('arg_out' in proto['features'] and str(arg['carg'].name) in proto['features']['arg_out']) or \
-						('arg_in_out' in proto['features'] and str(arg['carg'].name) in proto['features']['arg_in_out']):
-						
+					if 'arg_out' in proto['features'] and str(arg['carg'].name) in proto['features']['arg_out']:
 						# add name
 						# in var name if it's in arg in out
 						if "arg_in_out" in proto["features"] and str(arg["carg"].name) in proto["features"]["arg_in_out"]:
@@ -1584,8 +1605,8 @@ uint32_t %s(void* p) {
 		#'// #cgo LDFLAGS: -lstdc++ -L"C:/boulot/works/nengine_gamestart/moteur_harfang_bgfx/build/hg_go/Release" -lhg_go\n' \
 		go_bind = 'package harfang\n' \
 				'// #include "wrapper.h"\n' \
-				'// #cgo CFLAGS: -I . -Wall -Wno-unused-variable -Wno-unused-function\n' \
-				'// #cgo CXXFLAGS: -std=c++14\n' \
+				'// #cgo CFLAGS: -I . -Wall -g3 -Wno-unused-variable -Wno-unused-function\n' \
+				'// #cgo CXXFLAGS: -std=c++14 -g3\n' \
 				'// #cgo LDFLAGS: -lstdc++ -L"C:/boulot/works/nengine_gamestart/moteur_harfang_bgfx/build/hg_go/Debug" -lhg_god\n' \
 				'import "C"\n\n' \
 				'import (\n'
