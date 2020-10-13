@@ -514,9 +514,8 @@ uint32_t %s(void* p) {
 				retval_boundname = val['conv'].bound_name
 				retval_boundname = clean_name_with_title(retval_boundname)
 
-				src += f"var {retval_name}GO *{retval_boundname}\n" \
+				src += f"var {retval_name}GO {retval_boundname}\n" \
 						f"if {retval_name} != nil {{\n" \
-						f"	{retval_name}GO = new({retval_boundname})\n" \
 						f"	{retval_name}GO.h = {retval_name}\n" \
 						"}\n"
 				retval_name = f"{retval_name}GO"
@@ -650,7 +649,9 @@ uint32_t %s(void* p) {
 			if "GoConstCharPtrConverter" in str(val["conv"]):
 				stars = stars[1:]
 
-			arg_bound_name = stars + arg_bound_name
+			# Harfang class doesn't need to be a pointer in go (because it's a struct containing a wrap pointer C)
+			if not self.__get_is_type_class_or_pointer_with_class(val["conv"]):
+				arg_bound_name = stars + arg_bound_name
 
 		if val['conv'].is_type_class() or \
 			isinstance(val['conv'], lib.go.stl.GoSliceToStdVectorConverter) or \
@@ -1075,9 +1076,24 @@ uint32_t %s(void* p) {
 					if "arg_out" in proto["features"] and str(arg["carg"].name) in proto["features"]["arg_out"]:
 						arg_bound_name = self.__get_arg_bound_name_to_go(arg)
 
-						if (arg["carg"].ctype.is_pointer() or (hasattr(arg["carg"].ctype, "ref") and arg["carg"].ctype.ref == "&")) and arg["conv"].bound_name != "string":
-							arg_bound_name = f"new({arg_bound_name[1:]})"
-							go += f"{clean_name(arg['carg'].name)} := {arg_bound_name}\n"
+						if arg["carg"].ctype.is_pointer() or (hasattr(arg["carg"].ctype, "ref") and arg["carg"].ctype.ref == "&"):
+							arg_bound_name = f"new{arg_bound_name}"
+							# find the constructor without arg
+							for arg_conv in self._bound_types:
+								if str(arg_conv.ctype) == str(arg["conv"].ctype) and hasattr(arg_conv, "constructor") and arg_conv.constructor is not None:
+									proto_args = self._build_protos(arg_conv.constructor["protos"])
+									break
+							else:
+								proto_args = None
+							
+							id_proto_without_arg = ""
+							if proto_args is not None:
+								for id_proto_arg, proto_arg in enumerate(proto_args):
+									if len(proto_arg['args']) <= 0:
+										id_proto_without_arg = str(id_proto_arg)
+										break
+
+							go += f"{clean_name(arg['carg'].name)} := {arg_bound_name}{id_proto_without_arg}()\n"
 						else:
 							go += f"var {clean_name(arg['carg'].name)} {arg_bound_name}\n"
 
@@ -1144,17 +1160,16 @@ uint32_t %s(void* p) {
 				for arg in proto['args']:
 					if 'arg_out' in proto['features'] and str(arg['carg'].name) in proto['features']['arg_out']:
 						# add name
-						# in var name if it's in arg in out
-						if "arg_in_out" in proto["features"] and str(arg["carg"].name) in proto["features"]["arg_in_out"]:
-							retval_go = clean_name(str(arg["carg"].name))
-						else:
-							retval_go = clean_name(str(arg["carg"].name)) + "ToC"
+						retval_go = clean_name(str(arg["carg"].name)) + "ToC"
+						# if it's a arg out and a class, don't convert because it was already done upper
+						if not self.__get_is_type_class_or_pointer_with_class(arg["conv"]):
 							src, retval_go = self.__arg_from_c_to_go(arg, retval_go)
 							go += src
 							
 						ret_args.append(retval_go)
 
-			go += "return "
+			if len(ret_args) > 0:
+				go += "return "
 			has_previous_arg = False
 			for retarg in ret_args:
 				if has_previous_arg:
@@ -1605,9 +1620,9 @@ uint32_t %s(void* p) {
 		#'// #cgo LDFLAGS: -lstdc++ -L"C:/boulot/works/nengine_gamestart/moteur_harfang_bgfx/build/hg_go/Release" -lhg_go\n' \
 		go_bind = 'package harfang\n' \
 				'// #include "wrapper.h"\n' \
-				'// #cgo CFLAGS: -I . -Wall -g3 -Wno-unused-variable -Wno-unused-function\n' \
-				'// #cgo CXXFLAGS: -std=c++14 -g3\n' \
-				'// #cgo LDFLAGS: -lstdc++ -L"C:/boulot/works/nengine_gamestart/moteur_harfang_bgfx/build/hg_go/Debug" -lhg_god\n' \
+				'// #cgo CFLAGS: -I . -Wall -Wno-unused-variable -Wno-unused-function\n' \
+				'// #cgo CXXFLAGS: -std=c++14\n' \
+				'// #cgo LDFLAGS: -lstdc++ -L. -lhg_god\n' \
 				'import "C"\n\n' \
 				'import (\n'
 
