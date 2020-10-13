@@ -1,38 +1,3 @@
-/*func castBool(value bool) (cast C.WrapBool) {
-	if value {
-		cast = 1
-	}
-	return
-}
-
-func wrapBool(goValue *bool) (wrapped *C.WrapBool, finisher func()) {
-	if goValue != nil {
-		var cValue C.WrapBool
-		if *goValue {
-			cValue = 1
-		}
-		wrapped = &cValue
-		finisher = func() {
-			*goValue = cValue != 0
-		}
-	} else {
-		finisher = func() {}
-	}
-	return
-}
-
-func wrapInt(goValue *int32) (wrapped *C.int, finisher func()) {
-	if goValue != nil {
-		cValue := C.int(*goValue)
-		wrapped = &cValue
-		finisher = func() {
-			*goValue = int32(cValue)
-		}
-	} else {
-		finisher = func() {}
-	}
-	return
-}*/
 
 func wrapFloat(goValue *float32) (wrapped *C.float, finisher func()) {
 	if goValue != nil {

@@ -423,6 +423,11 @@ uint32_t %s(void* p) {
 				src += f"std::vector<{val['conv'].T_conv.ctype}> {retval_name};\n"\
 					f"for(int i_counter_c=0; i_counter_c < {retval_name}ToCSize; ++i_counter_c)\n"\
 					f"	{retval_name}.push_back(std::string({retval_name}ToCBuf[i_counter_c]));\n"
+			# slice from class
+			elif self.__get_is_type_class_or_pointer_with_class(val["conv"].T_conv):
+				src += f"std::vector<{val['conv'].T_conv.ctype}> {retval_name};\n"\
+					f"for(int i_counter_c=0; i_counter_c < {retval_name}ToCSize; ++i_counter_c)\n"\
+					f"	{retval_name}.push_back(*(({val['conv'].T_conv.ctype}**){retval_name}ToCBuf)[i_counter_c]);\n"
 			else:
 				src += f"std::vector<{val['conv'].T_conv.ctype}> {retval_name}(({val['conv'].T_conv.ctype}*){retval_name}ToCBuf, ({val['conv'].T_conv.ctype}*){retval_name}ToCBuf + {retval_name}ToCSize);\n"
 
@@ -577,6 +582,14 @@ uint32_t %s(void* p) {
 				c_call += f"	{slice_name}SpecialString = append({slice_name}SpecialString, C.CString(s))\n"
 				c_call += f"}}\n"
 				slice_name = f"{slice_name}SpecialString"
+
+			# if it's a class, get a list of pointer to c class
+			elif self.__get_is_type_class_or_pointer_with_class(val["conv"].T_conv):
+				c_call += f"{slice_name}Pointer := []C.Wrap{clean_name_with_title(val['conv'].T_conv.bound_name)}{{}}\n"
+				c_call += f"for _, s := range {slice_name} {{\n"
+				c_call += f"	{slice_name}Pointer = append({slice_name}Pointer, s.h)\n"
+				c_call += f"}}\n"
+				slice_name = f"{slice_name}Pointer"
 
 			c_call += f"{slice_name}ToC := (*reflect.SliceHeader)(unsafe.Pointer(&{slice_name}))\n"
 			c_call += f"{slice_name}ToCSize := C.size_t({slice_name}ToC.Len)\n"
@@ -1077,23 +1090,28 @@ uint32_t %s(void* p) {
 						arg_bound_name = self.__get_arg_bound_name_to_go(arg)
 
 						if arg["carg"].ctype.is_pointer() or (hasattr(arg["carg"].ctype, "ref") and arg["carg"].ctype.ref == "&"):
-							arg_bound_name = f"new{arg_bound_name}"
-							# find the constructor without arg
-							for arg_conv in self._bound_types:
-								if str(arg_conv.ctype) == str(arg["conv"].ctype) and hasattr(arg_conv, "constructor") and arg_conv.constructor is not None:
-									proto_args = self._build_protos(arg_conv.constructor["protos"])
-									break
-							else:
-								proto_args = None
-							
-							id_proto_without_arg = ""
-							if proto_args is not None:
-								for id_proto_arg, proto_arg in enumerate(proto_args):
-									if len(proto_arg['args']) <= 0:
-										id_proto_without_arg = str(id_proto_arg)
+							# if it's a arg out and a class
+							if self.__get_is_type_class_or_pointer_with_class(arg["conv"]):
+								arg_bound_name = clean_name_with_title(f"new_{arg_bound_name}")
+								# find the constructor without arg
+								for arg_conv in self._bound_types:
+									if str(arg_conv.ctype) == str(arg["conv"].ctype) and hasattr(arg_conv, "constructor") and arg_conv.constructor is not None:
+										proto_args = self._build_protos(arg_conv.constructor["protos"])
 										break
+								else:
+									proto_args = None
+								
+								id_proto_without_arg = ""
+								if proto_args is not None and len(proto_args) > 1:
+									for id_proto_arg, proto_arg in enumerate(proto_args):
+										if len(proto_arg['args']) <= 0:
+											id_proto_without_arg = str(id_proto_arg)
+											break
 
-							go += f"{clean_name(arg['carg'].name)} := {arg_bound_name}{id_proto_without_arg}()\n"
+								go += f"{clean_name(arg['carg'].name)} := {arg_bound_name}{id_proto_without_arg}()\n"
+							else:
+								# not a class, remove the * and make a new
+								go += f"{clean_name(arg['carg'].name)} := new({arg_bound_name.replace('*', '')})\n"
 						else:
 							go += f"var {clean_name(arg['carg'].name)} {arg_bound_name}\n"
 
@@ -1138,6 +1156,9 @@ uint32_t %s(void* p) {
 						if "GoConstCharPtrConverter" in str(arg["conv"].T_conv) or \
 							"GoStringConverter" in str(arg["conv"].T_conv):	
 							slice_name = f"{slice_name}SpecialString"
+						# if it's a class, get a list of pointer to c class
+						elif self.__get_is_type_class_or_pointer_with_class(arg["conv"].T_conv):
+							slice_name = f"{slice_name}Pointer"
 						go += f"{slice_name}ToCSize, {slice_name}ToCBuf"
 					else:
 						# if (arg['carg'].ctype.is_pointer() or (hasattr(arg['carg'].ctype, 'ref') and arg['carg'].ctype.ref == "&")) and \
@@ -1160,9 +1181,10 @@ uint32_t %s(void* p) {
 				for arg in proto['args']:
 					if 'arg_out' in proto['features'] and str(arg['carg'].name) in proto['features']['arg_out']:
 						# add name
-						retval_go = clean_name(str(arg["carg"].name)) + "ToC"
+						retval_go = clean_name(str(arg["carg"].name))
 						# if it's a arg out and a class, don't convert because it was already done upper
 						if not self.__get_is_type_class_or_pointer_with_class(arg["conv"]):
+							retval_go = clean_name(str(arg["carg"].name)) + "ToC"
 							src, retval_go = self.__arg_from_c_to_go(arg, retval_go)
 							go += src
 							
@@ -1179,6 +1201,10 @@ uint32_t %s(void* p) {
 					go += ", "
 				has_previous_arg = True
 				go += retarg
+				
+			# check and remove \n just in case
+			if go[-1] == "\n":
+				go = go[:-1]
 			go += "\n}\n"
 
 		return go
@@ -1353,6 +1379,35 @@ uint32_t %s(void* p) {
 
 		return go
 
+	# VERY SPECIAL
+	# check in every methods, 
+	# if one arg is only out and if it's a class, if there is a constructor with no arg
+	def _check_arg_out_add_constructor_if_needed(self, method):
+		protos = self._build_protos(method["protos"])
+		for proto in protos:
+			# convert arg in to c
+			if len(proto["args"]):
+				for arg in proto["args"]:
+					# if arg out only, declare this value
+					if "arg_out" in proto["features"] and str(arg["carg"].name) in proto["features"]["arg_out"]:
+						if arg["carg"].ctype.is_pointer() or (hasattr(arg["carg"].ctype, "ref") and arg["carg"].ctype.ref == "&"):
+							# if it's a arg out and a class
+							if self.__get_is_type_class_or_pointer_with_class(arg["conv"]):
+								# find the constructor without arg
+								type_conv = None
+								for arg_conv in self._bound_types:
+									if str(arg_conv.ctype) == str(arg["conv"].ctype):
+										type_conv = arg_conv
+										if hasattr(arg_conv, "constructor") and arg_conv.constructor is not None:
+											proto_args = self._build_protos(arg_conv.constructor["protos"])
+											break
+								else:
+									proto_args = None
+								
+								# if no proto constructor with no args, add one
+								if proto_args is None and type_conv is not None:
+									self.bind_constructor(type_conv, [])
+
 	def finalize(self):
 
 		# add class global
@@ -1394,9 +1449,21 @@ uint32_t %s(void* p) {
 					else:
 						self.bind_method(conv, "Equal", "bool", [f"{conv.bound_name} *b"], {"route": route_lambda(f"_{conv.bound_name}_Equal")})
 
+				# VERY SPECIAL
+				# check in every methods, 
+				# if one arg is only out and if it's a class, if there is a constructor with no arg
+				for method in conv.static_methods+conv.methods:	
+					self._check_arg_out_add_constructor_if_needed(method)
+
 			# add down cast
 			for base in conv._bases:
 				self.add_cast(base, conv, lambda in_var, out_var: "%s = (%s *)((%s *)%s);\n" % (out_var, conv.ctype, base.ctype, in_var))
+
+		# VERY SPECIAL
+		# check in every methods, 
+		# if one arg is only out and if it's a class, if there is a constructor with no arg
+		for func in self._FABGen__function_declarations.values():
+			self._check_arg_out_add_constructor_if_needed(func)
 
 		super().finalize()
 
@@ -1622,7 +1689,7 @@ uint32_t %s(void* p) {
 				'// #include "wrapper.h"\n' \
 				'// #cgo CFLAGS: -I . -Wall -Wno-unused-variable -Wno-unused-function\n' \
 				'// #cgo CXXFLAGS: -std=c++14\n' \
-				'// #cgo LDFLAGS: -lstdc++ -L. -lhg_god\n' \
+				'// #cgo LDFLAGS: -lstdc++ -L. -lhg_go\n' \
 				'import "C"\n\n' \
 				'import (\n'
 
@@ -1689,6 +1756,7 @@ uint32_t %s(void* p) {
 				f"}}\n"
 
 				# runtime.SetFinalizer(funcret, func(ctx *Ret) { C.free(ctx.bufptr) })
+
 			# arithmetic operators
 			go_bind += extract_conv_and_bases(conv.arithmetic_ops, \
 									lambda arithmetic: self.__extract_method_go(conv.bound_name, conv, arithmetic, bound_name='operator_' + gen.get_clean_symbol_name(arithmetic['op'])), \
