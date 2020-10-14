@@ -85,7 +85,7 @@ assert(v == 20)
 '''
 
 test_go = '''\
-package harfang
+package mytest
 
 import (
 	"testing"
@@ -97,8 +97,8 @@ import (
 func Test(t *testing.T) {
 	a := NewA()
 	defer a.Free()
-	a = *ModifyInOutStruct(&a)
-	assert.Equal(t, a.Getv(), int32(3), "should be the same.")
+	ModifyInOutStruct(a)
+	assert.Equal(t, a.GetV(), int32(3), "should be the same.")
 
 	c, b := OutValuesFunctionCall(2, 3)
 	assert.Equal(t, *c, int32(16), "should be the same.")
@@ -115,8 +115,8 @@ func Test(t *testing.T) {
 	assert.Equal(t, *b, int32(28), "should be the same.")
 
 	w := int32(5)
-	rb, v := InOutValue(&w)
+	rb := InOutValue(&w)
 	assert.True(t, rb, "should be the same.")
-	assert.Equal(t, *v, int32(20), "should be the same.")
+	assert.Equal(t, w, int32(20), "should be the same.")
 }
 '''

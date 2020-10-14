@@ -30,7 +30,7 @@ assert(v == nil)
 '''
 
 test_go = '''\
-package harfang
+package mytest
 
 import (
 	"testing"

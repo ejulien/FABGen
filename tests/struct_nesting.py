@@ -72,7 +72,7 @@ assert(e.n.v == 24)
 '''
 
 test_go = '''\
-package harfang
+package mytest
 
 import (
 	"testing"
@@ -83,19 +83,18 @@ import (
 // Test ...
 func Test(t *testing.T) {
 	n := NewNestedStruct()
-	assert.Equal(t, n.Getv(), int32(8), "should be the same.")
-	n.Setv(n.Getv() - 4)
-	assert.Equal(t, n.Getv(), int32(4), "should be the same.")
+	assert.Equal(t, n.GetV(), int32(8), "should be the same.")
+	n.SetV(n.GetV() - 4)
+	assert.Equal(t, n.GetV(), int32(4), "should be the same.")
 
 	//
 	e := NewEnclosingStruct()
-	assert.Equal(t, e.Getn().Getv(), int32(8), "should be the same.")
-	e.Getn().Setv(12)
-	assert.Equal(t, e.Getn().Getv(), int32(12), "should be the same.")
-	e.Getn().Setv(e.Getn().Getv() * 4)
-	assert.Equal(t, e.Getn().Getv(), int32(48), "should be the same.")
-	e.Getn().Setv(e.Getn().Getv() / 2)
-	assert.Equal(t, e.Getn().Getv(), int32(24), "should be the same.")
-
+	assert.Equal(t, e.GetN().GetV(), int32(8), "should be the same.")
+	e.GetN().SetV(12)
+	assert.Equal(t, e.GetN().GetV(), int32(12), "should be the same.")
+	e.GetN().SetV(e.GetN().GetV() * 4)
+	assert.Equal(t, e.GetN().GetV(), int32(48), "should be the same.")
+	e.GetN().SetV(e.GetN().GetV() / 2)
+	assert.Equal(t, e.GetN().GetV(), int32(24), "should be the same.")
 }
 '''

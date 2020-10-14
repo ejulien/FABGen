@@ -62,7 +62,7 @@ assert(s.c, 2)
 '''
 
 test_go = '''\
-package harfang
+package mytest
 
 import (
 	"testing"
@@ -74,16 +74,16 @@ import (
 func Test(t *testing.T) {
 	s := NewSimpleStruct()
 
-	assert.Equal(t, s.Geta(), int32(3), "should be the same.")
-	assert.Equal(t, s.Getb(), int32(11), "should be the same.")
-	assert.Equal(t, s.Getc(), int32(1), "should be the same.")
+	assert.Equal(t, s.GetA(), int32(3), "should be the same.")
+	assert.Equal(t, s.GetB(), int32(11), "should be the same.")
+	assert.Equal(t, s.GetC(), int32(1), "should be the same.")
 
-	s.Seta(1)
-	s.Setb(7)
-	s.Setc(2)
+	s.SetA(1)
+	s.SetB(7)
+	s.SetC(2)
 
-	assert.Equal(t, s.Geta(), int32(1), "should be the same.")
-	assert.Equal(t, s.Getb(), int32(7), "should be the same.")
-	assert.Equal(t, s.Getc(), int32(2), "should be the same.")
+	assert.Equal(t, s.GetA(), int32(1), "should be the same.")
+	assert.Equal(t, s.GetB(), int32(7), "should be the same.")
+	assert.Equal(t, s.GetC(), int32(2), "should be the same.")
 }
 '''

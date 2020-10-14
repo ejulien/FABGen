@@ -50,7 +50,7 @@ assert(my_test.simple_struct.s == "some string")
 '''
 
 test_go = '''\
-package harfang
+package mytest
 
 import (
 	"testing"
@@ -61,9 +61,9 @@ import (
 // Test ...
 func Test(t *testing.T) {
 	v := NewSimpleStruct()
-	assert.Equal(t, v.Getv(), int32(3), "should be the same.")
+	assert.Equal(t, v.GetV(), int32(3), "should be the same.")
 
-	assert.Equal(t, SimpleStructGeti(), int32(5), "should be the same.")
-	assert.Equal(t, SimpleStructGets(), "some string", "should be the same.")
+	assert.Equal(t, SimpleStructGetI(), int32(5), "should be the same.")
+	assert.Equal(t, SimpleStructGetS(), "some string", "should be the same.")
 }
 '''

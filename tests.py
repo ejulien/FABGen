@@ -117,8 +117,7 @@ def create_cpython_cmake_file(module, work_path, sources, site_package, include_
 	with open(cmake_path, 'w') as file:
 		quoted_sources = ['"%s"' % source for source in sources]
 
-		file.write('''
-cmake_minimum_required(VERSION 3.1)
+		file.write('''cmake_minimum_required(VERSION 3.1)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/")
 
@@ -345,15 +344,73 @@ class LuaTestBed:
 		return success
 
 
+# GO test bed
+def create_go_cmake_file(module, work_path, sources):
+	cmake_path = os.path.join(work_path, 'CMakeLists.txt')
+
+	with open(cmake_path, 'w') as file:
+		quoted_sources = ['"%s"' % source for source in sources if ".go" not in source]
+
+		work_place_ = work_path.replace('\\', '/')
+
+		file.write(f"""
+cmake_minimum_required(VERSION 3.1)
+
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
+set(CMAKE_MODULE_PATH ${{CMAKE_MODULE_PATH}} "${{CMAKE_SOURCE_DIR}}/")
+
+project({module})
+enable_language(C CXX)
+
+add_library(my_test SHARED {' '.join(quoted_sources)})
+set_target_properties(my_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "{work_place_}")
+
+install(TARGETS my_test RUNTIME DESTINATION "${{CMAKE_SOURCE_DIR}}/" COMPONENT my_test)
+install(TARGETS my_test ARCHIVE DESTINATION "${{CMAKE_SOURCE_DIR}}/" COMPONENT my_test)
+""")
+
+
+def build_and_deploy_go_extension(work_path, build_path):
+	print("Generating build system...")
+	try:
+		subprocess.check_output('cmake .. -G "%s"' % cmake_generator)
+	except subprocess.CalledProcessError as e:
+		print(e.output.decode('utf-8'))
+		return False
+
+	print("Building extension...")
+	try:
+		subprocess.check_output('cmake --build . --config Release')
+	except subprocess.CalledProcessError as e:
+		print(e.output.decode('utf-8'))
+		return False
+
+	print("install extension...")
+	try:
+		subprocess.check_output('cmake --install . --config Release')
+	except subprocess.CalledProcessError as e:
+		print(e.output.decode('utf-8'))
+		return False
+
+	return True
+
 class GoTestBed:
 	def build_and_test_extension(self, work_path, module, sources):
 		if not hasattr(module, "test_go"):
 			print("Can't find test_go")
 			return False
 
+		# copy test file
 		test_path = os.path.join(work_path, 'test.go')
 		with open(test_path, 'w') as file:
 			file.write(module.test_go)
+
+		# if need special other file in package
+		if hasattr(module, "test_special_cgo"):
+			test_path = os.path.join(work_path, 'test_cgo.go')
+			with open(test_path, 'w') as file:
+				file.write(module.test_special_cgo)
 
 		# TODO Check on linux
 		if False and args.linux:
@@ -363,12 +420,22 @@ class GoTestBed:
 			os.mkdir(build_path)
 			os.chdir(build_path)
 
+			create_go_cmake_file("test", work_path, sources)
+			create_clang_format_file(work_path)
+
+			if not build_and_deploy_go_extension(work_path, build_path):
+				return False
+
+			# after build, delete the wrapper.cpp to test the lib which has been build
+			if os.path.exists(os.path.join(work_path, 'wrapper.cpp')):
+				os.remove(os.path.join(work_path, 'wrapper.cpp'))
+
 		print("Executing Go test...")
 		os.chdir(work_path)
 
 		success = True
 		try:
-		 	subprocess.check_output('go mod init harfang', shell=True, stderr=subprocess.STDOUT)
+		 	subprocess.check_output('go mod init mytest', shell=True, stderr=subprocess.STDOUT)
 		 	subprocess.check_output('go test -run ""', shell=True, stderr=subprocess.STDOUT)
 		except subprocess.CalledProcessError as e:
 			print(e.output.decode('utf-8'))

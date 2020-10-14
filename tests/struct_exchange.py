@@ -83,7 +83,7 @@ assert(my_test.test_simple_struct() == true)
 '''
 
 test_go = '''\
-package harfang
+package mytest
 
 import (
 	"testing"

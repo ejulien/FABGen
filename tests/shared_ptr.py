@@ -79,7 +79,7 @@ assert(spn == nil)
 '''
 
 test_go = '''\
-package harfang
+package mytest
 
 import (
 	"testing"
@@ -91,13 +91,13 @@ import (
 func Test(t *testing.T) {
 	sp := GetSharedPtrToSimpleStruct()
 	
-	assert.Equal(t, sp.Getu(), float32(4.0), "should be the same.")
-	assert.Equal(t, sp.Getv(), int32(7), "should be the same.")
+	assert.Equal(t, sp.GetU(), float32(4.0), "should be the same.")
+	assert.Equal(t, sp.GetV(), int32(7), "should be the same.")
 
 	sp2 := NewSsimpleStruct(9.0)
 
-	assert.Equal(t, sp2.Getu(), float32(9.0), "should be the same.")
-	assert.Equal(t, sp2.Getv(), int32(90), "should be the same.")
+	assert.Equal(t, sp2.GetU(), float32(9.0), "should be the same.")
+	assert.Equal(t, sp2.GetV(), int32(90), "should be the same.")
 
 	spn := GetEmptySharedPtr()
 

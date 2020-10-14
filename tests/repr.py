@@ -36,6 +36,6 @@ my_test = require "my_test"
 '''
 
 test_go = '''\
-package harfang
+package mytest
 
 '''

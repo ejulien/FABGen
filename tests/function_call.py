@@ -81,7 +81,7 @@ assert(my_test.get_global_int_multiplied(2) == 6)
 '''
 
 test_go = '''\
-package harfang
+package mytest
 
 import (
 	"testing"

@@ -61,7 +61,7 @@ assert(future:get() == 8)
 '''
 
 test_go = """\
-package harfang
+package mytest
 
 import (
 	"testing"

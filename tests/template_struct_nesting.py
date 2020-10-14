@@ -54,7 +54,7 @@ assert(n.v == 9)
 '''
 
 test_go = """\
-package harfang
+package mytest
 
 import (
 	"testing"
@@ -65,7 +65,7 @@ import (
 // Test ...
 func Test(t *testing.T) {
 	s := NewEnclosingTemplateInt()
-	n := GetNestedStructInt(&s)
-	assert.Equal(t, n.Getv(), int32(9), "should be the same.")
+	n := GetNestedStructInt(s)
+	assert.Equal(t, n.GetV(), int32(9), "should be the same.")
 }
 """

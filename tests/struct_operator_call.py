@@ -130,7 +130,7 @@ assert(a ~= b)
 '''
 
 test_go = """\
-package harfang
+package mytest
 
 import (
 	"testing"
@@ -142,28 +142,28 @@ func Test(t *testing.T) {
 	a, b := NewSimpleStruct(4), NewSimpleStruct(8)
 
 	s := a.OperatorAdd0(b)
-	assert.Equal(t, s.Getv(), int32(12), "should be the same.")
+	assert.Equal(t, s.GetV(), int32(12), "should be the same.")
 	s.OperatorInplaceAdd0(b)
-	assert.Equal(t, s.Getv(), int32(20), "should be the same.")
+	assert.Equal(t, s.GetV(), int32(20), "should be the same.")
 	s.OperatorInplaceAdd1(4)
-	assert.Equal(t, s.Getv(), int32(24), "should be the same.")
+	assert.Equal(t, s.GetV(), int32(24), "should be the same.")
 
 	s = s.OperatorDiv1(4)
-	assert.Equal(t, s.Getv(), int32(6), "should be the same.")
+	assert.Equal(t, s.GetV(), int32(6), "should be the same.")
 	s.OperatorInplaceDiv1(3)
-	assert.Equal(t, s.Getv(), int32(2), "should be the same.")
+	assert.Equal(t, s.GetV(), int32(2), "should be the same.")
 	s.OperatorInplaceAdd0(a)
-	assert.Equal(t, s.Getv(), int32(6), "should be the same.")
+	assert.Equal(t, s.GetV(), int32(6), "should be the same.")
 
 	s = s.OperatorMul0(a)
-	assert.Equal(t, s.Getv(), int32(24), "should be the same.")
+	assert.Equal(t, s.GetV(), int32(24), "should be the same.")
 	s.OperatorInplaceMul1(2)
-	assert.Equal(t, s.Getv(), int32(48), "should be the same.")
+	assert.Equal(t, s.GetV(), int32(48), "should be the same.")
 
 	s = s.OperatorSub0(b)
-	assert.Equal(t, s.Getv(), int32(40), "should be the same.")
+	assert.Equal(t, s.GetV(), int32(40), "should be the same.")
 	s.OperatorInplaceSub1(32)
-	assert.Equal(t, s.Getv(), int32(8), "should be the same.")
+	assert.Equal(t, s.GetV(), int32(8), "should be the same.")
 
 	c := a.OperatorMul1(2)
 	assert.True(t, c.OperatorEq0(b), "should be the same.")

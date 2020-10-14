@@ -68,7 +68,7 @@ assert(a == d)
 '''
 
 test_go = '''\
-package harfang
+package mytest
 
 import (
 	"testing"

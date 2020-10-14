@@ -43,5 +43,5 @@ end
 '''
 
 test_go = '''\
-package harfang
+package mytest
 '''

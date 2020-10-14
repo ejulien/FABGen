@@ -55,7 +55,7 @@ assert(b.u == 7)
 '''
 
 test_go = '''\
-package harfang
+package mytest
 
 import (
 	"testing"
@@ -67,6 +67,6 @@ import (
 func Test(t *testing.T) {
 	a := GetBaseClass()
 	b := CastBaseClassToDerivedClass(a)
-	assert.Equal(t, b.Getu(), int32(7), "should be the same.")
+	assert.Equal(t, b.GetU(), int32(7), "should be the same.")
 }
 '''

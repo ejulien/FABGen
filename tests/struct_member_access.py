@@ -99,7 +99,7 @@ assert(s.a == 2)
 '''
 
 test_go = """\
-package harfang
+package mytest
 
 import (
 	"testing"
@@ -111,29 +111,29 @@ import (
 func Test(t *testing.T) {
 	s := ReturnSimpleStructByPointer()
 
-	assert.Equal(t, s.Geta(), int32(7), "should be the same.")
-	assert.Equal(t, s.Getb(), float32(17.5), "should be the same.")
-	assert.Equal(t, s.Getc(), true, "should be the same.")
-	assert.Equal(t, s.Getd(), int32(9), "should be the same.")
-	assert.Equal(t, s.Gettext_field(), "some content", "should be the same.")
+	assert.Equal(t, s.GetA(), int32(7), "should be the same.")
+	assert.Equal(t, s.GetB(), float32(17.5), "should be the same.")
+	assert.Equal(t, s.GetC(), true, "should be the same.")
+	assert.Equal(t, s.GetD(), int32(9), "should be the same.")
+	assert.Equal(t, s.GetTextField(), "some content", "should be the same.")
 
-	s.Seta(-2)
-	s.Setb(-4.5)
-	s.Setc(false)
+	s.SetA(-2)
+	s.SetB(-4.5)
+	s.SetC(false)
 
-	assert.Equal(t, s.Geta(), int32(-2), "should be the same.")
-	assert.Equal(t, s.Getb(), float32(-4.5), "should be the same.")
-	assert.Equal(t, s.Getc(), false, "should be the same.")
+	assert.Equal(t, s.GetA(), int32(-2), "should be the same.")
+	assert.Equal(t, s.GetB(), float32(-4.5), "should be the same.")
+	assert.Equal(t, s.GetC(), false, "should be the same.")
 
-	s.Seta(s.Geta() + 4)
-	assert.Equal(t, s.Geta(), int32(2), "should be the same.")
+	s.SetA(s.GetA() + 4)
+	assert.Equal(t, s.GetA(), int32(2), "should be the same.")
 
 	// # write to const member
 	//  can't set d because it's a const
 	// check if it didn't bind it
-	_, writeToConstFailed := interface{}(s).(interface{ Setd() })
+	_, writeToConstFailed := interface{}(s).(interface{ SetD() })
 	assert.Equal(t, writeToConstFailed, false, "should be the same.")
 
-	assert.Equal(t, s.Getd(), int32(9), "should be the same.")
+	assert.Equal(t, s.GetD(), int32(9), "should be the same.")
 }
 """

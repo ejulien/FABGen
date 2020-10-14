@@ -73,7 +73,7 @@ assert(s.get_static_int() == 4)
 '''
 
 test_go = '''\
-package harfang
+package mytest
 
 import (
 	"testing"

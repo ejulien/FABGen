@@ -186,7 +186,7 @@ assert(#v_ptr == 2)
 '''
 
 test_go = '''\
-package harfang
+package mytest
 
 import (
 	"testing"

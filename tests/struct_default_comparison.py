@@ -57,7 +57,7 @@ assert(b ~= c)
 '''
 
 test_go = '''\
-package harfang
+package mytest
 
 import (
 	"testing"

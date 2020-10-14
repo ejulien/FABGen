@@ -69,7 +69,7 @@ assert(my_test.NE_c == 4096)
 '''
 
 test_go = '''\
-package harfang
+package mytest
 
 import (
 	"testing"

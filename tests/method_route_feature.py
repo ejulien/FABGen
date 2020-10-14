@@ -40,7 +40,7 @@ assert(o:Get(4) == 15)
 '''
 
 test_go = """\
-package harfang
+package mytest
 
 import (
 	"testing"
