@@ -43,12 +43,12 @@ struct simple_struct {
 	simple_struct = gen.begin_class('simple_struct')
 	gen.bind_constructor(simple_struct, ['int v'])
 	gen.bind_arithmetic_ops_overloads(simple_struct, ['-', '+', '/', '*'], [
-		('simple_struct', ['simple_struct b'], []),
-		('simple_struct', ['int k'], [])
+		('simple_struct', ['simple_struct b'], {"bound_name": "SimpleStruct"}),
+		('simple_struct', ['int k'], {"bound_name": "Int"})
 	])
 	gen.bind_inplace_arithmetic_ops_overloads(simple_struct, ['-=', '+=', '/=', '*='], [
-		(['simple_struct b'], []),
-		(['int k'], [])
+		(['simple_struct b'], {"bound_name": "SimpleStruct"}),
+		(['int k'], {"bound_name": "Int"})
 	])
 	gen.bind_comparison_ops_overloads(simple_struct, ['==', '!='], [
 		(['simple_struct b'], []),
@@ -141,32 +141,32 @@ import (
 func Test(t *testing.T) {
 	a, b := NewSimpleStruct(4), NewSimpleStruct(8)
 
-	s := a.OperatorAdd0(b)
+	s := a.AddSimpleStruct(b)
 	assert.Equal(t, s.GetV(), int32(12), "should be the same.")
-	s.OperatorInplaceAdd0(b)
+	s.InplaceAddSimpleStruct(b)
 	assert.Equal(t, s.GetV(), int32(20), "should be the same.")
-	s.OperatorInplaceAdd1(4)
+	s.InplaceAddInt(4)
 	assert.Equal(t, s.GetV(), int32(24), "should be the same.")
 
-	s = s.OperatorDiv1(4)
+	s = s.DivInt(4)
 	assert.Equal(t, s.GetV(), int32(6), "should be the same.")
-	s.OperatorInplaceDiv1(3)
+	s.InplaceDivInt(3)
 	assert.Equal(t, s.GetV(), int32(2), "should be the same.")
-	s.OperatorInplaceAdd0(a)
+	s.InplaceAddSimpleStruct(a)
 	assert.Equal(t, s.GetV(), int32(6), "should be the same.")
 
-	s = s.OperatorMul0(a)
+	s = s.MulSimpleStruct(a)
 	assert.Equal(t, s.GetV(), int32(24), "should be the same.")
-	s.OperatorInplaceMul1(2)
+	s.InplaceMulInt(2)
 	assert.Equal(t, s.GetV(), int32(48), "should be the same.")
 
-	s = s.OperatorSub0(b)
+	s = s.SubSimpleStruct(b)
 	assert.Equal(t, s.GetV(), int32(40), "should be the same.")
-	s.OperatorInplaceSub1(32)
+	s.InplaceSubInt(32)
 	assert.Equal(t, s.GetV(), int32(8), "should be the same.")
 
-	c := a.OperatorMul1(2)
-	assert.True(t, c.OperatorEq0(b), "should be the same.")
-	assert.True(t, a.OperatorNe0(b), "should be the same.")
+	c := a.MulInt(2)
+	assert.True(t, c.Eq0(b), "should be the same.")
+	assert.True(t, a.Ne0(b), "should be the same.")
 }
 """
