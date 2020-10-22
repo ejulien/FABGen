@@ -1156,12 +1156,13 @@ uint32_t %s(void* p) {
 			else:
 				go += f"C.Wrap{clean_name_with_title(name)}"
 
+			# is global, add the Name of the class to be sure to avoid double name function name
+			if not is_global:
+				go += f"{clean_name_with_title(convClass.bound_name)}"
+
 			# add bounding_name to the overload function
 			if "bound_name" in proto["features"]:
 				go += proto["features"]["bound_name"]
-			# is global, add the Name of the class to be sure to avoid double name function name
-			elif not is_global:
-				go += f"{clean_name_with_title(convClass.bound_name)}"
 			# add number in case of multiple proto, in go, you can't have overload or default parameter
 			elif len(protos) > 1:
 				go += f"{id_proto}"
@@ -1268,12 +1269,13 @@ uint32_t %s(void* p) {
 				go += "extern "
 			go += f"{retval} Wrap{clean_name_with_title(wrap_name)}"
 
+			# not global, add the Name of the class to be sure to avoid double name function name
+			if not is_global or (not is_constructor and is_global and convClass is not None):
+				go += f"{clean_name_with_title(convClass.bound_name)}"
+
 			# add bounding_name to the overload function
 			if "bound_name" in proto["features"]:
 				go += proto["features"]["bound_name"]
-			# not global, add the Name of the class to be sure to avoid double name function name
-			elif not is_global or (not is_constructor and is_global and convClass is not None):
-				go += f"{clean_name_with_title(convClass.bound_name)}"
 			# add number in case of multiple proto, in go, you can't have overload or default parameter
 			elif len(protos) > 1:
 				go += f"{id_proto}"
