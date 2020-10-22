@@ -4,6 +4,7 @@
 import os
 from os import stat_result
 from pypeg2 import parse
+import json
 import sys
 import time
 import importlib
@@ -299,7 +300,7 @@ uint32_t %s(void* p) {
 
 	#
 	def get_output(self):
-		return {"wrapper.cpp": self.go_c, "wrapper.h": self.go_h, "bind.go": self.go_bind}
+		return {"wrapper.cpp": self.go_c, "wrapper.h": self.go_h, "bind.go": self.go_bind, "translate_file.json": self.go_translate_file}
 
 	def _get_type(self, name):
 		for type in self._bound_types:
@@ -1161,9 +1162,8 @@ uint32_t %s(void* p) {
 			# is global, add the Name of the class to be sure to avoid double name function name
 			elif not is_global:
 				go += f"{clean_name_with_title(convClass.bound_name)}"
-
 			# add number in case of multiple proto, in go, you can't have overload or default parameter
-			if len(protos) > 1:
+			elif len(protos) > 1:
 				go += f"{id_proto}"
 
 			go += "("
@@ -1274,9 +1274,8 @@ uint32_t %s(void* p) {
 			# not global, add the Name of the class to be sure to avoid double name function name
 			elif not is_global or (not is_constructor and is_global and convClass is not None):
 				go += f"{clean_name_with_title(convClass.bound_name)}"
-
 			# add number in case of multiple proto, in go, you can't have overload or default parameter
-			if len(protos) > 1:
+			elif len(protos) > 1:
 				go += f"{id_proto}"
 
 			go += "("
@@ -1847,3 +1846,101 @@ uint32_t %s(void* p) {
 			go_bind += self.__extract_get_set_member_go("", var, is_global=True)
 
 		self.go_bind = go_bind
+
+		# Create Translate file c++ to go name
+		go_translate_file = {}
+
+		def bind_method_translate(classname, convClass, method, static=False, name=None, bound_name=None, is_global=False, is_constructor=False):
+			if bound_name is None:
+				bound_name = method["bound_name"]
+			if name is None:
+				name = bound_name
+
+			name_go = name
+			if is_constructor:
+				name_go = "new_" + name_go
+
+			protos = self._build_protos(method["protos"])
+			return_protos_name = []
+			for id_proto, proto in enumerate(protos):
+				method_name_go = f"{clean_name_with_title(name_go)}"
+
+				# add bounding_name to the overload function
+				if "bound_name" in proto["features"]:
+					method_name_go += proto["features"]["bound_name"]
+				# add number in case of multiple proto, in go, you can't have overload or default parameter
+				elif len(protos) > 1:
+					method_name_go += f"{id_proto}"
+			
+				return_protos_name.append(method_name_go)
+			return name, return_protos_name
+
+		for conv in self._bound_types:
+			if conv.nobind:
+				continue
+
+			go_translate_file[conv.bound_name] = {"name": clean_name_with_title(conv.bound_name)}
+
+			# members
+			members = {}
+			for member in conv.static_members + conv.members:
+				bound_name = None
+				if "bound_name" in member:
+					bound_name = str(member["bound_name"])
+				elif bound_name is None:
+					bound_name = str(member["name"])
+
+				name = bound_name.replace(":", "")
+				name = clean_name_with_title(name)
+				members[bound_name] = [f"Get{name}", f"Set{name}"]
+
+			if len(members):
+				go_translate_file[conv.bound_name]["members"] = members
+				
+			# functions
+			functions = {}
+
+			# constructors
+			if conv.constructor:
+				name, protos_name = bind_method_translate(conv.bound_name, conv, conv.constructor, bound_name=f"{conv.bound_name}", is_global=True, is_constructor=True)
+				functions[name] = protos_name
+
+			for method in conv.static_methods + conv.methods:
+				name, protos_name = bind_method_translate(conv.bound_name, conv, method)
+				functions[name] = protos_name
+				
+			for arithmetic in conv.arithmetic_ops:
+				name, protos_name = bind_method_translate(conv.bound_name, conv, arithmetic, bound_name=gen.get_clean_symbol_name(arithmetic['op']))
+				functions[name] = protos_name
+			for comparison in conv.comparison_ops:
+				name, protos_name = bind_method_translate(conv.bound_name, conv, comparison, bound_name=gen.get_clean_symbol_name(comparison['op']))
+				functions[name] = protos_name
+				
+			if len(functions):
+				go_translate_file[conv.bound_name]["functions"] = functions
+
+		# enum
+		for bound_name, enum in self._enums.items():
+			go_translate_file[bound_name] = bound_name
+			go_bind += "var (\n"
+			for id, name in enumerate(enum.keys()):
+				go_translate_file[name] = clean_name(name)
+		
+		# functions
+		for func in self._bound_functions:
+			name, protos_name = bind_method_translate("", None, func, is_global=True)
+			go_translate_file[name] = protos_name
+
+		# global variables
+		for member in self._bound_variables:
+			bound_name = None		
+			if "bound_name" in member:
+				bound_name = str(member["bound_name"])
+			elif bound_name is None:
+				bound_name = str(member["name"])
+
+			name = bound_name.replace(":", "")
+			name = clean_name_with_title(name)
+			go_translate_file[bound_name] = [f"Get{name}", f"Set{name}"]
+
+		self.go_translate_file = json.dumps(go_translate_file, indent=4, sort_keys=True)
