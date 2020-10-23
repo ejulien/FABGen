@@ -5,7 +5,7 @@ python:
   - "3.6"
 
 virtualenv:
-  system_site_packages: true
+  system_site_packages: false
 
 before_install:
   - source .travis/setup_lua.sh
