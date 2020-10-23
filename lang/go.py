@@ -360,7 +360,7 @@ uint32_t %s(void* p) {
 			# special std::string (convert to const char*)
 			if val["conv"] is not None and "std::string" in str(val["conv"].ctype):
 				stars = self.__get_stars(val)
-				if len(stars) > 0:# rarely use but just in case TODO check the ownership
+				if len(stars) > 0:# rarely use but just in case
 					retval_name = f"new const char*(&(*{retval_name}->begin()))"
 				else:
 					retval_name = f"{retval_name}.c_str()"
@@ -574,7 +574,7 @@ uint32_t %s(void* p) {
 			slice_name = clean_name(arg_name)
 			# special if string or const char*
 			if "GoConstCharPtrConverter" in str(val["conv"].T_conv) or \
-				"GoStringConverter" in str(val["conv"].T_conv):	# TODO check destroy pointer C.CString
+				"GoStringConverter" in str(val["conv"].T_conv):
 				c_call += f"{slice_name}SpecialString := []*C.char{{}}\n"
 				c_call += f"for _, s := range {slice_name} {{\n"
 				c_call += f"	{slice_name}SpecialString = append({slice_name}SpecialString, C.CString(s))\n"
@@ -652,7 +652,7 @@ uint32_t %s(void* p) {
 		if  (('carg' in val and (val['carg'].ctype.is_pointer() or (hasattr(val['carg'].ctype, 'ref') and any(s in val['carg'].ctype.ref for s in ["&", "*"])))) or \
 			('storage_ctype' in val and (val['storage_ctype'].is_pointer() or (hasattr(val['storage_ctype'], 'ref') and any(s in val['storage_ctype'].ref for s in ["&", "*"])))) or \
 			isinstance(val['conv'], GoPtrTypeConverter)):
-			# find how many * we need to ass
+			# find how many * we need to add
 			stars = "*"
 			if "carg" in val and hasattr(val["carg"].ctype, "ref"):
 				stars += "*" * (len(val["carg"].ctype.ref) - 1)
@@ -1056,8 +1056,11 @@ uint32_t %s(void* p) {
 				retval = proto["rval"]["conv"].bound_name
 
 			go += "// " + clean_name_with_title(name_go)
+			# add bounding_name to the overload function
+			if "bound_name" in proto["features"]:
+				go += proto["features"]["bound_name"]
 			# add number in case of multiple proto, in go, you can't have overload or default parameter
-			if len(protos) > 1:
+			elif len(protos) > 1:
 				go += f"{id_proto}"
 			go += " ...\n"
 
@@ -1222,14 +1225,14 @@ uint32_t %s(void* p) {
 			has_previous_arg = False
 			for retarg in ret_args:
 				if has_previous_arg:
-					# check and remove \n just in case
+					# check and remove "\n" just in case
 					if go[-1] == "\n":
 						go = go[:-1]
 					go += ", "
 				has_previous_arg = True
 				go += retarg
 				
-			# check and remove \n just in case
+			# check and remove "\n" just in case
 			if go[-1] == "\n":
 				go = go[:-1]
 			go += "\n}\n"
