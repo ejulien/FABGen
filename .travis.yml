@@ -9,6 +9,7 @@ virtualenv:
 
 before_install:
   - source .travis/setup_lua.sh
+  - source .travis/install-go.sh
 
 install:
   - pip install pypeg2
@@ -18,6 +19,7 @@ install:
 
 script:
   - python3 -m coverage run tests.py --x64 --linux --luabase $LUA_HOME_DIR
+  - python3 -m coverage run tests.py --x64 --go
 
 after_success:
   - coveralls
