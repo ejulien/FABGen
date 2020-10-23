@@ -106,6 +106,7 @@ if args.go:
 	go_gen = lang.go.GoGenerator()
 	output_binding(setup_generator(go_gen))
 	os.chdir(args.out)
+	os.system(f"go mod init {go_gen._name}")
 	os.system("go fmt bind.go")
 	os.system("goimports -w bind.go")
 	os.system("clang-format -i wrapper.cpp wrapper.h")
