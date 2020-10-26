@@ -4,14 +4,12 @@ language: python
 python:
   - "3.6"
 
-virtualenv:
-  system_site_packages: true
-
 before_install:
   - source .travis/setup_lua.sh
   - source .travis/install-go.sh
 
 install:
+  - sudo apt install golang-golang-x-tools
   - pip install pypeg2
   - pip install coverage
   - pip install PyYAML==5.1
@@ -19,6 +17,7 @@ install:
 
 script:
   - python3 -m coverage run tests.py --x64 --linux --luabase $LUA_HOME_DIR
+  - python3 -m coverage run tests.py --x64 --linux --go
 
 after_success:
   - coveralls

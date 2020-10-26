@@ -366,29 +366,31 @@ enable_language(C CXX)
 add_library(my_test SHARED {' '.join(quoted_sources)})
 set_target_properties(my_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "{work_place_}")
 
-install(TARGETS my_test RUNTIME DESTINATION "${{CMAKE_SOURCE_DIR}}/" COMPONENT my_test)
-install(TARGETS my_test ARCHIVE DESTINATION "${{CMAKE_SOURCE_DIR}}/" COMPONENT my_test)
+install(TARGETS my_test DESTINATION "${{CMAKE_SOURCE_DIR}}/" COMPONENT my_test)
 """)
 
 
 def build_and_deploy_go_extension(work_path, build_path):
 	print("Generating build system...")
 	try:
-		subprocess.check_output('cmake .. -G "%s"' % cmake_generator)
+		if args.linux:
+			subprocess.check_output(['cmake', '..'])
+		else:
+			subprocess.check_output('cmake .. -G "%s"' % cmake_generator)
 	except subprocess.CalledProcessError as e:
 		print(e.output.decode('utf-8'))
 		return False
 
 	print("Building extension...")
 	try:
-		subprocess.check_output('cmake --build . --config Release')
+		subprocess.check_output(['cmake', '--build', '.', '--config', 'Release'])
 	except subprocess.CalledProcessError as e:
 		print(e.output.decode('utf-8'))
 		return False
 
 	print("install extension...")
 	try:
-		subprocess.check_output('cmake --install . --config Release')
+		subprocess.check_output(['cmake', '--install', '.', '--config', 'Release'])
 	except subprocess.CalledProcessError as e:
 		print(e.output.decode('utf-8'))
 		return False
@@ -412,23 +414,19 @@ class GoTestBed:
 			with open(test_path, 'w') as file:
 				file.write(module.test_special_cgo)
 
-		# TODO Check on linux
-		if False and args.linux:
-			pass
-		else:
-			build_path = os.path.join(work_path, 'build')
-			os.mkdir(build_path)
-			os.chdir(build_path)
+		build_path = os.path.join(work_path, 'build')
+		os.mkdir(build_path)
+		os.chdir(build_path)
 
-			create_go_cmake_file("test", work_path, sources)
-			create_clang_format_file(work_path)
+		create_go_cmake_file("test", work_path, sources)
+		create_clang_format_file(work_path)
 
-			if not build_and_deploy_go_extension(work_path, build_path):
-				return False
+		if not build_and_deploy_go_extension(work_path, build_path):
+			return False
 
-			# after build, delete the wrapper.cpp to test the lib which has been build
-			if os.path.exists(os.path.join(work_path, 'wrapper.cpp')):
-				os.remove(os.path.join(work_path, 'wrapper.cpp'))
+		# after build, delete the wrapper.cpp to test the lib which has been build
+		if os.path.exists(os.path.join(work_path, 'wrapper.cpp')):
+			os.remove(os.path.join(work_path, 'wrapper.cpp'))
 
 		print("Executing Go test...")
 		os.chdir(work_path)
