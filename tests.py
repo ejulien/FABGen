@@ -187,7 +187,7 @@ class CPythonTestBed:
 				print("Build error: ", e.output.decode('utf-8'))
 				return False
 
-			ldflags = subprocess.check_output(["python3-config", "--ldflags"], shell=True).decode('utf-8').strip()
+			ldflags = subprocess.check_output("python3-config --ldflags", shell=True).decode('utf-8').strip()
 			ldflags = ldflags.replace('\n', ' ')
 
 			user_site = subprocess.check_output(["python3", "-m", "site", "--user-site"], shell=True).decode('utf-8').strip()
