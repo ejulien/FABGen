@@ -21,17 +21,17 @@ typeset FILE=$VER.linux-$ARCH
 echo "Installing '$FILE'..."
 
 curl -# https://storage.googleapis.com/golang/$FILE.tar.gz |
-	tar -C /usr/local -xzf -
+	tar -xzf -
 
 echo "
 # Go Paths (Added on: `date -u`)
-export GOPATH=\$HOME/go
+export GOPATH=\$TRAVIS_BUILD_DIR/go
 export PATH=\$PATH:/usr/local/go/bin:\$GOPATH/bin
 " >> ~/.bash_profile
 
 . ~/.bash_profile
 
-echo "Go is installed and your GOPATH is '$HOME/go'"
+echo "Go is installed and your GOPATH is '$TRAVIS_BUILD_DIR/go'"
 echo "Please reload this shell or enter the command '. ~/.bash_profile'"
 }
 install
