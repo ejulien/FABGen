@@ -187,10 +187,10 @@ class CPythonTestBed:
 				print("Build error: ", e.output.decode('utf-8'))
 				return False
 
-			ldflags = subprocess.check_output("python3-config --ldflags", shell=True).decode('utf-8').strip()
+			ldflags = subprocess.check_output('python3-config --ldflags', shell=True).decode('utf-8').strip()
 			ldflags = ldflags.replace('\n', ' ')
 
-			user_site = subprocess.check_output(["python3", "-m", "site", "--user-site"], shell=True).decode('utf-8').strip()
+			user_site = subprocess.check_output('python3 -m site --user-site', shell=True).decode('utf-8').strip()
 			os.makedirs(user_site, exist_ok=True)  # make sure site-packages exists
 
 			link_cmd = 'g++ -shared my_test.o ' + ldflags + ' -o ' + user_site + '/my_test.so'
@@ -469,7 +469,7 @@ else:
 	test_names = [file[:-3] for file in os.listdir('./tests') if file.endswith('.py')]
 
 
-if args.linux or args.python_base_path:
+if args.python_base_path:
 	gen = lang.cpython.CPythonGenerator()
 	gen.verbose = False
 	run_tests(gen, test_names, CPythonTestBed())
