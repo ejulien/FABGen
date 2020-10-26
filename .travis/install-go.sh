@@ -10,18 +10,9 @@ fi
 #create local scope
 function install {
 
-echo "Fetching latest Go version..."
-typeset VER=`curl -s https://golang.org/dl/ | grep -m 1 -o 'go1\(\.[0-9]\)\+'`
-if uname -m | grep 64 > /dev/null; then
-	typeset ARCH=amd64
-else
-	typeset ARCH=386
-fi
-typeset FILE=$VER.linux-$ARCH
-echo "Installing '$FILE'..."
-
-curl -# https://storage.googleapis.com/golang/$FILE.tar.gz |
-	tar -xzf -
+echo "Installing https://golang.org/dl/go1.15.3.linux-amd64.tar.gz'..."
+curl -# https://golang.org/dl/go1.15.3.linux-amd64.tar.gz |
+	tar -xzf
 
 echo "
 # Go Paths (Added on: `date -u`)

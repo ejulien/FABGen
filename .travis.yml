@@ -1,4 +1,4 @@
-dist: trusty
+dist: focal
 language: python
 
 python:
@@ -9,7 +9,7 @@ before_install:
   - source .travis/install-go.sh
 
 install:
-  - sudo apt install golang-golang-x-tools
+  - apt install golang-golang-x-tools
   - pip install pypeg2
   - pip install coverage
   - pip install PyYAML==5.1
