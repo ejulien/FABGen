@@ -433,10 +433,10 @@ class GoTestBed:
 
 		success = True
 		try:
-			subprocess.check_output(["go", "mod", "init", "mytest"], shell=True, stderr=subprocess.STDOUT)
-			subprocess.check_output(["go", "fmt", "mytest"], shell=True, stderr=subprocess.STDOUT)
-			subprocess.check_output(["goimports", "-w", "bind.go"], shell=True, stderr=subprocess.STDOUT)
-			subprocess.check_output(["go", "test", "-run", ""], shell=True, stderr=subprocess.STDOUT)
+			subprocess.check_output('go mod init mytest', shell=True, stderr=subprocess.STDOUT)
+			subprocess.check_output("go fmt mytest", shell=True, stderr=subprocess.STDOUT)
+			subprocess.check_output("goimports -w bind.go", shell=True, stderr=subprocess.STDOUT)
+			subprocess.check_output('go test -run ""', shell=True, stderr=subprocess.STDOUT)
 		except subprocess.CalledProcessError as e:
 			print(e.output.decode('utf-8'))
 			success = False
