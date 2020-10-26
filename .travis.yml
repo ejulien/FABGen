@@ -4,13 +4,11 @@ language: python
 python:
   - "3.6"
 
-go:
-  - "1.15"
-
 before_install:
   - source .travis/setup_lua.sh
 
 install:
+  - eval "$(curl -sL https://raw.githubusercontent.com/travis-ci/gimme/master/gimme | GIMME_GO_VERSION=1.15 bash)"
   - sudo apt-get -y install golang-golang-x-tools
   - pip install pypeg2
   - pip install coverage
