@@ -6,10 +6,9 @@ python:
 
 before_install:
   - source .travis/setup_lua.sh
-  - source .travis/install-go.sh
 
 install:
-  - apt install golang-golang-x-tools
+  - sudo apt-get -y install golang-golang-x-tools
   - pip install pypeg2
   - pip install coverage
   - pip install PyYAML==5.1
