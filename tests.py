@@ -193,7 +193,7 @@ class CPythonTestBed:
 			user_site = subprocess.check_output(["python3", "-m", "site", "--user-site"], shell=True).decode('utf-8').strip()
 			os.makedirs(user_site, exist_ok=True)  # make sure site-packages exists
 
-			link_cmd = ["g++", "-shared", "my_test.o", ldflags, "-o", user_site, "/my_test.so"]
+			link_cmd = 'g++ -shared my_test.o ' + ldflags + ' -o ' + user_site + '/my_test.so'
 
 			try:
 				subprocess.check_output(link_cmd, shell=True, stderr=subprocess.STDOUT)
@@ -301,7 +301,7 @@ class LuaTestBed:
 			os.chdir(work_path)
 			shutil.copy(os.path.join(args.lua_base_path, 'bin', 'lua'), work_path)
 
-			build_cmd = ["gcc", "-I", os.path.join(args.lua_base_path, 'include'), "-g", "-O0", "-fPIC", "-std=c++11", "-c"] +sources+["-o", "my_test.o"]
+			build_cmd = 'gcc -I' + os.path.join(args.lua_base_path, 'include') + ' -g -O0 -fPIC -std=c++11 -c %s -o my_test.o' % ' '.join(sources)
 
 			try:
 				subprocess.check_output(build_cmd, shell=True, stderr=subprocess.STDOUT)
@@ -309,7 +309,7 @@ class LuaTestBed:
 				print("Build error: ", e.output.decode('utf-8'))
 				return False
 
-			link_cmd = ["g++", "-shared", "my_test.o", "-L", os.path.join(args.lua_base_path, 'lib'), "-o", "my_test.so", "-pthread"]
+			link_cmd = 'g++ -shared my_test.o -L' + os.path.join(args.lua_base_path, 'lib') + ' -o my_test.so -pthread'
 
 			try:
 				subprocess.check_output(link_cmd, shell=True, stderr=subprocess.STDOUT)
