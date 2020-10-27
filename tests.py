@@ -366,6 +366,7 @@ set(CMAKE_MODULE_PATH ${{CMAKE_MODULE_PATH}} "${{CMAKE_SOURCE_DIR}}/")
 
 project({module})
 enable_language(C CXX)
+set(CMAKE_CXX_STANDARD 14)
 
 add_library(my_test SHARED {' '.join(quoted_sources)})
 set_target_properties(my_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "{work_place_}")
