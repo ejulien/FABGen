@@ -379,7 +379,7 @@ def build_and_deploy_go_extension(work_path, build_path):
 	print("Generating build system...")
 	try:
 		if args.linux:
-			subprocess.check_output(['cmake', '..'])
+			subprocess.check_output("cmake ..")
 		else:
 			subprocess.check_output('cmake .. -G "%s"' % cmake_generator)
 	except subprocess.CalledProcessError as e:
@@ -388,14 +388,14 @@ def build_and_deploy_go_extension(work_path, build_path):
 
 	print("Building extension...")
 	try:
-		subprocess.check_output(['cmake', '--build', '.', '--config', 'Release'])
+		subprocess.check_output("cmake --build . --config Release")
 	except subprocess.CalledProcessError as e:
 		print(e.output.decode('utf-8'))
 		return False
 
 	print("install extension...")
 	try:
-		subprocess.check_output(['cmake', '--install', '.', '--config', 'Release'])
+		subprocess.check_output("cmake --install . --config Release")
 	except subprocess.CalledProcessError as e:
 		print(e.output.decode('utf-8'))
 		return False
