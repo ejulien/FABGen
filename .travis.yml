@@ -17,9 +17,7 @@ install:
   - pip install python-coveralls==2.9.1
 
 script:
-  - python3 -m coverage run tests.py --x64 --linux --pybase ""
-  - python3 -m coverage run tests.py --x64 --linux --luabase $LUA_HOME_DIR
-  - python3 -m coverage run tests.py --x64 --linux --go
+  - python3 -m coverage run tests.py --x64 --linux --pybase "" --luabase $LUA_HOME_DIR --go
 
 after_success:
   - coveralls
