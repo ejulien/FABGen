@@ -305,7 +305,7 @@ class LuaTestBed:
 			os.chdir(work_path)
 			shutil.copy(os.path.join(args.lua_base_path, 'bin', 'lua'), work_path)
 
-			build_cmd = 'gcc -I' + os.path.join(args.lua_base_path, 'include') + ' -g -O0 -fPIC -std=c++11 -c %s -o my_test.o' % ' '.join(sources)
+			build_cmd = 'gcc -I' + os.path.join(args.lua_base_path, 'include') + ' -g -O0 -fPIC -std=c++14 -c %s -o my_test.o' % ' '.join(sources)
 
 			try:
 				subprocess.check_output(build_cmd, shell=True, stderr=subprocess.STDOUT)

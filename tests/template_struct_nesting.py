@@ -16,7 +16,7 @@ template <typename T> struct enclosing_template {
 	nested_struct n;
 };
 
-template <typename T> nested_struct &GetNestedStruct(enclosing_template<T> &s) { return s.n; }
+template <typename T> auto &GetNestedStruct(enclosing_template<T> &s) { return s.n; }
 ''', True, False)
 
 	nested_struct = gen.begin_class('enclosing_template<int>::nested_struct', bound_name='nested_struct_int')
