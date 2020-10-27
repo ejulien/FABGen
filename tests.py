@@ -193,6 +193,9 @@ class CPythonTestBed:
 
 			user_site = site.getusersitepackages().strip()
 			os.makedirs(user_site, exist_ok=True)  # make sure site-packages exists
+			print("user site: "+user_site)
+			
+			print("user site ls: "+subprocess.check_output("ls "+user_site, shell=True).decode('utf-8').strip())
 
 			link_cmd = 'g++ -shared my_test.o ' + ldflags + ' -o ' + user_site + '/my_test.so'
 
