@@ -369,7 +369,7 @@ enable_language(C CXX)
 set(CMAKE_CXX_STANDARD 14)
 
 add_library(my_test SHARED {' '.join(quoted_sources)})
-set_target_properties(my_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "{work_place_}")
+set_target_properties(my_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE "{work_place_}")
 
 install(TARGETS my_test DESTINATION "${{CMAKE_SOURCE_DIR}}/" COMPONENT my_test)
 """)
