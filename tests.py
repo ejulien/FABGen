@@ -9,7 +9,6 @@ import shutil
 import lib
 import sys
 import os
-import site
 
 import lang.cpython
 import lang.lua
@@ -180,7 +179,7 @@ class CPythonTestBed:
 			cflags = subprocess.check_output('python3-config --cflags', shell=True).decode('utf-8').strip()
 			cflags = cflags.replace('\n', ' ')
 
-			build_cmd = 'gcc ' + cflags + ' -g -O0 -fPIC -std=c++11 -c %s -o my_test.o' % ' '.join(sources)
+			build_cmd = 'gcc ' + cflags + ' -g -O0 -fPIC -std=c++14 -c %s -o my_test.o' % ' '.join(sources)
 
 			try:
 				subprocess.check_output(build_cmd, shell=True, stderr=subprocess.STDOUT)
@@ -190,12 +189,6 @@ class CPythonTestBed:
 
 			ldflags = subprocess.check_output('python3-config --ldflags', shell=True).decode('utf-8').strip()
 			ldflags = ldflags.replace('\n', ' ')
-
-			user_site = site.USER_SITE.strip()
-			os.makedirs(user_site, exist_ok=True)  # make sure site-packages exists
-			print("user site: "+user_site)
-			
-			print("user site ls: "+subprocess.check_output("ls "+user_site, shell=True).decode('utf-8').strip())
 
 			link_cmd = 'g++ -shared my_test.o ' + ldflags + ' -o my_test.so'
 
