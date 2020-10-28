@@ -60,3 +60,30 @@ assert(s.a, 1)
 assert(s.b, 7)
 assert(s.c, 2)
 '''
+
+test_go = '''\
+package mytest
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	s := NewSimpleStruct()
+
+	assert.Equal(t, s.GetA(), int32(3), "should be the same.")
+	assert.Equal(t, s.GetB(), int32(11), "should be the same.")
+	assert.Equal(t, s.GetC(), int32(1), "should be the same.")
+
+	s.SetA(1)
+	s.SetB(7)
+	s.SetC(2)
+
+	assert.Equal(t, s.GetA(), int32(1), "should be the same.")
+	assert.Equal(t, s.GetB(), int32(7), "should be the same.")
+	assert.Equal(t, s.GetC(), int32(2), "should be the same.")
+}
+'''

@@ -126,3 +126,45 @@ assert(my_test.derived_class.v == 7)
 assert(my_test.base_class.static_override == 1)
 assert(my_test.derived_class.static_override == 42)
 '''
+
+test_go = '''\
+package mytest
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	base := NewBaseClass()
+	assert.Equal(t, base.BaseMethod(), int32(4), "should be the same.")
+	assert.Equal(t, base.BaseMethodOverride(), int32(4), "should be the same.")
+
+	derived := NewDerivedClass()
+	assert.Equal(t, derived.BaseMethod(), int32(4), "should be the same.")         // can still access base class
+	assert.Equal(t, derived.DerivedMethod(), int32(8), "should be the same.")      // can access its own methods
+	assert.Equal(t, derived.BaseMethodOverride(), int32(8), "should be the same.") // properly overshadows redeclared base methods
+
+	// argument casting through inheritance tree
+	assert.Equal(t, ReadVirtualMethodThroughBaseClass(base), int32(6), "should be the same.")
+	assert.Equal(t, ReadVirtualMethodThroughBaseClass(CastDerivedClassToBaseClass(derived)), int32(9), "should be the same.")
+
+	// member access through inheritance tree
+	assert.Equal(t, base.GetU(), int32(6), "should be the same.")
+	assert.Equal(t, derived.GetU(), int32(6), "should be the same.") // can access base class member
+	assert.Equal(t, base.GetV(), int32(7), "should be the same.")
+	assert.Equal(t, derived.GetV(), int32(7), "should be the same.") // can access base class static member
+
+	assert.Equal(t, base.GetOverride(), int32(4), "should be the same.")
+	assert.Equal(t, base.GetStaticOverride(), int32(1), "should be the same.")
+	assert.Equal(t, derived.GetOverride(), int32(12), "should be the same.")       // member overshadowing
+	assert.Equal(t, derived.GetStaticOverride(), int32(42), "should be the same.") // static member overshadowing
+
+	assert.Equal(t, BaseClassGetV(), int32(7), "should be the same.")
+	assert.Equal(t, DerivedClassGetV(), int32(7), "should be the same.")
+	assert.Equal(t, BaseClassGetStaticOverride(), int32(1), "should be the same.")
+	assert.Equal(t, DerivedClassGetStaticOverride(), int32(42), "should be the same.")
+}
+'''

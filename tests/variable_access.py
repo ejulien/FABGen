@@ -66,3 +66,28 @@ assert(my_test.w == 14)
 
 assert(my_test.u == 7)
 '''
+
+test_go = '''\
+package mytest
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	assert.Equal(t, GetV(), int32(2), "should be the same.")
+	SetV(int32(5))
+	assert.Equal(t, GetV(), int32(5), "should be the same.")
+
+	assert.Equal(t, GetS().GetV(), int32(4), "should be the same.")
+	GetS().SetV(int32(9))
+	assert.Equal(t, GetS().GetV(), int32(9), "should be the same.")
+
+	assert.Equal(t, GetW(), int32(14), "should be the same.")
+
+	assert.Equal(t, GetU(), float32(7), "should be the same.")
+}
+'''

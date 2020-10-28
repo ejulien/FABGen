@@ -1,23 +1,23 @@
-dist: trusty
+dist: xenial
+os: linux
 language: python
 
 python:
-  - "3.4"
-
-virtualenv:
-  system_site_packages: true
+  - "3.6"
 
 before_install:
   - source .travis/setup_lua.sh
 
 install:
+  - eval "$(curl -sL https://raw.githubusercontent.com/travis-ci/gimme/master/gimme | GIMME_GO_VERSION=1.15 bash)"
+  - sudo apt-get -y install golang-golang-x-tools
   - pip install pypeg2
   - pip install coverage
   - pip install PyYAML==5.1
   - pip install python-coveralls==2.9.1
 
 script:
-  - python3 -m coverage run tests.py --x64 --linux --luabase $LUA_HOME_DIR
+  - python3 -m coverage run tests.py --x64 --linux --pybase "" --luabase $LUA_HOME_DIR --go
 
 after_success:
   - coveralls

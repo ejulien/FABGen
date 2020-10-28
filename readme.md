@@ -6,9 +6,10 @@
 Fabgen is a set of Python scripts to generate C++ binding code to different languages.  
 It was written as a SWIG replacement for the Harfang Multimedia Framework (http://www.harfang3d.com).
 
-## Author
+## Authors
 
-Fabgen is written and maintained by Emmanuel Julien for the Harfang Multimedia Framework (http://www.harfang3d.com).
+Fabgen is written and maintained by Emmanuel Julien for the Harfang Multimedia Framework (http://www.harfang3d.com).  
+Fabgen GO is written and maintained by Thomas Simonnet for the Harfang Multimedia Framework (http://www.harfang3d.com).
 
 ## License
 
@@ -49,6 +50,7 @@ Fabgen is licensed under the GPLv3.
 
 - CPython 3.2+ using the CPython limited API (`Py_Limited_API`) (generated modules can be used on all CPython version >=3.2)
 - Lua 5.3+
+- Go 1.11+ (use of go module)
 
 ## Contributions
 
@@ -63,6 +65,10 @@ Generate binding for CPython 3
 Generate binding for Lua 5.3
 
 `bind.py api_binding_script.py --lua --out d:\`
+
+Generate binding for GO
+
+`bind.py api_binding_script.py --go --out d:\`
 
 Refer to the provided example and the tests for how to write your own API binding script.
 

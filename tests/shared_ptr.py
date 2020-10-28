@@ -77,3 +77,30 @@ spn = my_test.get_empty_shared_ptr()
 
 assert(spn == nil)
 '''
+
+test_go = '''\
+package mytest
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	sp := GetSharedPtrToSimpleStruct()
+	
+	assert.Equal(t, sp.GetU(), float32(4.0), "should be the same.")
+	assert.Equal(t, sp.GetV(), int32(7), "should be the same.")
+
+	sp2 := NewSsimpleStruct(9.0)
+
+	assert.Equal(t, sp2.GetU(), float32(9.0), "should be the same.")
+	assert.Equal(t, sp2.GetV(), int32(90), "should be the same.")
+
+	spn := GetEmptySharedPtr()
+
+	assert.True(t, spn.IsNil(), "should be nil.")
+}
+'''

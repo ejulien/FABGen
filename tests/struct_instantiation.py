@@ -46,3 +46,22 @@ t = my_test.simple_struct(4)
 assert(s.v_ == -8)
 assert(t.v_ == 4)
 '''
+
+test_go = """\
+package mytest
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	s := NewSimpleStruct0()
+	u := NewSimpleStruct1(int32(4))
+
+	assert.Equal(t, s.GetV(), int32(-8), "should be the same.")
+	assert.Equal(t, u.GetV(), int32(4), "should be the same.")
+}
+"""

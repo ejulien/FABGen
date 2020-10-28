@@ -43,12 +43,12 @@ struct simple_struct {
 	simple_struct = gen.begin_class('simple_struct')
 	gen.bind_constructor(simple_struct, ['int v'])
 	gen.bind_arithmetic_ops_overloads(simple_struct, ['-', '+', '/', '*'], [
-		('simple_struct', ['simple_struct b'], []),
-		('simple_struct', ['int k'], [])
+		('simple_struct', ['simple_struct b'], {"bound_name": "SimpleStruct"}),
+		('simple_struct', ['int k'], {"bound_name": "Int"})
 	])
 	gen.bind_inplace_arithmetic_ops_overloads(simple_struct, ['-=', '+=', '/=', '*='], [
-		(['simple_struct b'], []),
-		(['int k'], [])
+		(['simple_struct b'], {"bound_name": "SimpleStruct"}),
+		(['int k'], {"bound_name": "Int"})
 	])
 	gen.bind_comparison_ops_overloads(simple_struct, ['==', '!='], [
 		(['simple_struct b'], []),
@@ -128,3 +128,45 @@ c = a * 2
 assert(c == b)
 assert(a ~= b)
 '''
+
+test_go = """\
+package mytest
+
+import (
+	"testing"
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	a, b := NewSimpleStruct(4), NewSimpleStruct(8)
+
+	s := a.AddSimpleStruct(b)
+	assert.Equal(t, s.GetV(), int32(12), "should be the same.")
+	s.InplaceAddSimpleStruct(b)
+	assert.Equal(t, s.GetV(), int32(20), "should be the same.")
+	s.InplaceAddInt(4)
+	assert.Equal(t, s.GetV(), int32(24), "should be the same.")
+
+	s = s.DivInt(4)
+	assert.Equal(t, s.GetV(), int32(6), "should be the same.")
+	s.InplaceDivInt(3)
+	assert.Equal(t, s.GetV(), int32(2), "should be the same.")
+	s.InplaceAddSimpleStruct(a)
+	assert.Equal(t, s.GetV(), int32(6), "should be the same.")
+
+	s = s.MulSimpleStruct(a)
+	assert.Equal(t, s.GetV(), int32(24), "should be the same.")
+	s.InplaceMulInt(2)
+	assert.Equal(t, s.GetV(), int32(48), "should be the same.")
+
+	s = s.SubSimpleStruct(b)
+	assert.Equal(t, s.GetV(), int32(40), "should be the same.")
+	s.InplaceSubInt(32)
+	assert.Equal(t, s.GetV(), int32(8), "should be the same.")
+
+	c := a.MulInt(2)
+	assert.True(t, c.Eq0(b), "should be the same.")
+	assert.True(t, a.Ne0(b), "should be the same.")
+}
+"""

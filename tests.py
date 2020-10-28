@@ -12,6 +12,7 @@ import os
 
 import lang.cpython
 import lang.lua
+import lang.go
 
 
 start_path = os.path.dirname(__file__)
@@ -19,6 +20,7 @@ start_path = os.path.dirname(__file__)
 parser = argparse.ArgumentParser(description='Run generator unit tests.')
 parser.add_argument('--pybase', dest='python_base_path', help='Path to the Python interpreter')
 parser.add_argument('--luabase', dest='lua_base_path', help='Path to the Lua interpreter')
+parser.add_argument('--go', dest='go_build', help='Build GO', action="store_true")
 parser.add_argument('--debug', dest='debug_test', help='Generate a working solution to debug a test')
 parser.add_argument('--x64', dest='x64', help='Build for 64 bit architecture', action='store_true', default=False)
 parser.add_argument('--linux', dest='linux', help='Build on Linux', action='store_true', default=False)
@@ -36,9 +38,9 @@ if args.python_base_path:
 # -- CMake generator
 if not args.linux:
 	if args.x64:
-		cmake_generator = 'Visual Studio 15 2017 Win64'
+		cmake_generator = 'Visual Studio 16 2019'
 	else:
-		cmake_generator = 'Visual Studio 15 2017'
+		cmake_generator = 'Visual Studio 16 2019'
 
 	print("Using CMake generator: %s" % cmake_generator)
 
@@ -115,8 +117,7 @@ def create_cpython_cmake_file(module, work_path, sources, site_package, include_
 	with open(cmake_path, 'w') as file:
 		quoted_sources = ['"%s"' % source for source in sources]
 
-		file.write('''
-cmake_minimum_required(VERSION 3.1)
+		file.write('''cmake_minimum_required(VERSION 3.1)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/")
 
@@ -178,7 +179,7 @@ class CPythonTestBed:
 			cflags = subprocess.check_output('python3-config --cflags', shell=True).decode('utf-8').strip()
 			cflags = cflags.replace('\n', ' ')
 
-			build_cmd = 'gcc ' + cflags + ' -g -O0 -fPIC -std=c++11 -c %s -o my_test.o' % ' '.join(sources)
+			build_cmd = 'gcc ' + cflags + ' -g -O0 -fPIC -std=c++14 -c %s -o my_test.o' % ' '.join(sources)
 
 			try:
 				subprocess.check_output(build_cmd, shell=True, stderr=subprocess.STDOUT)
@@ -189,10 +190,7 @@ class CPythonTestBed:
 			ldflags = subprocess.check_output('python3-config --ldflags', shell=True).decode('utf-8').strip()
 			ldflags = ldflags.replace('\n', ' ')
 
-			user_site = subprocess.check_output('python3 -m site --user-site', shell=True).decode('utf-8').strip()
-			os.makedirs(user_site, exist_ok=True)  # make sure site-packages exists
-
-			link_cmd = 'g++ -shared my_test.o ' + ldflags + ' -o ' + user_site + '/my_test.so'
+			link_cmd = 'g++ -shared my_test.o ' + ldflags + ' -o my_test.so'
 
 			try:
 				subprocess.check_output(link_cmd, shell=True, stderr=subprocess.STDOUT)
@@ -300,7 +298,7 @@ class LuaTestBed:
 			os.chdir(work_path)
 			shutil.copy(os.path.join(args.lua_base_path, 'bin', 'lua'), work_path)
 
-			build_cmd = 'gcc -I' + os.path.join(args.lua_base_path, 'include') + ' -g -O0 -fPIC -std=c++11 -c %s -o my_test.o' % ' '.join(sources)
+			build_cmd = 'gcc -I' + os.path.join(args.lua_base_path, 'include') + ' -g -O0 -fPIC -std=c++14 -c %s -o my_test.o' % ' '.join(sources)
 
 			try:
 				subprocess.check_output(build_cmd, shell=True, stderr=subprocess.STDOUT)
@@ -343,6 +341,115 @@ class LuaTestBed:
 		return success
 
 
+# GO test bed
+def create_go_cmake_file(module, work_path, sources):
+	cmake_path = os.path.join(work_path, 'CMakeLists.txt')
+
+	with open(cmake_path, 'w') as file:
+		quoted_sources = ['"%s"' % source for source in sources if ".go" not in source]
+
+		work_place_ = work_path.replace('\\', '/')
+
+		file.write(f"""
+cmake_minimum_required(VERSION 3.1)
+
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
+set(CMAKE_MODULE_PATH ${{CMAKE_MODULE_PATH}} "${{CMAKE_SOURCE_DIR}}/")
+
+project({module})
+enable_language(C CXX)
+set(CMAKE_CXX_STANDARD 14)
+
+add_library(my_test SHARED {' '.join(quoted_sources)})
+set_target_properties(my_test PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE "{work_place_}")
+
+install(TARGETS my_test DESTINATION "${{CMAKE_SOURCE_DIR}}/" COMPONENT my_test)
+""")
+
+
+def build_and_deploy_go_extension(work_path, build_path):
+	print("Generating build system...")
+	try:
+		if args.linux:
+			subprocess.check_output(['cmake', '..'])
+		else:
+			subprocess.check_output('cmake .. -G "%s"' % cmake_generator)
+	except subprocess.CalledProcessError as e:
+		print(e.output.decode('utf-8'))
+		return False
+
+	print("Building extension...")
+	try:
+		if args.linux:
+			subprocess.check_output(['make'])
+		else:
+			subprocess.check_output(['cmake', '--build', '.', '--config', 'Release'])
+	except subprocess.CalledProcessError as e:
+		print(e.output.decode('utf-8'))
+		return False
+
+	print("install extension...")
+	try:
+		if args.linux:
+			subprocess.check_output(['make', 'install'])
+		else:
+			subprocess.check_output(['cmake', '--install', '.', '--config', 'Release'])
+	except subprocess.CalledProcessError as e:
+		print(e.output.decode('utf-8'))
+		return False
+
+	return True
+
+class GoTestBed:
+	def build_and_test_extension(self, work_path, module, sources):
+		if not hasattr(module, "test_go"):
+			print("Can't find test_go")
+			return False
+
+		# copy test file
+		test_path = os.path.join(work_path, 'test.go')
+		with open(test_path, 'w') as file:
+			file.write(module.test_go)
+
+		# if need special other file in package
+		if hasattr(module, "test_special_cgo"):
+			test_path = os.path.join(work_path, 'test_cgo.go')
+			with open(test_path, 'w') as file:
+				file.write(module.test_special_cgo)
+
+		build_path = os.path.join(work_path, 'build')
+		os.mkdir(build_path)
+		os.chdir(build_path)
+
+		create_go_cmake_file("test", work_path, sources)
+		create_clang_format_file(work_path)
+
+		if not build_and_deploy_go_extension(work_path, build_path):
+			return False
+
+		# after build, delete the wrapper.cpp to test the lib which has been build
+		if os.path.exists(os.path.join(work_path, 'wrapper.cpp')):
+			os.remove(os.path.join(work_path, 'wrapper.cpp'))
+
+		print("Executing Go test...")
+		os.chdir(work_path)
+
+		success = True
+		try:
+			subprocess.check_output('go mod init mytest', shell=True, stderr=subprocess.STDOUT)
+			subprocess.check_output("go fmt mytest", shell=True, stderr=subprocess.STDOUT)
+			subprocess.check_output("goimports -w bind.go", shell=True, stderr=subprocess.STDOUT)
+			subprocess.check_output('go test -run ""', shell=True, stderr=subprocess.STDOUT)
+		except subprocess.CalledProcessError as e:
+			print(e.output.decode('utf-8'))
+			success = False
+
+		print("Cleanup...")
+
+		return success
+
+
 # Clang format
 def create_clang_format_file(work_path):
 	with open(os.path.join(work_path, '_clang-format'), 'w') as file:
@@ -375,6 +482,11 @@ if args.lua_base_path:
 	gen = lang.lua.LuaGenerator()
 	gen.verbose = False
 	run_tests(gen, test_names, LuaTestBed())
+
+if args.go_build:
+	gen = lang.go.GoGenerator()
+	gen.verbose = False
+	run_tests(gen, test_names, GoTestBed())
 
 
 #

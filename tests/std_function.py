@@ -73,3 +73,54 @@ r = my_test.InvokeComputeFunction(5, 3, 4)
 
 assert(r == 19)
 '''
+
+test_special_cgo = '''\
+package mytest
+
+/*
+extern void simpleVoidFunction();
+extern int computeFunction(int, int*, int*);
+*/
+import "C"
+
+import (
+	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+//export simpleVoidFunction
+func simpleVoidFunction() {
+	fmt.Print("void function called!")
+}
+
+//export computeFunction
+func computeFunction(v int32, m *int32, c *int32) int32 {
+	return v*(*m) + *c
+}
+
+// TestStdFunction ...
+func TestStdFunction(t *testing.T) {
+	SetSimpleVoidFunction(C.simpleVoidFunction)
+	InvokeSimpleVoidFunction()
+
+	SetComputeFunction(C.computeFunction)
+	r := InvokeComputeFunction(5, 3, 4)
+
+	assert.Equal(t, r, int32(19), "should be the same.")
+}
+'''
+
+test_go = '''\
+package mytest
+
+import (
+	"testing"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	TestStdFunction(t)
+}
+'''

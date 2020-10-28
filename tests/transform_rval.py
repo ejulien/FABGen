@@ -88,3 +88,24 @@ C = my_test.get_c()
 assert(C.c == 7)
 assert(C:GetBaseValue() == 12)
 '''
+
+test_go = '''\
+package mytest
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	B := GetB()
+	assert.Equal(t, CastAToB(B).GetB(), int32(3), "should be the same.")
+	assert.Equal(t, B.GetBaseValue(), int32(12), "should be the same.")
+
+	C := GetC()
+	assert.Equal(t, CastAToC(C).GetC(), int32(7), "should be the same.")
+	assert.Equal(t, C.GetBaseValue(), int32(12), "should be the same.")
+}
+'''

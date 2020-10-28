@@ -81,3 +81,29 @@ s = my_test.return_simple_struct_by_ref()
 my_test.take_simple_struct_by_value(s)
 assert(my_test.test_simple_struct() == true)
 '''
+
+test_go = '''\
+package mytest
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	// take by value
+	s := ReturnSimpleStructByValue()
+	TakeSimpleStructByValue(s)
+	assert.True(t, TestSimpleStruct(), "should be true.")
+
+	sp := ReturnSimpleStructByPointer()
+	TakeSimpleStructByPointer(sp)
+	assert.True(t, TestSimpleStruct(), "should be true.")
+
+	sr := ReturnSimpleStructByRef()
+	TakeSimpleStructByRef(sr)
+	assert.True(t, TestSimpleStruct(), "should be true.")
+}
+'''

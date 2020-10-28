@@ -42,7 +42,7 @@ test_python = '''\
 import my_test
 
 a = my_test.GetBaseClass()
-b = my_test.Castbase_classToderived_class(a)
+b = my_test.Cast_base_class_To_derived_class(a)
 assert b.u == 7
 '''
 
@@ -50,6 +50,23 @@ test_lua = '''\
 my_test = require "my_test"
 
 a = my_test.GetBaseClass()
-b = my_test.Castbase_classToderived_class(a)
+b = my_test.Cast_base_class_To_derived_class(a)
 assert(b.u == 7)
+'''
+
+test_go = '''\
+package mytest
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	a := GetBaseClass()
+	b := CastBaseClassToDerivedClass(a)
+	assert.Equal(t, b.GetU(), int32(7), "should be the same.")
+}
 '''

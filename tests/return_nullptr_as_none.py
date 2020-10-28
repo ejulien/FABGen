@@ -28,3 +28,18 @@ my_test = require "my_test"
 v = my_test.return_nullptr()
 assert(v == nil)
 '''
+
+test_go = '''\
+package mytest
+
+import (
+	"testing"
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {	
+	v := ReturnNullptr()
+	assert.Nil(t, v, "should be nil.")
+}
+'''

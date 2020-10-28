@@ -1,6 +1,58 @@
 {
 	"version": "0.2.0",
 	"configurations": [
+	{
+			"name": "go_test",
+			"type": "python",
+			"request": "launch",
+			"stopOnEntry": false,
+			"pythonPath": "${command:python.interpreterPath}",
+			"program": "${workspaceRoot}/go_test.py",
+			"cwd": "${workspaceRoot}",
+			"args": [],
+			"env": {}
+		},
+        {
+            "name": "Launch GO test",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "remotePath": "",
+            "port": 2345,
+            "host": "127.0.0.1",
+            "cwd": "${workspaceRoot}",
+            "program": "${workspaceRoot}",
+            "env": {},
+            "args": [
+				"-test.run",
+				"Test",
+				],
+            "showLog": false,
+            "dlvLoadConfig": {
+                "followPointers": true,
+                "maxVariableRecurse": 3,
+                "maxStringLen": 400,
+                "maxArrayValues": 400,
+                "maxStructFields": -1,
+                "showGlobalVariables": "false"
+            }
+        },
+		{
+			"name": "Go: Tests",
+			"type": "python",
+			"request": "launch",
+			"stopOnEntry": false,
+			"pythonPath": "${command:python.interpreterPath}",
+			"program": "${workspaceRoot}/tests.py",
+			"cwd": "${workspaceRoot}",
+			"args": ["--go"],
+			"envFile": "${workspaceRoot}/.env",
+			"debugOptions": [
+				"WaitOnAbnormalExit",
+				"WaitOnNormalExit",
+				"RedirectOutput"
+			]
+		},
 		{
 			"name": "CPython: Tests --linux",
 			"type": "python",
@@ -43,7 +95,7 @@
 			"pythonPath": "${command:python.interpreterPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--pybase", "C:/Pythons/36", "--x64"],
+			"args": ["--pybase", "C:/Anaconda3", "--x64"],
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
 				"WaitOnAbnormalExit",
@@ -59,7 +111,7 @@
 			"pythonPath": "${command:python.interpreterPath}",
 			"program": "${workspaceRoot}/tests.py",
 			"cwd": "${workspaceRoot}",
-			"args": ["--pybase", "C:/Pythons/36", "--debug", "const_support", "--x64"],
+			"args": ["--pybase", "C:/Anaconda3", "--debug", "const_support", "--x64"],
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
 				"WaitOnAbnormalExit",
@@ -137,7 +189,7 @@
 			"type": "python",
 			"request": "launch",
 			"stopOnEntry": false,
-			"pythonPath": "C:/Pythons/36/python.exe",
+			"pythonPath": "C:/Anaconda3/python.exe",
 			"program": "",
 			"cwd": "${workspaceRoot}",
 			"args": ["-m", "vprof", "-c", "hp", "\"${workspaceRoot}/bind.py d:/gs/binding/bind_harfang.py --lua --out d:/ --embedded\""],
@@ -221,6 +273,22 @@
 			"program": "${workspaceRoot}/bind.py",
 			"cwd": "${workspaceRoot}",
 			"args": ["d:/gs-fabgen/bind_harfang.py", "--lua", "--cpython", "--out", "d:/gs-fabgen/"],
+			"envFile": "${workspaceRoot}/.env",
+			"debugOptions": [
+				"WaitOnAbnormalExit",
+				"WaitOnNormalExit",
+				"RedirectOutput"
+			]
+		},
+		{
+			"name": "All: GO Bind Harfang",
+			"type": "python",
+			"request": "launch",
+			"stopOnEntry": false,
+			"pythonPath": "${command:python.interpreterPath}",
+			"program": "${workspaceRoot}/bind.py",
+			"cwd": "${workspaceRoot}",
+			"args": ["C:/boulot/works/nengine_gamestart/moteur_harfang_bgfx/binding/bind_harfang.py", "--go", "--out", "C:/boulot/works/nengine_gamestart/moteur_harfang_bgfx/extern/FABGen/"],
 			"envFile": "${workspaceRoot}/.env",
 			"debugOptions": [
 				"WaitOnAbnormalExit",

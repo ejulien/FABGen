@@ -55,3 +55,26 @@ c = my_test.get_obj1()
 assert(a ~= c)
 assert(b ~= c)
 '''
+
+test_go = '''\
+package mytest
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	a := GetObj0()
+	b := GetObj0()
+
+	assert.Equal(t, a, b, "should be the same.")
+
+	c := GetObj1()
+
+	assert.NotEqual(t, a, c, "should not be the same.")
+	assert.NotEqual(t, b, c, "should not be the same.")
+}
+'''

@@ -70,3 +70,29 @@ assert(my_test.add_int_by_value(3, 4) == 7)
 assert(my_test.add_int_by_pointer(3, 4) == 7)
 assert(my_test.add_int_by_reference(3, 4) == 7)
 '''
+
+
+test_go = '''\
+package mytest
+
+import (
+	"testing"
+	"github.com/stretchr/testify/assert"
+)
+
+// Test ...
+func Test(t *testing.T) {
+	assert.Equal(t, ReturnInt(), 8, "should be the same.")
+	assert.Equal(t, ReturnFloat(), float32(8), "should be the same.")
+	assert.Equal(t, ReturnConstCharPtr(), "const char * -> string", "should be the same.")
+
+	assert.Equal(t, *ReturnIntByPointer(), 9, "should be the same.")
+	assert.Equal(t, *ReturnIntByReference(), 9, "should be the same.")
+	
+	assert.Equal(t, AddIntByValue(3, 4), 7, "should be the same.")
+	a := int32(3)
+	b := int32(4)
+	assert.Equal(t, AddIntByPointer(&a, &b), 7, "should be the same.")
+	assert.Equal(t, AddIntByReference(&a, &b), 7, "should be the same.")
+}
+'''

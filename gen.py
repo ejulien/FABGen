@@ -1472,7 +1472,7 @@ static void *_type_tag_cast(void *in_ptr, uint32_t in_type_tag, uint32_t out_typ
 
 		for conv, casts in upcasts.items():
 			for cast in casts:
-				name = '_Cast%sTo%s' % (cast.bound_name, conv.bound_name)
+				name = '_Cast_%s_To_%s' % (cast.bound_name, conv.bound_name)
 				self.insert_binding_code('static %s *%s(%s *o) { return (%s *)o; }' % (repr(conv.ctype), name, repr(cast.ctype), repr(conv.ctype)))
 				self.bind_function(name, repr(conv.ctype) + ' *', [repr(cast.ctype) + ' *o'], [], name[1:])
 

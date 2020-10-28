@@ -14,3 +14,9 @@ def bind_defaults(gen):
 
 		lib.lua.std.bind_std(gen)
 		lib.lua.stl.bind_stl(gen)
+	elif gen.get_language() == 'Go':
+		import lib.go.std
+		import lib.go.stl
+
+		lib.go.std.bind_std(gen)
+		lib.go.stl.bind_stl(gen)
