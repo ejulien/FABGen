@@ -197,7 +197,7 @@ class CPythonTestBed:
 			
 			print("user site ls: "+subprocess.check_output("ls "+user_site, shell=True).decode('utf-8').strip())
 
-			link_cmd = 'g++ -shared my_test.o ' + ldflags + ' -o ../my_test.so'
+			link_cmd = 'g++ -shared my_test.o ' + ldflags + ' -o my_test.so'
 
 			try:
 				subprocess.check_output(link_cmd, shell=True, stderr=subprocess.STDOUT)
