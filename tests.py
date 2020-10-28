@@ -191,11 +191,8 @@ class CPythonTestBed:
 			ldflags = subprocess.check_output('python3-config --ldflags', shell=True).decode('utf-8').strip()
 			ldflags = ldflags.replace('\n', ' ')
 
-			user_site = site.getusersitepackages().strip()
+			user_site = subprocess.check_output('python3 -m site --user-site', shell=True).decode('utf-8').strip()
 			os.makedirs(user_site, exist_ok=True)  # make sure site-packages exists
-			print("user site: "+user_site)
-			
-			print("user site ls: "+subprocess.check_output("ls "+user_site, shell=True).decode('utf-8').strip())
 
 			link_cmd = 'g++ -shared my_test.o ' + ldflags + ' -o ' + user_site + '/my_test.so'
 
