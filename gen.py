@@ -500,6 +500,7 @@ class FABGen:
 		self._bound_functions = []  # list of bound functions
 		self._bound_variables = []  # list of bound variables
 		self._enums = {}  # list of bound enumerations
+		self._typedefs = {} # list of typedefs
 
 		self._extern_types = []  # list of extern types
 
@@ -591,6 +592,8 @@ class FABGen:
 		conv.to_c_storage_ctype = parse(default_arg_storage_type, _CType)
 
 		self.__type_convs[type] = conv
+
+		self._typedefs[type] = alias_of
 
 	#
 	def bind_named_enum(self, name, symbols, storage_type='int', bound_name=None, prefix='', namespace=None):
@@ -1546,6 +1549,19 @@ size_t %s(%s *(*get_c_type_info)(const char *type)) {
 
 '''
 
+	def output_typedef_memcheck_api(self):
+		memcheck_func = self.apply_api_prefix('typedef_memcheck')
+
+		memchecks = []
+		for _alias, _type in self._typedefs.items():
+			memchecks.append('	static_assert(sizeof(%s) == sizeof(%s), "Typedef memory layout error!");' % (_alias, _type));
+
+		#self._header += 'void %s();\n'
+		self._source += '''void %s() {
+%s
+}
+\n''' % (memcheck_func, '\n'.join(memchecks))
+
 	def finalize(self):
 		# insert includes
 		system_includes = ''
@@ -1571,6 +1587,9 @@ size_t %s(%s *(*get_c_type_info)(const char *type)) {
 
 		# extern types linker API
 		self.output_linker_api()
+
+		# typedef memory check API
+		self.output_typedef_memcheck_api()
 
 	def get_output(self):
 		return {
