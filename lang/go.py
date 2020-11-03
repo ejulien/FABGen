@@ -1083,6 +1083,7 @@ uint32_t %s(void* p) {
 				for argin in proto["argsin"]:
 					if has_previous_arg:
 						go += " ,"
+
 					go += f"{clean_name(argin['carg'].name)} {self.__get_arg_bound_name_to_go(argin)}"
 					has_previous_arg = True
 

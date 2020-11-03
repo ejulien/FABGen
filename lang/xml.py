@@ -151,9 +151,6 @@ class XMLGenerator(gen.FABGen):
 		if name is None:
 			name = bound_name
 
-		if bound_name == 'OpenVRStateToViewState':
-			bound_name = bound_name
-
 		uid = classname + '_' + bound_name if classname else bound_name
 
 		protos = self._build_protos(method['protos'])
