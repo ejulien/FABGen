@@ -86,11 +86,11 @@ func Test(t *testing.T) {
 	s := NewSimpleStruct()
 
 	assert.Equal(t, s.GetA(), int32(1), "should be the same.")
-	assert.True(t, s.SetA1(8, 2), "should be the same.")
+	assert.True(t, s.SetAWithV0V1(8, 2), "should be the same.")
 
 	assert.Equal(t, s.GetA(), int32(10), "should be the same.")
 
-	assert.Equal(t, s.SetA0(9), int32(9), "should be the same.")
+	assert.Equal(t, s.SetA(9), int32(9), "should be the same.")
 	assert.Equal(t, s.GetA(), int32(9), "should be the same.")
 
 	assert.Equal(t, s.GetStaticInt(), int32(4), "should be the same.")

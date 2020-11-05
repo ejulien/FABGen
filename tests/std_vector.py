@@ -196,7 +196,7 @@ import (
 
 // Test ...
 func Test(t *testing.T) {
-	v := NewVectorOfInt0()
+	v := NewVectorOfInt()
 
 	assert.Equal(t, v.Size(), int32(0), "should be the same.")
 	assert.Equal(t, v.Len(), int32(0), "should be the same.")
@@ -229,16 +229,16 @@ func Test(t *testing.T) {
 	assert.Equal(t, ConsumePointerToInt(v.Data()), int32(16), "should be the same.")
 
 	// implicit cast to const int *
-//	assert.Equal(t, ConsumePointerToInt(v), int32(16), "should be the same.")
+	//	assert.Equal(t, ConsumePointerToInt(v), int32(16), "should be the same.")
 
 	// // construct from GoSlice
-	w := NewVectorOfInt1([]int32{5, 2, 8})
+	w := NewVectorOfIntWithSequence([]int32{5, 2, 8})
 
 	assert.Equal(t, w.Get(0), int32(5), "should be the same.")
 	assert.Equal(t, w.Get(1), int32(2), "should be the same.")
 	assert.Equal(t, w.Get(2), int32(8), "should be the same.")
 
-	vPtr := NewVectorOfIntPtr0()
+	vPtr := NewVectorOfIntPtr()
 	vPtr.PushBack(nil)
 	vPtr.PushBack(v.Data())
 

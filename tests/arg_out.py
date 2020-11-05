@@ -104,12 +104,12 @@ func Test(t *testing.T) {
 	assert.Equal(t, *c, int32(16), "should be the same.")
 	assert.Equal(t, *b, int32(42), "should be the same.")
 
-	r, c, b := OutValuesFunctionCallRval0(2)
+	r, c, b := OutValuesFunctionCallRval(2)
 	assert.Equal(t, r, int32(2), "should be the same.")
 	assert.Equal(t, *c, int32(16), "should be the same.")
 	assert.Equal(t, *b, int32(28), "should be the same.")
 
-	r, c, b = OutValuesFunctionCallRval1(2, 2)
+	r, c, b = OutValuesFunctionCallRvalWithK(2, 2)
 	assert.Equal(t, r, int32(4), "should be the same.")
 	assert.Equal(t, *c, int32(16), "should be the same.")
 	assert.Equal(t, *b, int32(28), "should be the same.")

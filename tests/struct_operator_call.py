@@ -166,7 +166,7 @@ func Test(t *testing.T) {
 	assert.Equal(t, s.GetV(), int32(8), "should be the same.")
 
 	c := a.MulInt(2)
-	assert.True(t, c.Eq0(b), "should be the same.")
-	assert.True(t, a.Ne0(b), "should be the same.")
+	assert.True(t, c.Eq(b), "should be the same.")
+	assert.True(t, a.Ne(b), "should be the same.")
 }
 """
