@@ -6,6 +6,8 @@ import lib.std
 import lib.stl
 import lib
 
+import copy
+
 
 def check_bool_rval_lambda(gen, msg):
 	return lambda rvals, ctx: 'if (!%s) {\n%s}\n' % (rvals[0], gen.proxy_call_error(msg, ctx))
@@ -42,6 +44,12 @@ def expand_std_vector_proto(gen, protos):
 		'CPython' : 'PySequenceOf',
 		'Lua' : 'LuaTableOf'
 	}
+	name_prefix = {
+		'CPython' : 'SequenceOf',
+		'Lua' : 'TableOf',
+		'Go' : 'SliceOf'
+	}
+	
 	if gen.get_language() not in prefix:
 		return protos
 
@@ -56,11 +64,11 @@ def expand_std_vector_proto(gen, protos):
 			if has_sequence:
 				add_expanded = True
 				seq = conv._features['sequence']
-				expanded.append('%s%s %s' % (prefix[gen.get_language()], seq.wrapped_conv.bound_name.title(), carg.name))
+				arg = '%s%s %s_%s' % (prefix[gen.get_language()], seq.wrapped_conv.bound_name, name_prefix[gen.get_language()], carg.name)
 			else:	
 				expanded.append(arg)
 		if add_expanded:
-			expanded_protos.append((proto[0], expanded, proto[2]))
+			expanded_protos.append((proto[0], expanded, copy.deepcopy(proto[2])))
 
 	return protos + expanded_protos
 

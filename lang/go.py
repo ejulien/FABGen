@@ -1059,6 +1059,9 @@ uint32_t %s(void* p) {
 			# add bounding_name to the overload function
 			if "bound_name" in proto["features"]:
 				go += proto["features"]["bound_name"]
+			# if automatic suffix generated
+			elif "suggested_suffix" in proto["features"]:
+				go += proto["features"]["suggested_suffix"]
 			# add number in case of multiple proto, in go, you can't have overload or default parameter
 			elif len(protos) > 1:
 				go += f"{id_proto}"
@@ -1072,6 +1075,9 @@ uint32_t %s(void* p) {
 			# add bounding_name to the overload function
 			if "bound_name" in proto["features"]:
 				go += proto["features"]["bound_name"]
+			# if automatic suffix generated
+			elif "suggested_suffix" in proto["features"]:
+				go += proto["features"]["suggested_suffix"]
 			# add number in case of multiple proto, in go, you can't have overload or default parameter
 			elif len(protos) > 1:
 				go += f"{id_proto}"
@@ -1133,7 +1139,14 @@ uint32_t %s(void* p) {
 								if proto_args is not None and len(proto_args) > 1:
 									for id_proto_arg, proto_arg in enumerate(proto_args):
 										if len(proto_arg['args']) <= 0:
-											id_proto_without_arg = str(id_proto_arg)
+											# add bounding_name to the overload function
+											if "bound_name" in proto_arg["features"]:
+												id_proto_without_arg = proto_arg["features"]["bound_name"]
+											# if automatic suffix generated
+											elif "suggested_suffix" in proto_arg["features"]:
+												id_proto_without_arg = proto_arg["features"]["suggested_suffix"]
+											else:
+												id_proto_without_arg = str(id_proto_arg)
 											break
 
 								go += f"{clean_name(arg['carg'].name)} := {arg_bound_name}{id_proto_without_arg}()\n"
@@ -1167,6 +1180,9 @@ uint32_t %s(void* p) {
 			# add bounding_name to the overload function
 			if "bound_name" in proto["features"]:
 				go += proto["features"]["bound_name"]
+			# if automatic suffix generated
+			elif "suggested_suffix" in proto["features"]:
+				go += proto["features"]["suggested_suffix"]
 			# add number in case of multiple proto, in go, you can't have overload or default parameter
 			elif len(protos) > 1:
 				go += f"{id_proto}"
@@ -1280,6 +1296,9 @@ uint32_t %s(void* p) {
 			# add bounding_name to the overload function
 			if "bound_name" in proto["features"]:
 				go += proto["features"]["bound_name"]
+			# if automatic suffix generated
+			elif "suggested_suffix" in proto["features"]:
+				go += proto["features"]["suggested_suffix"]
 			# add number in case of multiple proto, in go, you can't have overload or default parameter
 			elif len(protos) > 1:
 				go += f"{id_proto}"
@@ -1339,7 +1358,11 @@ uint32_t %s(void* p) {
 
 					# other normal args
 					for argin in proto["args"]:
-						src, retval_c = self.__arg_from_c_to_cpp(argin, str(argin["carg"].name))
+						# special Slice
+						if isinstance(argin["conv"], lib.go.stl.GoSliceToStdVectorConverter):
+							src, retval_c = self.__arg_from_c_to_cpp(argin, clean_name(str(argin["carg"].name)))
+						else:
+							src, retval_c = self.__arg_from_c_to_cpp(argin, str(argin["carg"].name))
 						go += src
 						args.append(retval_c)
 
@@ -1874,6 +1897,9 @@ uint32_t %s(void* p) {
 				# add bounding_name to the overload function
 				if "bound_name" in proto["features"]:
 					method_name_go += proto["features"]["bound_name"]
+				# if automatic suffix generated
+				elif "suggested_suffix" in proto["features"]:
+					method_name_go += proto["features"]["suggested_suffix"]
 				# add number in case of multiple proto, in go, you can't have overload or default parameter
 				elif len(protos) > 1:
 					method_name_go += f"{id_proto}"
