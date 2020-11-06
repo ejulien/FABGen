@@ -21,6 +21,8 @@ void set_global_int() { global_int = 8; }
 int get_global_int() { return global_int; }
 
 int get_global_int_multiplied(int k = 5) { return 3 * k; }
+
+void get_modify_arg_in_out(int &v, int k=5) { v = 3 * k + v; }
 ''', True, False)
 
 	gen.bind_function('get_int', 'int', [])
@@ -35,6 +37,8 @@ int get_global_int_multiplied(int k = 5) { return 3 * k; }
 	gen.bind_function('get_global_int', 'int', [])
 
 	gen.bind_function('get_global_int_multiplied', 'int', ['?int k'])
+
+	gen.bind_function('get_modify_arg_in_out', 'void', ['int &v', '?int k'], {'arg_in_out': ['v']})
 
 	gen.finalize()
 	return gen.get_output()
@@ -107,5 +111,14 @@ func Test(t *testing.T) {
 	// optional argument
 	assert.Equal(t, GetGlobalIntMultiplied(), int32(15), "should be the same.")
 	assert.Equal(t, GetGlobalIntMultipliedWithK(2), int32(6), "should be the same.")
+
+	// argument in out
+	v := int32(2)
+	GetModifyArgInOut(&v)
+	assert.Equal(t, v, int32(17), "should be the same.")
+
+	v = int32(2)
+	GetModifyArgInOutWithK(&v, 4)
+	assert.Equal(t, v, int32(14), "should be the same.")
 }
 '''
