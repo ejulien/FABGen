@@ -785,7 +785,6 @@ class FABGen:
 
 		# compute suggested_suffix if language doesn't support overload
 		if len(_protos) > 1:
-					
 			def clean_name_with_title(name):
 				new_name = ""
 				if "_" in name:
@@ -813,6 +812,17 @@ class FABGen:
 							new_name += c.capitalize()
 				return new_name.strip().replace("_", "").replace(":", "")
 
+			def check_feature_is_dict(proto):
+				if "features" not in proto or proto["features"] is None or len(proto["features"]) <= 0:
+					proto["features"] = {}
+				# if not dict, transform to dict
+				if isinstance(proto["features"], list):
+					temp = {}
+					for f in proto["features"]:
+						temp[f] = None
+					proto["features"] = temp
+				return proto
+
 			# get the base one, usually the first one with the less args
 			id_base = 0
 			proto_base = _protos[id_base]
@@ -821,8 +831,7 @@ class FABGen:
 					proto_base = proto
 					id_base = id + 1
 
-			if len(proto_base["features"]) <= 0:
-				proto_base["features"] = {}
+			proto_base = check_feature_is_dict(proto_base)
 			proto_base["features"]["suggested_suffix"] = ""	# it's the base, tell that's there is no suffix
 
 			suggested_suffixes = []
@@ -831,8 +840,7 @@ class FABGen:
 				if id == id_base:
 					continue
 				
-				if len(proto["features"]) <= 0:
-					proto["features"] = {}
+				proto = check_feature_is_dict(proto)
 
 				# check members difference
 				def get_suggested_suffix(with_type = False):
