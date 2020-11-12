@@ -109,7 +109,11 @@ if args.go:
 	os.system(f"go mod init {go_gen._name}")
 	os.system("go fmt bind.go")
 	os.system("goimports -w bind.go")
-	os.system("clang-format -i wrapper.cpp wrapper.h")
+
+	try:
+		os.system("clang-format -i wrapper.cpp wrapper.h")
+	except:
+		print("clang-format was not found, ideally use to have beautiful .h file")
 
 if args.xml:
 	output_binding(setup_generator(lang.xml.XMLGenerator()))
