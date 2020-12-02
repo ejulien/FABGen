@@ -1060,8 +1060,8 @@ uint32_t %s(void* p) {
 			if "bound_name" in proto["features"]:
 				go += proto["features"]["bound_name"]
 			# if automatic suffix generated
-			elif "suggested_suffix" in proto["features"]:
-				go += proto["features"]["suggested_suffix"]
+			elif "suggested_suffix" in proto:
+				go += proto["suggested_suffix"]
 			# add number in case of multiple proto, in go, you can't have overload or default parameter
 			elif len(protos) > 1:
 				go += f"{id_proto}"
@@ -1076,8 +1076,8 @@ uint32_t %s(void* p) {
 			if "bound_name" in proto["features"]:
 				go += proto["features"]["bound_name"]
 			# if automatic suffix generated
-			elif "suggested_suffix" in proto["features"]:
-				go += proto["features"]["suggested_suffix"]
+			elif "suggested_suffix" in proto:
+				go += proto["suggested_suffix"]
 			# add number in case of multiple proto, in go, you can't have overload or default parameter
 			elif len(protos) > 1:
 				go += f"{id_proto}"
@@ -1143,8 +1143,8 @@ uint32_t %s(void* p) {
 											if "bound_name" in proto_arg["features"]:
 												id_proto_without_arg = proto_arg["features"]["bound_name"]
 											# if automatic suffix generated
-											elif "suggested_suffix" in proto_arg["features"]:
-												id_proto_without_arg = proto_arg["features"]["suggested_suffix"]
+											elif "suggested_suffix" in proto_arg:
+												id_proto_without_arg = proto_arg["suggested_suffix"]
 											else:
 												id_proto_without_arg = str(id_proto_arg)
 											break
@@ -1181,8 +1181,8 @@ uint32_t %s(void* p) {
 			if "bound_name" in proto["features"]:
 				go += proto["features"]["bound_name"]
 			# if automatic suffix generated
-			elif "suggested_suffix" in proto["features"]:
-				go += proto["features"]["suggested_suffix"]
+			elif "suggested_suffix" in proto:
+				go += proto["suggested_suffix"]
 			# add number in case of multiple proto, in go, you can't have overload or default parameter
 			elif len(protos) > 1:
 				go += f"{id_proto}"
@@ -1297,8 +1297,8 @@ uint32_t %s(void* p) {
 			if "bound_name" in proto["features"]:
 				go += proto["features"]["bound_name"]
 			# if automatic suffix generated
-			elif "suggested_suffix" in proto["features"]:
-				go += proto["features"]["suggested_suffix"]
+			elif "suggested_suffix" in proto:
+				go += proto["suggested_suffix"]
 			# add number in case of multiple proto, in go, you can't have overload or default parameter
 			elif len(protos) > 1:
 				go += f"{id_proto}"
@@ -1898,8 +1898,8 @@ uint32_t %s(void* p) {
 				if "bound_name" in proto["features"]:
 					method_name_go += proto["features"]["bound_name"]
 				# if automatic suffix generated
-				elif "suggested_suffix" in proto["features"]:
-					method_name_go += proto["features"]["suggested_suffix"]
+				elif "suggested_suffix" in proto:
+					method_name_go += proto["suggested_suffix"]
 				# add number in case of multiple proto, in go, you can't have overload or default parameter
 				elif len(protos) > 1:
 					method_name_go += f"{id_proto}"

@@ -180,6 +180,33 @@ def get_symbol_default_bound_name(name):
 	return get_clean_symbol_name(name)
 
 
+def clean_name_with_title(name):
+	new_name = ""
+	if "_" in name:
+		# redo a special string.title()
+		next_is_forced_uppercase = True
+		for c in name:
+			if c in ["*", "&"]:
+				new_name += c
+			elif c in ["_", "-"]:
+				next_is_forced_uppercase = True
+			else:
+				if next_is_forced_uppercase:
+					next_is_forced_uppercase = False
+					new_name += c.capitalize()
+				else:
+					new_name += c
+	else:
+		# make sur the first letter is captialize
+		first_letter_checked = False
+		for c in name:
+			if c in ["*", "&"] or first_letter_checked:
+				new_name += c
+			elif not first_letter_checked:
+				first_letter_checked = True
+				new_name += c.capitalize()
+	return new_name.strip().replace("_", "").replace(":", "")
+
 #
 typename = re.compile(r"(_|[A-z])[A-z0-9_]*")
 ref_re = re.compile(r"[&*]+")
@@ -785,44 +812,6 @@ class FABGen:
 
 		# compute suggested_suffix if language doesn't support overload
 		if len(_protos) > 1:
-			def clean_name_with_title(name):
-				new_name = ""
-				if "_" in name:
-					# redo a special string.title()
-					next_is_forced_uppercase = True
-					for c in name:
-						if c in ["*", "&"]:
-							new_name += c
-						elif c in ["_", "-"]:
-							next_is_forced_uppercase = True
-						else:
-							if next_is_forced_uppercase:
-								next_is_forced_uppercase = False
-								new_name += c.capitalize()
-							else:
-								new_name += c
-				else:
-					# make sur the first letter is captialize
-					first_letter_checked = False
-					for c in name:
-						if c in ["*", "&"] or first_letter_checked:
-							new_name += c
-						elif not first_letter_checked:
-							first_letter_checked = True
-							new_name += c.capitalize()
-				return new_name.strip().replace("_", "").replace(":", "")
-
-			def check_feature_is_dict(proto):
-				if "features" not in proto or proto["features"] is None or len(proto["features"]) <= 0:
-					proto["features"] = {}
-				# if not dict, transform to dict
-				if isinstance(proto["features"], list):
-					temp = {}
-					for f in proto["features"]:
-						temp[f] = None
-					proto["features"] = temp
-				return proto
-
 			# get the base one, usually the first one with the less args
 			id_base = 0
 			proto_base = _protos[id_base]
@@ -831,17 +820,12 @@ class FABGen:
 					proto_base = proto
 					id_base = id + 1
 
-			proto_base = check_feature_is_dict(proto_base)
-			proto_base["features"]["suggested_suffix"] = ""	# it's the base, tell that's there is no suffix
-
 			suggested_suffixes = []
 			
 			for id, proto in enumerate(_protos):
 				if id == id_base:
 					continue
 				
-				proto = check_feature_is_dict(proto)
-
 				# check members difference
 				def get_suggested_suffix(with_type = False):
 					suggested_suffix = ""
@@ -870,7 +854,7 @@ class FABGen:
 
 				suggested_suffixes.append(suggested_suffix)
 
-				proto["features"]["suggested_suffix"] = suggested_suffix
+				proto["suggested_suffix"] = suggested_suffix
 
 		return _protos
 
