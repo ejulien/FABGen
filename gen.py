@@ -922,19 +922,25 @@ class FABGen:
 				parts.append(self.decl_var(from_c_storage_ctype, 'rval'))
 				parts.append(proxy.wrap('rval_raw', 'rval'))
 			else:
-				if rval_conv._inline:
-					if len(c_call_args) > 0:
-						parts.append('%s _new_obj(%s);\n' % (rval_conv.ctype, ', '.join(c_call_args)))  # construct new inline object on the stack
-					else:
-						parts.append('%s _new_obj;\n' % rval_conv.ctype)
-					ownership = 'Copy'  # inline objects are constructed on the heap then copy constructed to the VM memory block
+				if 'route' in features:
+					parts.append(self.decl_var(from_c_storage_ctype, 'rval', ' = '))
 
-				parts.append(self.decl_var(from_c_storage_ctype, 'rval', ' = '))
-
-				if rval_conv._inline:
-					parts.append('&_new_obj;\n')
+					expr_eval = features['route']  # hijack the output expression
+					parts.append(expr_eval(c_call_args) + '\n')
 				else:
-					parts.append('new %s(%s);\n' % (rval_conv.ctype, ', '.join(c_call_args)))
+					if rval_conv._inline:
+						if len(c_call_args) > 0:
+							parts.append('%s _new_obj(%s);\n' % (rval_conv.ctype, ', '.join(c_call_args)))  # construct new inline object on the stack
+						else:
+							parts.append('%s _new_obj;\n' % rval_conv.ctype)
+						ownership = 'Copy'  # inline objects are constructed on the heap then copy constructed to the VM memory block
+
+					parts.append(self.decl_var(from_c_storage_ctype, 'rval', ' = '))
+
+					if rval_conv._inline:
+						parts.append('&_new_obj;\n')
+					else:
+						parts.append('new %s(%s);\n' % (rval_conv.ctype, ', '.join(c_call_args)))
 
 			rvals_prepare_args.append({'conv': rval_conv, 'ctype': from_c_storage_ctype, 'var': 'rval', 'is_arg_in_out': False, 'ctx': ctx, 'ownership': ownership})
 			rvals.append('rval')
