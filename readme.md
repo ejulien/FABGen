@@ -66,7 +66,10 @@ Generate binding for Lua 5.3
 
 `bind.py api_binding_script.py --lua --out d:\`
 
-Generate binding for GO
+Generate binding for GO  
+Installation:  
+- Install Go from https://golang.org/dl/  
+- goimports with: `go get golang.org/x/tools/cmd/goimports`
 
 `bind.py api_binding_script.py --go --out d:\`
 

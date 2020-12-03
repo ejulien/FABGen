@@ -180,6 +180,33 @@ def get_symbol_default_bound_name(name):
 	return get_clean_symbol_name(name)
 
 
+def clean_name_with_title(name):
+	new_name = ""
+	if "_" in name:
+		# redo a special string.title()
+		next_is_forced_uppercase = True
+		for c in name:
+			if c in ["*", "&"]:
+				new_name += c
+			elif c in ["_", "-"]:
+				next_is_forced_uppercase = True
+			else:
+				if next_is_forced_uppercase:
+					next_is_forced_uppercase = False
+					new_name += c.capitalize()
+				else:
+					new_name += c
+	else:
+		# make sur the first letter is captialize
+		first_letter_checked = False
+		for c in name:
+			if c in ["*", "&"] or first_letter_checked:
+				new_name += c
+			elif not first_letter_checked:
+				first_letter_checked = True
+				new_name += c.capitalize()
+	return new_name.strip().replace("_", "").replace(":", "")
+
 #
 typename = re.compile(r"(_|[A-z])[A-z0-9_]*")
 ref_re = re.compile(r"[&*]+")
@@ -782,6 +809,52 @@ class FABGen:
 				_proto['argsin'] = [arg for arg in _proto['args'] if arg['carg'].name.naked_name() not in _proto['features']['arg_out']]
 
 			_protos.append(_proto)
+
+		# compute suggested_suffix if language doesn't support overload
+		if len(_protos) > 1:
+			# get the base one, usually the first one with the less args
+			id_base = 0
+			proto_base = _protos[id_base]
+			for id, proto in enumerate(_protos[1:]):
+				if len(proto["args"]) < len(proto_base["args"]):
+					proto_base = proto
+					id_base = id + 1
+
+			suggested_suffixes = []
+			
+			for id, proto in enumerate(_protos):
+				if id == id_base:
+					continue
+				
+				# check members difference
+				def get_suggested_suffix(with_type = False):
+					suggested_suffix = ""
+					for i, arg in enumerate(proto["args"]):
+						if i >= len(proto_base["args"]) or proto_base["args"][i]["carg"].name != arg["carg"].name or str(proto_base["args"][i]["carg"].ctype) != str(arg["carg"].ctype):
+							if suggested_suffix == "":
+								suggested_suffix = "With"
+							if with_type:
+								if arg["conv"].bound_name is not None:
+									suggested_suffix += clean_name_with_title(str(arg["conv"].bound_name))
+								else:
+									suggested_suffix += clean_name_with_title(str(arg['carg'].ctype))
+
+								if suggested_suffix.endswith("_nobind") and arg["conv"].nobind:
+									suggested_suffix = suggested_suffix[:-len("_nobind")]
+
+							suggested_suffix += clean_name_with_title(str(arg["carg"].name))
+					return suggested_suffix
+
+				suggested_suffix = get_suggested_suffix()
+				
+				# check if this suffix already exists
+				if suggested_suffix in suggested_suffixes:
+					# recheck the suggested suffix, but with the type
+					suggested_suffix = get_suggested_suffix(True)
+
+				suggested_suffixes.append(suggested_suffix)
+
+				proto["suggested_suffix"] = suggested_suffix
 
 		return _protos
 
