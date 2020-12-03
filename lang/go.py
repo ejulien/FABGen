@@ -1357,10 +1357,7 @@ uint32_t %s(void* p) {
 					retval = "void"
 					# if another route is set
 					if "route" in proto["features"]:
-						go += f"	auto ret = new {convClass.ctype}();\n"
-						args.insert(0, "ret")
-						go += proto["features"]["route"](args) + "\n"
-						go += f"	return (void*)ret;\n"
+						go += f"	return (void*){proto['features']['route'](args)}\n"
 					elif "proxy" in convClass._features:
 						go += "	auto " + convClass._features["proxy"].wrap(f"new {convClass._features['proxy'].wrapped_conv.bound_name}({','.join(args)})", "v")
 						go += "	return v;\n"
