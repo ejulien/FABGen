@@ -21,7 +21,7 @@ def route_lambda(name):
 
 def clean_name(name):
 	new_name = str(name).strip().replace("_", "").replace(":", "")
-	if new_name in ["type"]:
+	if new_name in ["break", "default", "func", "interface", "select", "case", "defer", "go", "map", "struct", "chan", "else", "goto", "package", "switch", "const", "fallthrough", "if", "range", "type", "continue", "for", "import", "return", "var" ]:
 		return new_name + "Go"
 	return new_name
 
