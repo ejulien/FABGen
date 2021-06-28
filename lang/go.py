@@ -575,7 +575,7 @@ uint32_t %s(void* p) {
 			# special if string or const char*
 			if "GoConstCharPtrConverter" in str(val["conv"].T_conv) or \
 				"GoStringConverter" in str(val["conv"].T_conv):
-				c_call += f"{slice_name}SpecialString := []*C.char{{}}\n"
+				c_call += f"var {slice_name}SpecialString []*C.char\n"
 				c_call += f"for _, s := range {slice_name} {{\n"
 				c_call += f"	{slice_name}SpecialString = append({slice_name}SpecialString, C.CString(s))\n"
 				c_call += f"}}\n"
@@ -583,7 +583,7 @@ uint32_t %s(void* p) {
 
 			# if it's a class, get a list of pointer to c class
 			elif self.__get_is_type_class_or_pointer_with_class(val["conv"].T_conv):
-				c_call += f"{slice_name}Pointer := []C.Wrap{clean_name_with_title(val['conv'].T_conv.bound_name)}{{}}\n"
+				c_call += f"var {slice_name}Pointer  []C.Wrap{clean_name_with_title(val['conv'].T_conv.bound_name)}\n"
 				c_call += f"for _, s := range {slice_name} {{\n"
 				c_call += f"	{slice_name}Pointer = append({slice_name}Pointer, s.h)\n"
 				c_call += f"}}\n"
