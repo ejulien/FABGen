@@ -43,7 +43,7 @@ def clean_name_with_title(name):
 				else:
 					new_name += c
 	else:
-		# make sur the first letter is captialize
+		# make sur the first letter is capitalize
 		first_letter_checked = False
 		for c in name:
 			if c in ["*", "&"] or first_letter_checked:
@@ -575,7 +575,7 @@ uint32_t %s(void* p) {
 			# special if string or const char*
 			if "GoConstCharPtrConverter" in str(val["conv"].T_conv) or \
 				"GoStringConverter" in str(val["conv"].T_conv):
-				c_call += f"{slice_name}SpecialString := []*C.char{{}}\n"
+				c_call += f"var {slice_name}SpecialString []*C.char\n"
 				c_call += f"for _, s := range {slice_name} {{\n"
 				c_call += f"	{slice_name}SpecialString = append({slice_name}SpecialString, C.CString(s))\n"
 				c_call += f"}}\n"
@@ -583,7 +583,7 @@ uint32_t %s(void* p) {
 
 			# if it's a class, get a list of pointer to c class
 			elif self.__get_is_type_class_or_pointer_with_class(val["conv"].T_conv):
-				c_call += f"{slice_name}Pointer := []C.Wrap{clean_name_with_title(val['conv'].T_conv.bound_name)}{{}}\n"
+				c_call += f"var {slice_name}Pointer  []C.Wrap{clean_name_with_title(val['conv'].T_conv.bound_name)}\n"
 				c_call += f"for _, s := range {slice_name} {{\n"
 				c_call += f"	{slice_name}Pointer = append({slice_name}Pointer, s.h)\n"
 				c_call += f"}}\n"
@@ -622,7 +622,7 @@ uint32_t %s(void* p) {
 			arg_bound_name = val["conv"].bound_name
 		else:
 			# check the convert from the base (in case of ptr) or a string
-			if  ('carg' in val and (val['carg'].ctype.is_pointer() or (hasattr(val['carg'].ctype, 'ref') and any(s in val['carg'].ctype.ref for s in ["&", "*"])))) or \
+			if ('carg' in val and (val['carg'].ctype.is_pointer() or (hasattr(val['carg'].ctype, 'ref') and any(s in val['carg'].ctype.ref for s in ["&", "*"])))) or \
 				('storage_ctype' in val and (val['storage_ctype'].is_pointer() or (hasattr(val['storage_ctype'], 'ref') and any(s in val['storage_ctype'].ref for s in ["&", "*"])))) or \
 				isinstance(val['conv'], GoPtrTypeConverter):
 
@@ -649,7 +649,7 @@ uint32_t %s(void* p) {
 			arg_bound_name = arg_bound_name[:-len("_nobind")]
 
 		# if it's a pointer and not a string
-		if  (('carg' in val and (val['carg'].ctype.is_pointer() or (hasattr(val['carg'].ctype, 'ref') and any(s in val['carg'].ctype.ref for s in ["&", "*"])))) or \
+		if (('carg' in val and (val['carg'].ctype.is_pointer() or (hasattr(val['carg'].ctype, 'ref') and any(s in val['carg'].ctype.ref for s in ["&", "*"])))) or \
 			('storage_ctype' in val and (val['storage_ctype'].is_pointer() or (hasattr(val['storage_ctype'], 'ref') and any(s in val['storage_ctype'].ref for s in ["&", "*"])))) or \
 			isinstance(val['conv'], GoPtrTypeConverter)):
 			# find how many * we need to add
@@ -850,7 +850,7 @@ uint32_t %s(void* p) {
 
 		return go
 
-	def __extract_get_set_member_go(self, classname, member, static=False, name=None, bound_name=None, is_global=False):
+	def __extract_get_set_member_go(self, classname, member, static=False, name=None, bound_name=None, is_global=False, implicit_cast=None):
 		go = ""
 		conv = self.select_ctype_conv(member["ctype"])
 
@@ -874,9 +874,11 @@ uint32_t %s(void* p) {
 			if is_global and member["ctype"].const:
 				go += f"// {name} ...\n"
 				if self.__get_is_type_class_or_pointer_with_class(conv):
-					go += f"var {clean_name(name)} =  {arg_bound_name.replace('*', '')}{{h:C.Wrap{clean_name_with_title(classname)}Get{name}()}}\n"
+					go += f"var {clean_name(name)} = {arg_bound_name.replace('*', '')}{{h:C.Wrap{clean_name_with_title(classname)}Get{name}()}}\n"
+				elif implicit_cast is not None:
+					go += f"var {clean_name(name)} = {implicit_cast}(C.Wrap{clean_name_with_title(classname)}Get{name}())\n"
 				else:
-					go += f"var {clean_name(name)} =  {arg_bound_name}(C.Wrap{clean_name_with_title(classname)}Get{name}())\n"
+					go += f"var {clean_name(name)} = {arg_bound_name}(C.Wrap{clean_name_with_title(classname)}Get{name}())\n"
 			else:
 				go += "// "
 				if do_static:
@@ -1084,7 +1086,11 @@ uint32_t %s(void* p) {
 					if has_previous_arg:
 						go += " ,"
 
-					go += f"{clean_name(argin['carg'].name)} {self.__get_arg_bound_name_to_go(argin)}"
+					# check if the input is in feature constant group, overrite the type
+					if "features" in proto and "constants_group" in proto["features"] and str(argin["carg"].name) in proto["features"]["constants_group"]:
+						go += f"{clean_name(argin['carg'].name)} {proto['features']['constants_group'][str(argin['carg'].name)]}"
+					else:
+						go += f"{clean_name(argin['carg'].name)} {self.__get_arg_bound_name_to_go(argin)}"
 					has_previous_arg = True
 
 			go += ")"
@@ -1854,8 +1860,31 @@ uint32_t %s(void* p) {
 			go_bind += self.__extract_method_go("", None, func, is_global=True)
 
 		# global variables
+		# sort by group if needed
+		bound_variables_groups = {}
 		for var in self._bound_variables:
-			go_bind += self.__extract_get_set_member_go("", var, is_global=True)
+			if "group" in var and var["group"] is not None:
+				group_name = clean_name_with_title(var["group"])
+				if group_name not in bound_variables_groups:
+					bound_variables_groups[group_name] = []
+				bound_variables_groups[group_name].append(var)
+
+		# add bound variables groups
+		for group_name, var_group in bound_variables_groups.items():
+			go_bind += f"// {group_name} ...\n"
+			var_conv = self.select_ctype_conv(var_group[0]["ctype"])
+			if var_conv is not None and hasattr(var_conv, "go_type") and var_conv.go_type is not None:
+				go_bind += f"type {group_name} {var_conv.go_type}\n"
+			else:
+				go_bind += f"type {group_name} int\n"
+
+			for id, var in enumerate(var_group):
+				go_bind += self.__extract_get_set_member_go("", var, is_global=True, implicit_cast=group_name)
+
+		# add bound variables without group
+		for var in self._bound_variables:
+			if "group" not in var or var["group"] is None:
+				go_bind += self.__extract_get_set_member_go("", var, is_global=True)
 
 		self.go_bind = go_bind
 
@@ -1945,7 +1974,7 @@ uint32_t %s(void* p) {
 
 		# global variables
 		for member in self._bound_variables:
-			bound_name = None		
+			bound_name = None
 			if "bound_name" in member:
 				bound_name = str(member["bound_name"])
 			elif bound_name is None:
