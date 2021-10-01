@@ -367,6 +367,16 @@ class PythonExternTypeConverter(PythonTypeConverterCommon):
 		return out
 
 
+def to_python_docstring_type(type: str) -> str:
+	if type in ['size_t', 'char', 'short', 'int', 'long', 'unsigned_char', 'unsigned_short', 'unsigned_int', 'unsigned_long', 'int8_t', 'int16_t', 'int32_t', 'int64_t', 'uint8_t', 'uint16_t', 'uint32_t', 'uint64_t']:
+		return 'int'
+	if type in ['float', 'double']:
+		return 'float'
+	if type in ['const_char_ptr', 'string']:
+		return 'str'
+	return type
+
+
 #
 class CPythonGenerator(gen.FABGen):
 	default_class_converter = PythonClassTypeDefaultConverter
@@ -622,33 +632,35 @@ PyObject *rbind_rval = PyObject_CallObject(func, rbind_args);
 
 	#
 	def output_module_functions_table(self):
+		# prepare docstrings
+		docstrings = {}
+		for f in self._bound_functions:
+			bound_name = f['bound_name']
+
+			protos = self._build_protos(f['protos'])
+			protos_docstrings = []
+
+			for proto in protos:
+				args = ', '.join([f'{argin["carg"].name}: {to_python_docstring_type(argin["conv"].bound_name)}' for argin in proto['argsin']])
+				#args = ', '.join([f'{argin["carg"].name}' for argin in proto['argsin']])
+
+				if proto['rval']['conv']:
+					rtype = f'{to_python_docstring_type(proto["rval"]["conv"].bound_name)}'
+				else:
+					rtype = 'None'
+
+				protos_docstrings.append(f'{bound_name}({args}) -> {rtype}')
+
+			docstrings[bound_name] = '\\n'.join(protos_docstrings) + '\\n\\n' + self.get_symbol_doc(bound_name)
+
+		# output module functions
 		table_name = '%s_Methods' % self._name
 		self._source += "static PyMethodDef %s[] = {\n" % table_name
 
 		rows = []
 		for f in self._bound_functions:
-			doc = self.get_symbol_doc(f['bound_name'])+"\\n\\n"
-			# add the signature in the doc in reStructuredText format
-			protos = self._build_protos(f["protos"])
-			if len(protos) > 0 and protos[0]["argsin"]:
-				tab = "	"
-				for id, proto in enumerate(protos):
-					# if len(protos) > 1:
-					# 	doc += f"		:proto {id}:\\n"
-					# 	tab = "			"
-
-					for argin in proto["argsin"]:
-						doc += f"{tab}:param {argin['carg'].ctype} {argin['carg'].name}:\\n"
-
-					if proto["rval"]["conv"]:
-						doc += f"{tab}:rtype: {proto['rval']['conv'].bound_name}\\n"
-					else:
-						doc += f"{tab}:rtype: None\\n"
-
-					# for now just show the first proto
-					break
-
-			rows.append('	{"%s", %s, METH_VARARGS, "%s"}' % (f['bound_name'], f['proxy_name'], doc))
+			bound_name = f['bound_name']
+			rows.append('	{"%s", %s, METH_VARARGS, "%s"}' % (bound_name, f['proxy_name'], docstrings[bound_name] if bound_name in docstrings else ''))
 		rows.append('	{NULL, NULL, 0, NULL} /* Sentinel */')
 
 		self._source += ',\n'.join(rows) + '\n'
