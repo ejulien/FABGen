@@ -81,12 +81,13 @@ def setup_generator(generator):
 
 	if args.doc_md_folder:
 		def md_doc_hook(name):
-			symbol_md_path = os.path.join(args.doc_md_folder, name + '.md')
+			symbol_md_path = os.path.join(args.doc_md_folder, str(name) + '.md')
 
 			try:
 				with open(symbol_md_path, 'r') as file:
 					lines = file.readlines()
-					return '\n'.join(lines)
+					lines = ''.join(lines).replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ")
+					return lines
 			except IOError:
 				return ""
 

@@ -627,7 +627,28 @@ PyObject *rbind_rval = PyObject_CallObject(func, rbind_args);
 
 		rows = []
 		for f in self._bound_functions:
-			rows.append('	{"%s", %s, METH_VARARGS, "%s"}' % (f['bound_name'], f['proxy_name'], self.get_symbol_doc(f['bound_name'])))
+			doc = self.get_symbol_doc(f['bound_name'])+"\\n\\n"
+			# add the signature in the doc in reStructuredText format
+			protos = self._build_protos(f["protos"])
+			if len(protos) > 0 and protos[0]["argsin"]:
+				tab = "	"
+				for id, proto in enumerate(protos):
+					# if len(protos) > 1:
+					# 	doc += f"		:proto {id}:\\n"
+					# 	tab = "			"
+
+					for argin in proto["argsin"]:
+						doc += f"{tab}:param {argin['carg'].ctype} {argin['carg'].name}:\\n"
+
+					if proto["rval"]["conv"]:
+						doc += f"{tab}:rtype: {proto['rval']['conv'].bound_name}\\n"
+					else:
+						doc += f"{tab}:rtype: None\\n"
+
+					# for now just show the first proto
+					break
+
+			rows.append('	{"%s", %s, METH_VARARGS, "%s"}' % (f['bound_name'], f['proxy_name'], doc))
 		rows.append('	{NULL, NULL, 0, NULL} /* Sentinel */')
 
 		self._source += ',\n'.join(rows) + '\n'
