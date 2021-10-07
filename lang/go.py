@@ -5,6 +5,7 @@ import os
 from os import stat_result
 from pypeg2 import parse
 import json
+import re
 import sys
 import time
 import importlib
@@ -1064,7 +1065,17 @@ uint32_t %s(void* p) {
 			# if automatic suffix generated
 			elif "suggested_suffix" in proto:
 				go += proto["suggested_suffix"]
-			go += " ...\n"
+
+			# get doc
+			if classname == "" or is_constructor:
+				doc = self.get_symbol_doc(bound_name)
+			else:
+				doc = self.get_symbol_doc(classname + "_" + bound_name)
+
+			if doc == "":
+				go += " ...\n"
+			else:
+				go += " " + re.sub(r'(\[)(.*?)(\])', r'\1harfang.\2\3', doc) + "\n"
 
 			go += "func "
 			if not is_global:
@@ -1786,7 +1797,13 @@ uint32_t %s(void* p) {
 
 			# it's class
 			if self.__get_is_type_class_or_pointer_with_class(conv):
-				go_bind += f"// {cleanBoundName} ...\n" \
+				doc = self.get_symbol_doc(conv.bound_name)
+				if doc == "":
+					doc = " ..."
+				else:
+					doc = " " + re.sub(r'(\[)(.*?)(\])', r'\1harfang.\2\3', doc)
+
+				go_bind += f"// {cleanBoundName} {doc}\n" \
 							f"type {cleanBoundName} struct{{\n" \
 							f"	h C.Wrap{cleanBoundName}\n" \
 							"}\n"
