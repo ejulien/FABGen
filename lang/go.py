@@ -700,23 +700,31 @@ uint32_t %s(void* p) {
 			if  ('carg' in val and (val['carg'].ctype.is_pointer() or (hasattr(val['carg'].ctype, 'ref') and any(s in val['carg'].ctype.ref for s in ["&", "*"])))) or \
 				('storage_ctype' in val and (val['storage_ctype'].is_pointer() or (hasattr(val['storage_ctype'], 'ref') and any(s in val['storage_ctype'].ref for s in ["&", "*"])))) or \
 				isinstance(val['conv'], GoPtrTypeConverter):
-				# sometimes typedef is weird and don't give valid value, so check it
-				base_conv = self._get_conv(str(val['conv'].bound_name))
-				if base_conv is None:
-					# check with typedef
-					if hasattr(val['conv'], "base_type") and val['conv'].base_type is not None:
-						arg_bound_name = str(val['conv'].base_type)
+				# check if it's an enum
+				if val['conv'].bound_name in self._enums.keys():
+					enum_conv = self._get_conv_from_bound_name(val['conv'].bound_name)
+					if enum_conv is not None and hasattr(enum_conv, "base_type") and enum_conv.base_type is not None:
+						arg_bound_name = str(enum_conv.base_type)
 					else:
-						if 'storage_ctype' in val:
-							arg_bound_name += f"{val['storage_ctype']} "
-						else:
-							arg_bound_name += f"{val['conv'].ctype} "
-					
-					# if it's a ptr type, remove a star
-					if isinstance(val['conv'], GoPtrTypeConverter):
-						arg_bound_name = arg_bound_name.replace("*", "").replace("&", "")
+						arg_bound_name = "int"
 				else:
-					arg_bound_name += f"{val['conv'].bound_name} "
+					# sometimes typedef is weird and don't give valid value, so check it
+					base_conv = self._get_conv(str(val['conv'].bound_name))
+					if base_conv is None:
+						# check with typedef
+						if hasattr(val['conv'], "base_type") and val['conv'].base_type is not None:
+							arg_bound_name = str(val['conv'].base_type)
+						else:
+							if 'storage_ctype' in val:
+								arg_bound_name += f"{val['storage_ctype']} "
+							else:
+								arg_bound_name += f"{val['conv'].ctype} "
+					
+						# if it's a ptr type, remove a star
+						if isinstance(val['conv'], GoPtrTypeConverter):
+							arg_bound_name = arg_bound_name.replace("*", "").replace("&", "")
+					else:
+						arg_bound_name += f"{val['conv'].bound_name} "
 
 				# add a star (only if it's not a const char * SPECIAL CASE)
 				if "GoConstCharPtrConverter" not in str(val["conv"]):
