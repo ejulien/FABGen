@@ -1386,6 +1386,7 @@ if (%s) {
 	#
 	def bind_variable(self, var, features=[], bound_name=None, group=None):
 		arg = self.parse_named_ctype(var)
+		conv = self.select_ctype_conv(arg.ctype)
 
 		if bound_name == None:
 			bound_name = get_symbol_default_bound_name(arg.name)
@@ -1399,7 +1400,7 @@ if (%s) {
 		self._bind_proxy(getter_proxy_name, None, getter_protos, 'get variable %s' % arg.name, expr_eval, 'getter', 0)
 
 		# setter
-		if not arg.ctype.is_const():
+		if not(arg.ctype.is_const() or conv._non_copyable):
 			expr_eval = lambda args: '%s = %s;' % (arg.name, args[0])
 
 			setter_protos = [('void', ["%s %s" % (str(arg.ctype), bound_name)], features)]

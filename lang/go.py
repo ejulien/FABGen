@@ -1013,7 +1013,7 @@ uint32_t %s(void* p) {
 
 		# SET
 		# add set only if the member is not const
-		if not member["ctype"].const:
+		if not(member["ctype"].const or conv._non_copyable):
 			if is_in_header:
 				go += "extern "
 
