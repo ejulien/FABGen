@@ -563,12 +563,16 @@ uint32_t %s(void* p) {
 		# if it's an enum
 		elif val["conv"].bound_name in self._enums.keys():
 			enum_conv = self._get_conv_from_bound_name(val["conv"].bound_name)
-			if enum_conv is not None and hasattr(enum_conv, "go_to_c_type") and enum_conv.go_to_c_type is not None:
-				arg_bound_name = enum_conv.go_to_c_type
+			#if it's a ref to an enum
+			if len(self.__get_stars(val)) > 0:
+				c_call = convert_got_to_c(val, arg_name, f"{arg_name}ToC")
 			else:
-				arg_bound_name = "C.int"
-				
-			c_call = f"{clean_name(arg_name)}ToC := {arg_bound_name}({clean_name(arg_name)})\n"
+				if enum_conv is not None and hasattr(enum_conv, "go_to_c_type") and enum_conv.go_to_c_type is not None:
+					arg_bound_name = enum_conv.go_to_c_type
+				else:
+					arg_bound_name = "C.int"
+					
+				c_call = f"{clean_name(arg_name)}ToC := {arg_bound_name}({clean_name(arg_name)})\n"
 		# special Slice
 		elif isinstance(val["conv"], lib.go.stl.GoSliceToStdVectorConverter):
 			c_call = ""
