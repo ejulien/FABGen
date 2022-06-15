@@ -65,26 +65,26 @@ def bind_std(gen):
 	gen.bind_type(GoBasicTypeConverter("uint16_t", "C.ushort", "uint16"))
 	gen.bind_type(GoBasicTypeConverter("unsigned short", "C.ushort ", "uint16"))
 	
-	gen.bind_type(GoBasicTypeConverter("int32", "C.int", "int32"))
-	gen.bind_type(GoBasicTypeConverter("int", "C.int", "int32"))
-	gen.bind_type(GoBasicTypeConverter("int32_t", "C.int", "int32"))
-	gen.bind_type(GoBasicTypeConverter("char32_t", "C.int", "int32"))
+	gen.bind_type(GoBasicTypeConverter("int32", "C.int32_t", "int32"))
+	gen.bind_type(GoBasicTypeConverter("int", "C.int32_t", "int32"))
+	gen.bind_type(GoBasicTypeConverter("int32_t", "C.int32_t", "int32"))
+	gen.bind_type(GoBasicTypeConverter("char32_t", "C.int32_t", "int32"))
 	gen.bind_type(GoBasicTypeConverter("size_t", "C.size_t", "int32"))
 
-	gen.bind_type(GoBasicTypeConverter("uint32_t", "C.uint", "uint32"))
-	gen.bind_type(GoBasicTypeConverter("unsigned int32_t", "C.uint", "uint32"))
-	gen.bind_type(GoBasicTypeConverter("unsigned int", "C.uint", "uint32"))
+	gen.bind_type(GoBasicTypeConverter("uint32_t", "C.uint32_t", "uint32"))
+	gen.bind_type(GoBasicTypeConverter("unsigned int32_t", "C.uint32_t", "uint32"))
+	gen.bind_type(GoBasicTypeConverter("unsigned int", "C.uint32_t", "uint32"))
 
-	gen.bind_type(GoBasicTypeConverter("int64_t", "C.longlong", "int64"))
-	gen.bind_type(GoBasicTypeConverter("long", "C.long", "int64"))
+	gen.bind_type(GoBasicTypeConverter("int64_t", "C.int64_t", "int64"))
+	gen.bind_type(GoBasicTypeConverter("long", "C.int64_t", "int64"))
 
 	gen.bind_type(GoBasicTypeConverter("float32", "C.float", "float32"))
 	gen.bind_type(GoBasicTypeConverter("float", "C.float", "float32"))
 	
-	gen.bind_type(GoBasicTypeConverter("intptr_t", "C.longlong", "uintptr"))
+	gen.bind_type(GoBasicTypeConverter("intptr_t", "C.intptr_t", "uintptr"))
 
-	gen.bind_type(GoBasicTypeConverter("unsigned long", "C.ulong", "uint64"))
-	gen.bind_type(GoBasicTypeConverter("uint64_t", "C.ulonglong ", "uint64"))
+	gen.bind_type(GoBasicTypeConverter("unsigned long", "C.uint64_t", "uint64"))
+	gen.bind_type(GoBasicTypeConverter("uint64_t", "C.uint64_t ", "uint64"))
 	gen.bind_type(GoBasicTypeConverter("double", "C.double", "float64"))	
 	
 	class GoBoolConverter(lang.go.GoTypeConverterCommon):
