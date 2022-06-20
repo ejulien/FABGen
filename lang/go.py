@@ -195,6 +195,7 @@ class GoGenerator(gen.FABGen):
 		super().__init__()
 		self.check_self_type_in_ops = True
 		self.go = ""
+		self.cgo_directives = ""
 
 	def get_language(self):
 		return "Go"
@@ -206,6 +207,9 @@ class GoGenerator(gen.FABGen):
 		super().start(module_name)
 
 		self._source += self.get_binding_api_declaration()
+
+	def set_compilation_directives(self, directives):
+		self.cgo_directives = directives
 
 	# kill a bunch of functions we don't care about
 	def set_error(self, type, reason):
@@ -1768,8 +1772,9 @@ uint32_t %s(void* p) {
 		go_bind = f"package {clean_name(self._name)}\n" \
 				'// #include "wrapper.h"\n' \
 				'// #cgo CFLAGS: -I . -Wall -Wno-unused-variable -Wno-unused-function -O3\n' \
-				'// #cgo CXXFLAGS: -std=c++14 -O3\n' \
-				f"// #cgo LDFLAGS: -lstdc++ -L. -l{self._name}\n" \
+				'// #cgo CXXFLAGS: -std=c++14 -O3\n'
+		go_bind += self.cgo_directives
+		go_bind += f"// #cgo LDFLAGS: -lstdc++ -L. -l{self._name}\n" \
 				'import "C"\n\n' \
 				'import (\n'
 		# check if reflect package is needed
