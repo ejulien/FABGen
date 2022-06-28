@@ -195,6 +195,7 @@ class GoGenerator(gen.FABGen):
 		super().__init__()
 		self.check_self_type_in_ops = True
 		self.go = ""
+		self.cgo_directives = ""
 
 	def get_language(self):
 		return "Go"
@@ -206,6 +207,9 @@ class GoGenerator(gen.FABGen):
 		super().start(module_name)
 
 		self._source += self.get_binding_api_declaration()
+
+	def set_compilation_directives(self, directives):
+		self.cgo_directives = directives
 
 	# kill a bunch of functions we don't care about
 	def set_error(self, type, reason):
@@ -406,7 +410,8 @@ uint32_t %s(void* p) {
 		retval = ""
 		# very special case, std::string &
 		if "GoStringConverter" in str(val["conv"]) and \
-			"carg" in val and hasattr(val["carg"].ctype, "ref") and any(s in val["carg"].ctype.ref for s in ["&"]):
+			"carg" in val and hasattr(val["carg"].ctype, "ref") and any(s in val["carg"].ctype.ref for s in ["&"]) and \
+			not val["carg"].ctype.const:
 			src += f"std::string {retval_name}_cpp(*{retval_name});\n"
 			retval += f"{retval_name}_cpp"
 		# std::function
@@ -430,7 +435,7 @@ uint32_t %s(void* p) {
 
 				retval += f"({val['conv'].ctype}{stars}){retval_name}"
 
-			elif "carg" in val and hasattr(val["carg"].ctype, "ref") and any(s in val["carg"].ctype.ref for s in ["&"]):
+			elif "carg" in val and hasattr(val["carg"].ctype, "ref") and any(s in val["carg"].ctype.ref for s in ["&"]) and not val["carg"].ctype.const:
 				# add cast and *
 				retval = f"({val['carg'].ctype})(*{retval_name})"
 			# cast, if it's an enum
@@ -605,12 +610,12 @@ uint32_t %s(void* p) {
 			how_many_stars = 0
 			# compute how many stars (to handle specifically the const char *)
 			if "carg" in val:
-				if hasattr(val["carg"].ctype, "ref") and any(s in val["carg"].ctype.ref for s in ["&", "*"]):
+				if hasattr(val["carg"].ctype, "ref") and any(s in val["carg"].ctype.ref for s in ["&", "*"]) and not val["carg"].ctype.const:
 					how_many_stars = len(val["carg"].ctype.ref)
 				elif val["carg"].ctype.is_pointer():
 					how_many_stars = 1
 			else:
-				if hasattr(val["conv"].ctype, "ref") and any(s in val["conv"].ctype.ref for s in ["&", "*"]):
+				if hasattr(val["conv"].ctype, "ref") and any(s in val["conv"].ctype.ref for s in ["&", "*"]) and not val["carg"].ctype.const:
 					how_many_stars = len(val["conv"].ctype.ref)
 				elif val["conv"].ctype.is_pointer() :
 					how_many_stars = 1
@@ -653,8 +658,8 @@ uint32_t %s(void* p) {
 		if arg_bound_name.endswith("_nobind") and val["conv"].nobind:
 			arg_bound_name = arg_bound_name[:-len("_nobind")]
 
-		# if it's a pointer and not a string
-		if (('carg' in val and (val['carg'].ctype.is_pointer() or (hasattr(val['carg'].ctype, 'ref') and any(s in val['carg'].ctype.ref for s in ["&", "*"])))) or \
+		# if it's a pointer and not a string not a const
+		if (('carg' in val and (not val["carg"].ctype.const and(val['carg'].ctype.is_pointer() or (hasattr(val['carg'].ctype, 'ref') and any(s in val['carg'].ctype.ref for s in ["&", "*"]))))) or \
 			('storage_ctype' in val and (val['storage_ctype'].is_pointer() or (hasattr(val['storage_ctype'], 'ref') and any(s in val['storage_ctype'].ref for s in ["&", "*"])))) or \
 			isinstance(val['conv'], GoPtrTypeConverter)):
 			# find how many * we need to add
@@ -731,10 +736,10 @@ uint32_t %s(void* p) {
 						arg_bound_name += f"{val['conv'].bound_name} "
 
 				# add a star (only if it's not a const char * SPECIAL CASE)
-				if "GoConstCharPtrConverter" not in str(val["conv"]):
+				if "GoConstCharPtrConverter" not in str(val["conv"]) and not val["carg"].ctype.const:
 					arg_bound_name += "*"
 
-				if "carg" in val and hasattr(val["carg"].ctype, "ref"):
+				if "carg" in val and hasattr(val["carg"].ctype, "ref") and not val["carg"].ctype.const:
 					arg_bound_name += "*" * (len(val["carg"].ctype.ref) - 1)
 				if "storage_ctype" in val and hasattr(val["storage_ctype"], "ref"):
 					arg_bound_name += "*" * (len(val["storage_ctype"].ref) - 1)
@@ -1768,8 +1773,9 @@ uint32_t %s(void* p) {
 		go_bind = f"package {clean_name(self._name)}\n" \
 				'// #include "wrapper.h"\n' \
 				'// #cgo CFLAGS: -I . -Wall -Wno-unused-variable -Wno-unused-function -O3\n' \
-				'// #cgo CXXFLAGS: -std=c++14 -O3\n' \
-				f"// #cgo LDFLAGS: -lstdc++ -L. -l{self._name}\n" \
+				'// #cgo CXXFLAGS: -std=c++14 -O3\n'
+		go_bind += self.cgo_directives
+		go_bind += f"// #cgo LDFLAGS: -lstdc++ -L. -l{self._name}\n" \
 				'import "C"\n\n' \
 				'import (\n'
 		# check if reflect package is needed
