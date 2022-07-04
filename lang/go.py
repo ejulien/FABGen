@@ -360,7 +360,7 @@ uint32_t %s(void* p) {
 						src += f"	auto retPointer = {retval_name};\n"
 					else:
 						src += f"	auto retPointer = new {val['conv'].ctype}({retval_name});\n"
-				retval_name = f"(Wrap{clean_name_with_title(val['conv'].bound_name)})(retPointer)"
+				retval_name = f"({clean_name_with_title(self._name)}{clean_name_with_title(val['conv'].bound_name)})(retPointer)"
 		else:
 			# special std::string (convert to const char*)
 			if val["conv"] is not None and "std::string" in str(val["conv"].ctype):
@@ -486,7 +486,7 @@ uint32_t %s(void* p) {
 					# check if owning to have the right to destroy it
 					if rval_ownership != "NonOwning" and not is_ref and not non_owning:
 						src += f"	runtime.SetFinalizer({retval_name}GO, func(cleanval *{retval_boundname}) {{\n" \
-								f"		C.Wrap{retval_boundname}Free(cleanval.h)\n" \
+								f"		C.{clean_name_with_title(self._name)}{retval_boundname}Free(cleanval.h)\n" \
 								f"	}})\n"
 					retval_name = f"{retval_name}GO"
 
@@ -524,7 +524,7 @@ uint32_t %s(void* p) {
 				# check if owning to have the right to destroy it
 				if rval_ownership != "NonOwning" and not is_ref and not non_owning:
 					src += f"	runtime.SetFinalizer({retval_name}GO, func(cleanval *{retval_boundname}) {{\n" \
-							f"		C.Wrap{retval_boundname}Free(cleanval.h)\n"\
+							f"		C.{clean_name_with_title(self._name)}{retval_boundname}Free(cleanval.h)\n"\
 							f"	}})\n"
 				src += "}\n"
 				retval_name = f"{retval_name}GO"
@@ -538,13 +538,13 @@ uint32_t %s(void* p) {
 			stars = self.__get_stars(val, start_stars)
 
 			if val["conv"].is_type_class():
-				c_call = f"{clean_name(arg_out_name).replace('&', '_')} := ({stars}C.Wrap{clean_name_with_title(val['conv'].bound_name)})(unsafe.Pointer({clean_name(arg_name)}))\n"
+				c_call = f"{clean_name(arg_out_name).replace('&', '_')} := ({stars}C.{clean_name_with_title(self._name)}{clean_name_with_title(val['conv'].bound_name)})(unsafe.Pointer({clean_name(arg_name)}))\n"
 			else:
 				# get base conv (without pointer)
 				base_conv = self._get_conv(str(val["conv"].ctype.scoped_typename))
 				if base_conv is None:
 					if isinstance(val["conv"], GoPtrTypeConverter):
-						c_call = f"{clean_name(arg_out_name).replace('&', '_')} := ({stars[1:]}C.Wrap{clean_name_with_title(val['conv'].bound_name)})(unsafe.Pointer({clean_name(arg_name)}))\n"
+						c_call = f"{clean_name(arg_out_name).replace('&', '_')} := ({stars[1:]}C.{clean_name_with_title(self._name)}{clean_name_with_title(val['conv'].bound_name)})(unsafe.Pointer({clean_name(arg_name)}))\n"
 					else:
 						c_call = f"{clean_name(arg_out_name).replace('&', '_')} := ({stars}{str(val['conv'].bound_name)})(unsafe.Pointer({clean_name(arg_name)}))\n"
 				elif hasattr(base_conv, "go_to_c_type") and base_conv.go_to_c_type is not None:
@@ -593,7 +593,7 @@ uint32_t %s(void* p) {
 
 			# if it's a class, get a list of pointer to c class
 			elif self.__get_is_type_class_or_pointer_with_class(val["conv"].T_conv):
-				c_call += f"var {slice_name}Pointer  []C.Wrap{clean_name_with_title(val['conv'].T_conv.bound_name)}\n"
+				c_call += f"var {slice_name}Pointer  []C.{clean_name_with_title(self._name)}{clean_name_with_title(val['conv'].T_conv.bound_name)}\n"
 				c_call += f"for _, s := range {slice_name} {{\n"
 				c_call += f"	{slice_name}Pointer = append({slice_name}Pointer, s.h)\n"
 				c_call += f"}}\n"
@@ -605,7 +605,7 @@ uint32_t %s(void* p) {
 			c_call += convert_got_to_c({"conv": val["conv"].T_conv}, f"{slice_name}ToC.Data", f"{slice_name}ToCBuf", 1)
 		# std function
 		elif "GoStdFunctionConverter" in str(val["conv"]):
-			c_call += f"{clean_name(arg_name)}ToC := (C.Wrap{clean_name_with_title(val['conv'].bound_name)})({clean_name(arg_name)})\n"
+			c_call += f"{clean_name(arg_name)}ToC := (C.{clean_name_with_title(self._name)}{clean_name_with_title(val['conv'].bound_name)})({clean_name(arg_name)})\n"
 		else:
 			how_many_stars = 0
 			# compute how many stars (to handle specifically the const char *)
@@ -703,7 +703,7 @@ uint32_t %s(void* p) {
 		# if class or pointer with class
 		if self.__get_is_type_class_or_pointer_with_class(val["conv"]) or \
 			"GoStdFunctionConverter" in str(val["conv"]):
-			arg_bound_name += f"Wrap{clean_name_with_title(val['conv'].bound_name)} "
+			arg_bound_name += f"{clean_name_with_title(self._name)}{clean_name_with_title(val['conv'].bound_name)} "
 		else:
 			# check the convert from the base (in case of ptr)
 			if  ('carg' in val and (val['carg'].ctype.is_pointer() or (hasattr(val['carg'].ctype, 'ref') and any(s in val['carg'].ctype.ref for s in ["&", "*"])))) or \
@@ -778,7 +778,7 @@ uint32_t %s(void* p) {
 		# GET
 		go += f"// Get ...\n" \
 				f"func (pointer *{classname}) Get(id int) {arg_bound_name} {{\n"
-		go += f"v := C.Wrap{classname}GetOperator(pointer.h, C.int(id))\n"
+		go += f"v := C.{clean_name_with_title(self._name)}{classname}GetOperator(pointer.h, C.int(id))\n"
 
 		src, retval_go = self.__arg_from_c_to_go({"conv": internal_conv}, "v")
 		go += src
@@ -795,13 +795,13 @@ uint32_t %s(void* p) {
 		else:
 			go += "vToC := v\n"
 
-		go += f"	C.Wrap{classname}SetOperator(pointer.h, C.int(id), vToC)\n"
+		go += f"	C.{clean_name_with_title(self._name)}{classname}SetOperator(pointer.h, C.int(id), vToC)\n"
 		go += "}\n"
 
 		# Len
 		go += f"// Len ...\n" \
 				f"func (pointer *{classname}) Len() int32 {{\n"
-		go += f"return int32(C.Wrap{classname}LenOperator(pointer.h))\n"
+		go += f"return int32(C.{clean_name_with_title(self._name)}{classname}LenOperator(pointer.h))\n"
 		go += "}\n"
 
 		return go
@@ -822,7 +822,7 @@ uint32_t %s(void* p) {
 		# GET
 		if is_in_header:
 			go += "extern "
-		go += f"{c_arg_bound_name} Wrap{cleanClassname}GetOperator(Wrap{cleanClassname} h, int id)"
+		go += f"{c_arg_bound_name} {clean_name_with_title(self._name)}{cleanClassname}GetOperator({clean_name_with_title(self._name)}{cleanClassname} h, int id)"
 
 		if is_in_header:
 			go += ";\n"
@@ -839,7 +839,7 @@ uint32_t %s(void* p) {
 		# SET
 		if is_in_header:
 			go += "extern "
-		go += f"void Wrap{cleanClassname}SetOperator(Wrap{cleanClassname} h, int id, {c_arg_bound_name} v)"
+		go += f"void {clean_name_with_title(self._name)}{cleanClassname}SetOperator({clean_name_with_title(self._name)}{cleanClassname} h, int id, {c_arg_bound_name} v)"
 
 		if is_in_header:
 			go += ";\n"
@@ -856,7 +856,7 @@ uint32_t %s(void* p) {
 		# LEN
 		if is_in_header:
 			go += "extern "
-		go += f"int Wrap{cleanClassname}LenOperator(Wrap{cleanClassname} h)"
+		go += f"int {clean_name_with_title(self._name)}{cleanClassname}LenOperator({clean_name_with_title(self._name)}{cleanClassname} h)"
 
 		if is_in_header:
 			go += ";\n"
@@ -892,11 +892,11 @@ uint32_t %s(void* p) {
 			if is_global and member["ctype"].const:
 				go += f"// {name} ...\n"
 				if self.__get_is_type_class_or_pointer_with_class(conv):
-					go += f"var {clean_name(name)} = {arg_bound_name.replace('*', '')}{{h:C.Wrap{clean_name_with_title(classname)}Get{name}()}}\n"
+					go += f"var {clean_name(name)} = {arg_bound_name.replace('*', '')}{{h:C.{clean_name_with_title(self._name)}{clean_name_with_title(classname)}Get{name}()}}\n"
 				elif implicit_cast is not None:
-					go += f"var {clean_name(name)} = {implicit_cast}(C.Wrap{clean_name_with_title(classname)}Get{name}())\n"
+					go += f"var {clean_name(name)} = {implicit_cast}(C.{clean_name_with_title(self._name)}{clean_name_with_title(classname)}Get{name}())\n"
 				else:
-					go += f"var {clean_name(name)} = {arg_bound_name}(C.Wrap{clean_name_with_title(classname)}Get{name}())\n"
+					go += f"var {clean_name(name)} = {arg_bound_name}(C.{clean_name_with_title(self._name)}{clean_name_with_title(classname)}Get{name}())\n"
 			else:
 				go += "// "
 				if do_static:
@@ -909,7 +909,7 @@ uint32_t %s(void* p) {
 					go += f"(pointer *{clean_name_with_title(classname)}) "
 
 				go += f"Get{name}() {arg_bound_name} {{\n"
-				go += f"v := C.Wrap{clean_name_with_title(classname)}Get{name}("
+				go += f"v := C.{clean_name_with_title(self._name)}{clean_name_with_title(classname)}Get{name}("
 				if not static and not is_global:
 					go += "pointer.h"
 				go += ")\n"
@@ -944,7 +944,7 @@ uint32_t %s(void* p) {
 				else:
 					go += "vToC := v\n"
 
-				go += f"	C.Wrap{clean_name_with_title(classname)}Set{name}("
+				go += f"	C.{clean_name_with_title(self._name)}{clean_name_with_title(classname)}Set{name}("
 				if not static and not is_global:
 					go += "pointer.h, "
 				go += "vToC)\n"
@@ -989,9 +989,9 @@ uint32_t %s(void* p) {
 		if is_in_header:
 			go += "extern "
 
-		go += f"{c_arg_bound_name} Wrap{cleanClassname}Get{name.replace(':', '')}("
+		go += f"{c_arg_bound_name} {clean_name_with_title(self._name)}{cleanClassname}Get{name.replace(':', '')}("
 		if not static and not is_global:
-			go += f"Wrap{cleanClassname} h"
+			go += f"{clean_name_with_title(self._name)}{cleanClassname} h"
 		go += ")"
 
 		if is_in_header:
@@ -1026,9 +1026,9 @@ uint32_t %s(void* p) {
 			if is_in_header:
 				go += "extern "
 
-			go += f"void Wrap{cleanClassname}Set{name.replace(':', '')}("
+			go += f"void {clean_name_with_title(self._name)}{cleanClassname}Set{name.replace(':', '')}("
 			if not static and not is_global:
-				go += f"Wrap{cleanClassname} h, "
+				go += f"{clean_name_with_title(self._name)}{cleanClassname} h, "
 			go += f"{c_arg_bound_name} v)"
 
 			if is_in_header:
@@ -1195,9 +1195,9 @@ uint32_t %s(void* p) {
 				go += "retval := "
 
 			if is_constructor:
-				go += f"C.WrapConstructor{clean_name_with_title(name)}"
+				go += f"C.{clean_name_with_title(self._name)}Constructor{clean_name_with_title(name)}"
 			else:
-				go += f"C.Wrap{clean_name_with_title(name)}"
+				go += f"C.{clean_name_with_title(self._name)}{clean_name_with_title(name)}"
 
 			# is global, add the Name of the class to be sure to avoid double name function name
 			if not is_global:
@@ -1292,9 +1292,6 @@ uint32_t %s(void* p) {
 		if "name" in method:
 			cpp_function_name = method["name"]
 
-		if bound_name == "OpenVRStateToViewState":
-			bound_name = bound_name
-
 		uid = classname + bound_name if classname else bound_name
 
 		protos = self._build_protos(method["protos"])
@@ -1310,7 +1307,7 @@ uint32_t %s(void* p) {
 
 			if is_in_header:
 				go += "extern "
-			go += f"{retval} Wrap{clean_name_with_title(wrap_name)}"
+			go += f"{retval} {clean_name_with_title(self._name)}{clean_name_with_title(wrap_name)}"
 
 			# not global, add the Name of the class to be sure to avoid double name function name
 			if not is_global or (not is_constructor and is_global and convClass is not None):
@@ -1329,7 +1326,7 @@ uint32_t %s(void* p) {
 			# not global, member class, include the "this" pointer first
 			if not is_global or (not is_constructor and is_global and convClass is not None):
 				has_previous_arg = True
-				go += f"Wrap{clean_name_with_title(convClass.bound_name)} this_"
+				go += f"{clean_name_with_title(self._name)}{clean_name_with_title(convClass.bound_name)} this_"
 
 			if len(proto["args"]):
 				for argin in proto["args"]:
@@ -1603,7 +1600,7 @@ uint32_t %s(void* p) {
 
 			cleanBoundName = clean_name_with_title(conv.bound_name)
 			if self.__get_is_type_class_or_pointer_with_class(conv) :
-				go_h += f"typedef void* Wrap{cleanBoundName};\n"
+				go_h += f"typedef void* {clean_name_with_title(self._name)}{cleanBoundName};\n"
 
 			if "GoStdFunctionConverter" in str(conv):
 				func_name = conv.base_type.replace("std::function<", "").replace(">", "").replace("&", "*")
@@ -1617,7 +1614,7 @@ uint32_t %s(void* p) {
 						conv = self.select_ctype_conv(ctype)
 						args_boundname.append(self.__get_arg_bound_name_to_c({"conv": conv, "carg": type('carg', (object,), {'ctype':ctype})()}))
 
-				go_h += f"typedef {func_name[:first_parenthesis]} (*Wrap{cleanBoundName})({','.join(args_boundname)});\n"
+				go_h += f"typedef {func_name[:first_parenthesis]} (*{clean_name_with_title(self._name)}{cleanBoundName})({','.join(args_boundname)});\n"
 
 		# write the rest of the classes
 		for conv in self._bound_types:
@@ -1645,7 +1642,7 @@ uint32_t %s(void* p) {
 
 			# destructor for all type class
 			if self.__get_is_type_class_or_pointer_with_class(conv) :
-				go_h += f"extern void Wrap{cleanBoundName}Free(Wrap{cleanBoundName});\n"
+				go_h += f"extern void {clean_name_with_title(self._name)}{cleanBoundName}Free({clean_name_with_title(self._name)}{cleanBoundName});\n"
 
 			# arithmetic operators
 			go_h += extract_conv_and_bases(conv.arithmetic_ops, \
@@ -1704,8 +1701,8 @@ uint32_t %s(void* p) {
 			enum_vars = []
 			for name, value in enum.items():
 				enum_vars.append(f"({arg_bound_name}){value}")
-			go_c += f"static const {arg_bound_name} Wrap{bound_name} [] = {{ {', '.join(enum_vars)} }};\n"
-			go_c += f"{arg_bound_name} Get{bound_name}(const int id) {{ return Wrap{bound_name}[id];}}\n"
+			go_c += f"static const {arg_bound_name} {clean_name_with_title(self._name)}{bound_name} [] = {{ {', '.join(enum_vars)} }};\n"
+			go_c += f"{arg_bound_name} Get{bound_name}(const int id) {{ return {clean_name_with_title(self._name)}{bound_name}[id];}}\n"
 
 		#  classes
 		for conv in self._bound_types:
@@ -1714,7 +1711,7 @@ uint32_t %s(void* p) {
 
 			cleanBoundName = clean_name_with_title(conv.bound_name)
 			if conv.is_type_class():
-				go_c += f"// bind Wrap{cleanBoundName} methods\n"
+				go_c += f"// bind {clean_name_with_title(self._name)}{cleanBoundName} methods\n"
 
 			if "sequence" in conv._features:
 				go_c += self.__extract_sequence(conv)
@@ -1736,7 +1733,7 @@ uint32_t %s(void* p) {
 			# destructor for all type class
 			if self.__get_is_type_class_or_pointer_with_class(conv) :
 				# delete
-				go_c += f"void Wrap{cleanBoundName}Free(Wrap{cleanBoundName} h){{" \
+				go_c += f"void {clean_name_with_title(self._name)}{cleanBoundName}Free({clean_name_with_title(self._name)}{cleanBoundName} h){{" \
 						f"delete ({conv.ctype}*)h;" \
 						f"}}\n" 
 
@@ -1770,7 +1767,7 @@ uint32_t %s(void* p) {
 		self.go_c = go_c
 
 		# .go
-		go_bind = f"package {clean_name(self._name)}\n" \
+		go_bind = f"package {clean_name_with_title(self._name)}\n" \
 				'// #include "wrapper.h"\n' \
 				'// #cgo CFLAGS: -I . -Wall -Wno-unused-variable -Wno-unused-function -O3\n' \
 				'// #cgo CXXFLAGS: -std=c++14 -O3\n'
@@ -1823,7 +1820,7 @@ uint32_t %s(void* p) {
 
 				go_bind += f"// {cleanBoundName} {doc}\n" \
 							f"type {cleanBoundName} struct{{\n" \
-							f"	h C.Wrap{cleanBoundName}\n" \
+							f"	h C.{clean_name_with_title(self._name)}{cleanBoundName}\n" \
 							"}\n"
 			
 			# it's a sequence
@@ -1848,12 +1845,12 @@ uint32_t %s(void* p) {
 			if self.__get_is_type_class_or_pointer_with_class(conv) :
 				go_bind += f"// Free ...\n" \
 				f"func (pointer *{cleanBoundName}) Free(){{\n" \
-				f"	C.Wrap{cleanBoundName}Free(pointer.h)\n" \
+				f"	C.{clean_name_with_title(self._name)}{cleanBoundName}Free(pointer.h)\n" \
 				f"}}\n"
 				
 				go_bind += f"// IsNil ...\n" \
 				f"func (pointer *{cleanBoundName}) IsNil() bool{{\n" \
-				f"	return pointer.h == C.Wrap{cleanBoundName}(nil)\n" \
+				f"	return pointer.h == C.{clean_name_with_title(self._name)}{cleanBoundName}(nil)\n" \
 				f"}}\n"
 
 				# runtime.SetFinalizer(funcret, func(ctx *Ret) { C.free(ctx.bufptr) })
