@@ -416,7 +416,7 @@ uint32_t %s(void* p) {
 			retval += f"{retval_name}_cpp"
 		# std::function
 		elif "GoStdFunctionConverter" in str(val["conv"]):
-			func_name = val["conv"].base_type.replace("std::function<", "").replace(">", "")
+			func_name = val["conv"].base_type.replace("std::function<", "")[:-1]
 			first_parenthesis = func_name.find("(")
 			retval += f"({func_name[:first_parenthesis]}(*){func_name[first_parenthesis:]}){retval_name}"
 		# classe or pointer on class
@@ -1603,7 +1603,7 @@ uint32_t %s(void* p) {
 				go_h += f"typedef void* {clean_name_with_title(self._name)}{cleanBoundName};\n"
 
 			if "GoStdFunctionConverter" in str(conv):
-				func_name = conv.base_type.replace("std::function<", "").replace(">", "").replace("&", "*")
+				func_name = conv.base_type.replace("std::function<", "").replace("&", "*")[:-1] # [:-1] to remove the > of std::function
 				first_parenthesis = func_name.find("(")
 				# get all args boundname in c
 				args = func_name[first_parenthesis+1:-1].split(",")
