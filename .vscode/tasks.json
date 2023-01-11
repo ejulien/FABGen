@@ -1,16 +1,20 @@
 {
 	// See https://go.microsoft.com/fwlink/?LinkId=733558
 	// for the documentation about the tasks.json format
-	"version": "0.1.0",
+	"version": "2.0.0",
 	"command": "C:/Pythons/35/python.exe",
-	"isShellCommand": true,
-    "echoCommand": true,
-	"showOutput": "always",
+	"echoCommand": true,
 	"tasks": [
 		{
-			"taskName": "tests",
-			"args": ["tests.py", "--pybase", "C:/Pythons/test-install/python.exe"],
-			"suppressTaskName": true
+			"label": "tests",
+			"type": "shell",
+			"command": "C:/Pythons/35/python.exe",
+			"args": [
+				"tests.py",
+				"--pybase",
+				"C:/Pythons/test-install/python.exe"
+			],
+			"problemMatcher": []
 		}
 	]
 }
