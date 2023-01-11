@@ -1,0 +1,5 @@
+python3 -m unittest
+
+python3 tests.py --go (--linux , si tu es sur mac)
+
+python3 -m pip install cmake    
