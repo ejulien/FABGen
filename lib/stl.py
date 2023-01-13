@@ -2,6 +2,8 @@
 #	Copyright (C) 2018 Emmanuel Julien
 
 
+# It declares that the type converter for std::shared_ptr<T> should be a pointer to T, and that it
+# should be wrapped in a std::shared_ptr<T> when returned from a function
 class SharedPtrProxyFeature:
 	def __init__(self, wrapped_conv):
 		self.wrapped_conv = wrapped_conv
@@ -21,6 +23,14 @@ class SharedPtrProxyFeature:
 
 
 def bind_future_T(gen, T, bound_name=None):
+    	
+	''' It binds the std::future<T> class to Python
+	
+	:param gen: the generator object
+	:param T: The type of the future
+	:param bound_name: The name of the class in the generated code
+	:return: A future object. '''
+	
 	gen.add_include('future', is_system=True)
 
 	gen.bind_named_enum('std::future_status', ['deferred', 'ready', 'timeout'], prefix='future_')
@@ -38,6 +48,14 @@ def bind_future_T(gen, T, bound_name=None):
 
 
 def bind_function_T(gen, type, bound_name=None):
+    	
+	''' It generates the code to bind a function object to the target language
+	
+	:param gen: The generator object
+	:param type: The type of the function pointer
+	:param bound_name: The name of the bound function. If not specified, the name of the function will
+	be used '''
+	
 	gen.add_include('functional', is_system=True)
 	gen.add_include('memory', is_system=True)
 
@@ -50,6 +68,11 @@ def bind_function_T(gen, type, bound_name=None):
 	elif gen.get_language() == 'Go':
 		import lib.go.stl
 		lib.go.stl.bind_function_T(gen, type, bound_name)
+  
+  	elif gen.get_language() == 'Fsharp':
+    	import lib.fsharp.stl
+		lib.fsharp.stl.bind_function_T(gen, type, bound_name)
+	
 	elif gen.get_language() == 'API':
 		import lib.xml.stl
 		lib.xml.stl.bind_function_T(gen, type, bound_name)

@@ -5,6 +5,12 @@ import lang.go
 
 
 def bind_stl(gen):
+    	
+	''' It tells the generator to use the GoStringConverter class to convert between Go strings and C++
+	std::string
+	
+	:param gen: The generator object '''
+	
 	gen.add_include('vector', True)
 	gen.add_include('string', True)
 	
@@ -36,6 +42,14 @@ def bind_stl(gen):
 
 
 def bind_function_T(gen, type, bound_name=None):
+    	
+	''' It creates a new type converter that does nothing, and then binds it to the type
+	
+	:param gen: The generator object
+	:param type: The type of the function to bind
+	:param bound_name: The name of the type in the generated code
+	:return: A function that takes a generator and a type and returns a bound type.
+	 '''
 	class GoStdFunctionConverter(lang.go.GoTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
 			return ""
@@ -43,6 +57,7 @@ def bind_function_T(gen, type, bound_name=None):
 	return gen.bind_type(GoStdFunctionConverter(type))
 
 
+# It's a converter that converts a Go slice to a C++ vector
 class GoSliceToStdVectorConverter(lang.go.GoTypeConverterCommon):
 	def __init__(self, type, T_conv):
 		native_type = f"std::vector<{T_conv.ctype}>"

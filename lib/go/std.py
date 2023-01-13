@@ -5,6 +5,11 @@ import lang.go
 
 
 def bind_std(gen):
+    	
+	''' It binds the C type `const char *` to the Go type `string`
+	
+	:param gen: The generator object '''
+	
 	class GoConstCharPtrConverter(lang.go.GoTypeConverterCommon):
 		def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None, needs_c_storage_class=False):
 			super().__init__(type, to_c_storage_type, bound_name, from_c_storage_type, needs_c_storage_class)
@@ -31,6 +36,7 @@ def bind_std(gen):
 
 	gen.bind_type(GoConstCharPtrConverter("const char *"))
 
+	# It's a Go type converter that converts a Python type to a Go type
 	class GoBasicTypeConverter(lang.go.GoTypeConverterCommon):
 		def __init__(self, type, c_type, go_type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None, needs_c_storage_class=False):
 			super().__init__(type, to_c_storage_type, bound_name, from_c_storage_type, needs_c_storage_class)
@@ -53,6 +59,7 @@ def bind_std(gen):
 		def from_c_call(self, out_var, expr, ownership):
 			return f"{self.go_type}({out_var})"
 
+	# Binding the C type `const char *` to the Go type `string`
 	gen.bind_type(GoBasicTypeConverter("char", "C.char", "int8"))
 
 	gen.bind_type(GoBasicTypeConverter("unsigned char", "C.uchar", "uint8"))
@@ -87,6 +94,7 @@ def bind_std(gen):
 	gen.bind_type(GoBasicTypeConverter("uint64_t", "C.uint64_t ", "uint64"))
 	gen.bind_type(GoBasicTypeConverter("double", "C.double", "float64"))	
 	
+	# It converts a Python boolean to a C boolean
 	class GoBoolConverter(lang.go.GoTypeConverterCommon):
 		def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None, needs_c_storage_class=False):
 			super().__init__(type, to_c_storage_type, bound_name, from_c_storage_type, needs_c_storage_class)

@@ -18,13 +18,12 @@ import lib.std
 import lib.stl
 import lib
 
-print('''FABGen Copyright (C) 2018 Emmanuel Julien
-This program comes with ABSOLUTELY NO WARRANTY.
-This is free software, and you are welcome to redistribute it
-under certain conditions.''')
 
+
+# Parsing the arguments passed to the script.
 parser = argparse.ArgumentParser(description='FABGen')
 parser.add_argument('script', nargs=1)
+parser.add_argument('--fsharp', help='Bind to F#', action='store_true')
 parser.add_argument('--lua', help='Bind to Lua 5.2+', action='store_true')
 parser.add_argument('--cpython', help='Bind to CPython', action='store_true')
 parser.add_argument('--go', help='Bind to Go', action='store_true')
@@ -44,6 +43,12 @@ os.makedirs(args.out, exist_ok=True)
 
 
 def output_binding(generator):
+    
+	''' It takes a generator object, sets the embedded flag if the user specified it, calls the bind
+	function on the script object, and then writes the output to the specified output directory.
+	
+	:param generator: The generator to use '''
+	
 	t_start = time.perf_counter()
 
 	if args.embedded:
@@ -62,6 +67,7 @@ def output_binding(generator):
 
 
 # load binding script
+# Loading the binding script.
 split = os.path.split(args.script[0])
 path = split[0]
 mod = os.path.splitext(split[1])[0]
@@ -77,6 +83,12 @@ if args.prefix:
 
 # setup documentation hook
 def setup_generator(generator):
+    	
+	''' It sets up the generator
+	
+	:param generator: The generator object that is being setup
+	:return: The generator object is being returned. '''
+	
 	generator.defines = args.defines.split(',')
 
 	if args.doc_md_folder:
@@ -97,6 +109,7 @@ def setup_generator(generator):
 
 
 # execute through generators
+# Checking if the user has specified the language to bind to.
 if args.cpython:
 	output_binding(setup_generator(lang.cpython.CPythonGenerator()))
 
@@ -121,6 +134,7 @@ if args.xml:
 
 
 # output Fabgen API
+# Writing the fabgen.h file to the output directory.
 if not args.no_fabgen_api:
 	path = os.path.join(args.out, 'fabgen.h')
 	with open(path, mode='w', encoding='utf-8') as f:
