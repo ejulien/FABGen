@@ -11,21 +11,32 @@ import copy
 api_prefix = 'gen'
 
 def apply_api_prefix(symbol):
+    	
+	''' It takes a symbol and returns a string with the API prefix prepended to it
+	:param symbol: The symbol of the stock you want to download
+	:return: A list of tuples. '''
+	
 	return '%s_%s' % (api_prefix, symbol) if api_prefix else symbol
 
 
 def get_fabgen_api():
-		return '''\
-// FABgen .h
+    
+	''' It returns the fabgen api.
+	:return: the value of the variable fabgen_api. '''
+	
+	return 
 
-#pragma once
 
-enum OwnershipPolicy { NonOwning, Copy, Owning };
-'''
 
 
 #
 def get_fully_qualified_function_signature(func):
+    	
+	''' It takes a function object and returns a string that represents the function's signature
+	
+	:param func: The function object to get the signature of
+	:return: A string representation of the function signature. '''
+	
 	out = ''
 	if hasattr(func, 'void_rval'):
 		out += 'void'
@@ -42,6 +53,12 @@ def get_fully_qualified_function_signature(func):
 
 
 def get_fully_qualified_ctype_name(ctype):
+    	
+	''' It takes a C++ type and returns a string that represents the type in Python
+	
+	:param ctype: The type of the parameter
+	:return: A string representation of the function signature. '''
+	
 	parts = []
 
 	if ctype.const:
@@ -68,6 +85,12 @@ def get_fully_qualified_ctype_name(ctype):
 
 
 def ref_to_string(ref):
+    	
+	''' It takes a string like '*&' and returns 'ptr_ref'
+	
+	:param ref: a string of '*' and '&' characters, representing the reference type of the parameter
+	:return: A string representation of the reference type. '''
+	
 	parts = []
 	for e in ref:
 		if ref == '*':
@@ -78,6 +101,12 @@ def ref_to_string(ref):
 
 
 def ctype_to_plain_string(ctype):
+    	
+	''' It takes a C++ type and returns a string that describes it in plain English
+	
+	:param ctype: the type to convert
+	:return: A function pointer '''
+	
 	parts = []
 
 	if ctype.const:
@@ -119,6 +148,12 @@ def ctype_to_plain_string(ctype):
 
 
 def get_ctype_default_bound_name(ctype):
+    	
+	''' It takes a C type and returns a string that is the default name for a bound variable of that type
+	
+	:param ctype: The type to convert to a string
+	:return: A string that is the name of the type. '''
+	
 	ctype = copy.deepcopy(ctype)
 	ctype.scoped_typename.explicit_global = False
 	return ctype_to_plain_string(ctype)
@@ -153,6 +188,12 @@ symbol_clean_rules['>='] = 'ge'
 
 
 def strip_namespace(name):
+    	
+	''' It takes a string, splits it on the double colon, and returns the last part of the string
+	
+	:param name: The name of the class
+	:return: A list of all the functions in the module. '''
+	
 	parts = name.split('::')
 	return parts[-1] if len(parts) > 1 else name
 
@@ -172,6 +213,12 @@ def get_clean_symbol_name(name):
 
 
 def get_symbol_default_bound_name(name):
+    
+	''' It takes a symbol name and returns a default bound name for it
+	
+	:param name: the name of the symbol
+	:return: The name of the symbol, stripped of any namespace. '''
+	
 	if isinstance(name, str):  # no namespace
 		name = strip_namespace(name)
 	else:
@@ -181,6 +228,13 @@ def get_symbol_default_bound_name(name):
 
 
 def clean_name_with_title(name):
+    	
+	''' It takes a string and returns a string with the first letter capitalized and all other letters
+	lowercase
+	
+	:param name: The name of the item
+	:return: A list of dictionaries. '''
+	
 	new_name = ""
 	if "_" in name:
 		# redo a special string.title()
@@ -207,12 +261,15 @@ def clean_name_with_title(name):
 				new_name += c.capitalize()
 	return new_name.strip().replace("_", "").replace(":", "")
 
-#
+
+# The above code is defining a regular expression that will be used to match the type name of a
+# variable.
 typename = re.compile(r"(_|[A-z])[A-z0-9_]*")
 ref_re = re.compile(r"[&*]+")
 
 
-#
+
+# It's a base class for all C types
 class _CType:
 	def __repr__(self):
 		return get_fully_qualified_ctype_name(self)
@@ -256,6 +313,7 @@ class _CType:
 		return t
 
 
+# It's a class that represents a function signature
 class _FunctionSignature:
 	grammar = [attr("void_rval", "void"), attr("rval", _CType)], "(", optional(attr("args", csl(_CType))), ")"
 
@@ -263,6 +321,7 @@ class _FunctionSignature:
 		return get_fully_qualified_function_signature(self)
 
 
+# It's a template parameter list, which can either be a function signature or a list of types
 class _TemplateParameters:
 	grammar = "<", [attr("function", _FunctionSignature), attr("args", csl(_CType))], ">"
 
@@ -275,6 +334,7 @@ class _TemplateParameters:
 		return '<' + ','.join(args) + '>'
 
 
+# It matches a typename, optionally followed by a template parameter list
 class _Typename:
 	grammar = attr("name", typename), optional(attr("template", _TemplateParameters))
 
@@ -287,6 +347,7 @@ class _Typename:
 		return out
 
 
+# It's a list of _Typename objects, with an optional leading "::" to indicate that it's a global type
 class _ScopedTypename:
 	grammar = flag("explicit_global", K("::")), attr("parts", csl(_Typename, separator="::"))
 
@@ -309,10 +370,13 @@ class _ScopedTypename:
 		return out
 
 
+# Defining a grammar for C-style types.
 _CType.grammar = flag("const"), flag("signed"), flag("unsigned"), attr("scoped_typename", _ScopedTypename), optional(attr("ref", ref_re)), flag("const_ref", K("const"))
 
 
-#
+
+# _NamedCType is a class that has two attributes, ctype and name, and the ctype attribute is an
+# instance of _CType and the name attribute is an instance of _ScopedTypename
 class _NamedCType:
 	grammar = attr("ctype", _CType), attr("name", _ScopedTypename)
 
@@ -322,6 +386,22 @@ class _NamedCType:
 
 #
 def ctype_ref_to(src_ref, dst_ref):
+    	
+	''' If the source is a reference, then the destination must be a reference or a pointer. If the source
+	is a pointer, then the destination must be a pointer or a value. If the source is a value, then the
+	destination must be a value.
+	
+	:param src_ref: The reference type of the source type
+	:param dst_ref: The reference type of the destination variable
+	:return: A tuple of the following:
+				- The type of the return value
+				- The name of the return value
+				- The value of the return value
+				- The type of the return value
+				- The name of the return value
+				- The value of the return value
+				- The type of '''
+	
 	i = 0
 	while i < len(src_ref) and i < len(dst_ref):
 		if src_ref[i] != dst_ref[i]:
@@ -355,12 +435,38 @@ def ctype_ref_to(src_ref, dst_ref):
 
 
 def transform_var_ref_to(var, from_ref, to_ref):
+    	
+	''' It takes a variable name, and a reference type, and returns the variable name with the reference
+	type changed
+	
+	:param var: the variable name
+	:param from_ref: the reference type of the variable
+	:param to_ref: the reference type to transform to
+	:return: A string that is the type of the variable. '''
+	
 	if isinstance(var, _ScopedTypename):
 		var = var.naked_name()
 	return ctype_ref_to(from_ref, to_ref) + var
 
 
 def add_list_unique(lst, val, dlg):
+    	
+	''' "Add val to lst if it's not already there."
+	
+	The function takes three arguments:
+	
+	lst is a list of values.
+	val is a value to add to lst.
+	dlg is a function that takes two arguments and returns True if they are equal.
+	The function adds val to lst if it's not already there. It does this by looping through the list and
+	calling dlg on each entry and val. If dlg returns True, then val is already in the list, so the
+	function returns. Otherwise, val is added to the list
+	
+	:param lst: The list to add to
+	:param val: The value to add to the list
+	:param dlg: a function that takes two parameters, and returns True if they are equal
+	:return: Nothing is being returned. '''
+	
 	for ent in lst:
 		if dlg(val, ent):
 			return
@@ -368,6 +474,16 @@ def add_list_unique(lst, val, dlg):
 
 
 def collect_attr_from_conv_recursive(out, conv, attr, dlg):
+    	
+	''' Collect all the entries of a given attribute from a given conversation and all its base
+	conversations, and add them to a given list.
+	
+	:param out: the list to add to
+	:param conv: the conversation object
+	:param attr: the attribute to collect from the conversation
+	:param dlg: the dialog object
+	:return: A list of all the entries in the conversation that have the attribute attr.
+	 '''
 	for entry in getattr(conv, attr):
 		add_list_unique(out, entry, dlg)
 	for base in conv._bases:
@@ -375,6 +491,7 @@ def collect_attr_from_conv_recursive(out, conv, attr, dlg):
 	return out
 
 
+# It's a container for all the information needed to generate the bindings for a given type
 class TypeConverter:
 	def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None, needs_c_storage_class=False):
 		self.ctype = parse(type, _CType)
@@ -414,25 +531,57 @@ class TypeConverter:
 		self.from_c_func = apply_api_prefix('from_c_%s' % self.bound_name)
 
 	def is_type_class(self):
+    		
+		''' It returns False.
+		:return: The function is_type_class is being returned. '''
+		
 		return False
 
 	def get_operator(self, op):
+    		
+		''' It returns the operator object from the list of operators that has the same name as the operator
+		passed in
+		
+		:param op: The operator to be used
+		:return: The operator dictionary. '''
+		
 		for arithmetic_op in self.arithmetic_ops:
 			if arithmetic_op['op'] == op:
 				return arithmetic_op
 
 	def get_type_api(self, module_name):
+		
+		''' :param module_name: The name of the module
+		:return: The return value is a string that contains the API for the type.
+		 '''
 		return ''
 
 	def finalize_type(self):
+    		
+		''' It returns an empty string.
+		:return: Nothing is being returned. '''
+		
 		return ''
 
 	def to_c_call(self, out_var, expr):
+    		
+		''' The function takes in a string, and returns a string
+		
+		:param out_var: the name of the variable to store the result in
+		:param expr: the expression to convert '''
+		
 		assert 'not implemented in this converter'  # pragma: no cover
 	def from_c_call(self, out_var, expr, ownership):
 		assert 'not implemented in this converter'  # pragma: no cover
 
 	def prepare_var_for_conv(self, var, input_ref):
+    		
+		''' It transforms a variable from one reference to another
+		
+		:param var: The variable to transform
+		:param input_ref: The reference to the input variable
+		:return: A reference to the variable. '''
+		
 		"""Transform a variable for use with the converter from_c/to_c methods."""
 		return transform_var_ref_to(var, input_ref, self.to_c_storage_ctype.get_ref())
 	def prepare_var_from_conv(self, var, target_ref):
@@ -440,6 +589,12 @@ class TypeConverter:
 		return transform_var_ref_to(var, self.to_c_storage_ctype.get_ref(), target_ref)
 
 	def get_all_members(self):
+    		
+		''' It takes a list, a class, a string, and a function, and returns a list of all the attributes of the
+		class and its parents that match the string, and are not already in the list, and are not
+		duplicates of each other
+		:return: A list of all the members of the class and its superclasses.
+		 '''
 		return collect_attr_from_conv_recursive([], self, 'members', lambda a,b: a['name'] == b['name'])
 	def get_all_static_members(self):
 		return collect_attr_from_conv_recursive([], self, 'static_members', lambda a,b: a['name'] == b['name'])
@@ -449,10 +604,23 @@ class TypeConverter:
 		return collect_attr_from_conv_recursive([], self, 'static_methods', lambda a,b: a['bound_name'] == b['bound_name'])
 
 	def add_feature(self, key, val):
+    		
+		''' It adds a feature to the feature dictionary of the object
+		
+		:param key: The name of the feature
+		:param val: The value of the feature '''
+		
 		self._features[key] = val
 
 
 def format_list_for_comment(lst):
+    	
+	''' It takes a list of strings and returns a string that lists the strings in a grammatically correct
+	way
+	
+	:param lst: The list to format
+	:return: A list of strings. '''
+	
 	ln = len(lst)
 
 	if ln == 0:
@@ -756,8 +924,20 @@ class FABGen:
 
 	# --
 	def __expand_protos(self, protos):
+    		
+		''' It takes a list of tuples, each of which has a name, a list of arguments, and a return type, and
+		returns a list of tuples, each of which has a name, a list of arguments, and a return type, where
+		each tuple in the returned list has the same name and return type as the corresponding tuple in the
+		input list, but where each tuple in the returned list has a different list of arguments, where each
+		argument in the returned list is either the same as the corresponding argument in the input list,
+		or is the same as the corresponding argument in the input list with a question mark prepended to it
+		
+		:param protos: A list of tuples, each containing the following:
+		:return: A list of tuples.
+		 '''
 		_protos = []
 
+		# Creating a list of tuples.
 		for proto in protos:
 			_proto = (proto[0], [], proto[2])
 
@@ -774,9 +954,31 @@ class FABGen:
 		return _protos
 
 	def __prepare_protos(self, protos):
+    		
+		''' It takes a list of prototypes, and for each prototype, it creates a dictionary with the following
+		keys:
+		
+		* rval: a dictionary with the following keys:
+			* storage_ctype: the CType of the return value
+			* conv: the converter object for the return value
+		* args: a list of dictionaries, each with the following keys:
+			* carg: the CArg object for the argument
+			* conv: the converter object for the argument
+			* check_var: a string with the name of the variable that will be used to check if the argument is
+		valid
+		* argsin: a list of dictionaries, each with the following keys:
+			* carg: the CArg object for the argument
+			* conv: the converter object for the argument
+			* check_var: a string with the name of the variable that will be used to check if the argument is
+		valid
+		* features: a dictionary
+		
+		:param protos: a list of prototypes, each prototype is a list of 3 items:
+		 '''
 		"""Prepare a list of prototypes, select converter objects"""
 		_protos = []
 
+		# 
 		for proto in protos:
 			assert len(proto) == 3, "prototype incomplete. Expected 3 entries (type, [arguments], [features]), found %d" % len(proto)
 
