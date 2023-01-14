@@ -5,6 +5,7 @@ import gen
 
 
 #
+# It's a base class for type converters that generate Lua bindings
 class LuaTypeConverterCommon(gen.TypeConverter):
 	def get_type_api(self, module_name):
 		out = '// type API for %s\n' % self.ctype
@@ -20,6 +21,16 @@ class LuaTypeConverterCommon(gen.TypeConverter):
 		return out
 
 	def to_c_call(self, in_var, out_var_p):
+		'''
+		If the C storage class is not None, then create a variable called c_storage_var, and assign it the
+		value of the C storage class. Then, return a string that calls the to_c_func function, passing in
+		the in_var, out_var_p, and c_storage_var variables. Otherwise, return a string that calls the
+		to_c_func function, passing in the in_var and out_var_p variables.
+		
+		:param in_var: the name of the variable that will be passed to the to_c_func
+		:param out_var_p: the name of the variable that will hold the C value
+		:return: A list of tuples.
+		'''
 		out = ''
 		if self.c_storage_class:
 			c_storage_var = 'storage_%s' % out_var_p.replace('&', '_')
@@ -38,6 +49,17 @@ class LuaTypeConverterCommon(gen.TypeConverter):
 
 #
 def build_index_map(name, values, filter, gen_output):
+	'''
+	It takes a name, a list of values, a filter function, and a function that generates the output for
+	each value, and returns a string that contains a C++ map that maps the output of the gen_output
+	function to the index of the value in the list
+	
+	:param name: The name of the map
+	:param values: a list of values to iterate over
+	:param filter: a function that takes a value and returns True if it should be included in the map
+	:param gen_output: a function that takes a value and returns a string
+	:return: A string containing the C++ code for the index map.
+	'''
 	out = 'static std::map<std::string, int (*)(lua_State *)> %s = {' % name
 	if len(values) > 0:
 		entries = [gen_output(v) for v in values if filter(v)]
@@ -47,6 +69,7 @@ def build_index_map(name, values, filter, gen_output):
 
 
 #
+# It generates the glue code for a class type
 class LuaClassTypeConverter(LuaTypeConverterCommon):
 	def is_type_class(self):
 		return True
@@ -378,6 +401,7 @@ static void delete_inline_%s(void *o) {
 
 
 #
+# It converts a pointer to a Lua integer, and vice versa
 class LuaPtrTypeConverter(LuaTypeConverterCommon):
 	def get_type_glue(self, gen, module_name):
 		out = '''bool %s(lua_State *L, int idx) {
@@ -401,6 +425,7 @@ class LuaPtrTypeConverter(LuaTypeConverterCommon):
 
 
 #
+# It's a LuaTypeConverter that uses a C++ function to convert between Lua and C++
 class LuaExternTypeConverter(LuaTypeConverterCommon):
 	def __init__(self, type, to_c_storage_type, bound_name, module):
 		super().__init__(type, to_c_storage_type, bound_name)
@@ -440,6 +465,8 @@ class LuaExternTypeConverter(LuaTypeConverterCommon):
 
 
 #
+# It's a subclass of FABGen that overrides the default type converters and sets a flag to check for
+# self type in operations
 class LuaGenerator(gen.FABGen):
 	default_ptr_converter = LuaPtrTypeConverter
 	default_class_converter = LuaClassTypeConverter
