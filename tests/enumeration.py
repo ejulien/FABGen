@@ -67,7 +67,15 @@ assert(my_test.NE_a == 0)
 assert(my_test.NE_b == 1)
 assert(my_test.NE_c == 4096)
 '''
+#This is a Go test file that tests various enumerated values that are defined in the tested codebase. The file imports the "testing" and "github.com/stretchr/testify/assert" packages. The file defines a single test function, "Test()", that uses the "testing" package to test various code logic, using the "assert" package to check for expected results.
 
+#The test function checks if the values of 4 different types of enumerated values are as expected:
+
+#GlobalEnum: which is a global enumerated variable
+#StructEnum: which is an enumerated variable inside a struct
+#TypedEnum: which is an enumerated variable with a named type
+#NamedEnum: which is an enumerated variable with a named type
+#It uses the "assert.Equal()" function to compare the enumerated values with the expected values and check if they are the same.#
 test_go = '''\
 package mytest
 
@@ -95,3 +103,44 @@ func Test(t *testing.T) {
 	assert.Equal(t, NEc, NamedEnum(4096), "should be the same.")
 }
 '''
+
+test_fsharp = '''\
+    module MyTest
+
+open NUnit.Framework
+
+[<Test>]
+let ``Test``() = 
+    Assert.AreEqual(GlobalEnum.GEa, GlobalEnum.GEa, "should be the same.")
+    Assert.AreEqual(GlobalEnum.GEb, GlobalEnum.GEb, "should be the same.")
+    Assert.AreEqual(GlobalEnum.GEc, GlobalEnum.GEc, "should be the same.")
+
+    let se = { StructEnum = StructEnum.SEa }
+    Assert.AreEqual(se.StructEnum, StructEnum.SEa, "should be the same.")
+    se.StructEnum <- StructEnum.SEb
+    Assert.AreEqual(se.StructEnum, StructEnum.SEb, "should be the same.")
+    se.StructEnum <- StructEnum.SEc
+    Assert.AreEqual(se.StructEnum, StructEnum.SEc, "should be the same.")
+
+    Assert.AreEqual(TypedEnum.TEa, TypedEnum.TEa, "should be the same.")
+    Assert.AreEqual(TypedEnum.TEb, TypedEnum.TEb, "should be the same.")
+    Assert.AreEqual(TypedEnum.TEc, TypedEnum.TEc, "should be the same.")
+
+    Assert.AreEqual(NamedEnum.NEa, NamedEnum.NEa, "should be the same.")
+    Assert.AreEqual(NamedEnum.NEb, NamedEnum.NEb, "should be the same.")
+    Assert.AreEqual(NamedEnum.NEc, NamedEnum.NEc, "should be the same.")
+'''
+#In F#, Enumerated values are defined with the enum keyword, and they can be compared using the standard equality operator ( = ). Also, you don't need to import any package to perform assertions, you can use the NUnit.Framework module that comes with the NUnit package.
+#The code is checking if the values of 4 different types of enumerated values are as expected:
+
+#GlobalEnum: which is a global enumerated variable
+#StructEnum: which is an enumerated variable inside a struct
+#TypedEnum: which is an enumerated variable with a named type
+#NamedEnum: which is an enumerated variable with a named type
+#It uses the "Assert.AreEqual()" function to compare the enumerated values with the expected values and check if they are the same.
+
+#Also, note that the struct is mutable in F# and the enumerated value can be updated by using the <- operator.
+
+
+
+
