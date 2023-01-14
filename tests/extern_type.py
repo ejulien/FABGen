@@ -27,3 +27,7 @@ my_test = require "my_test"
 test_go = '''\
 package mytest
 '''
+
+test_fsharp = '''\
+    module MyTest
+'''

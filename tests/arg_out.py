@@ -84,6 +84,12 @@ assert(r == true)
 assert(v == 20)
 '''
 
+# The file imports the "testing" and "github.com/stretchr/testify/assert" packages.
+# The file defines a single test function, "Test()", that uses the "testing" package 
+# to test various code logic, using the "assert" package to check for expected results.
+# The test function calls various functions with different input values and checks the
+# returned values against expected results. It also tests the behavior of a struct and
+# a function that takes in an input-output value and modifies it.
 test_go = '''\
 package mytest
 
@@ -120,3 +126,38 @@ func Test(t *testing.T) {
 	assert.Equal(t, w, int32(20), "should be the same.")
 }
 '''
+test_fsharp = '''\
+    module MyTest
+
+open NUnit.Framework
+
+[<Test>]
+let ``Test``() = 
+    let a = NewA()
+    // The equivalent of Go's defer statement doesn't exist in F#, so you should call the Free method after you're done with the object.
+    a.Free()
+    ModifyInOutStruct(a)
+    Assert.AreEqual(a.GetV(), 3, "should be the same.")
+
+    let c, b = OutValuesFunctionCall(2, 3)
+    Assert.AreEqual(c, 16, "should be the same.")
+    Assert.AreEqual(b, 42, "should be the same.")
+
+    let r, c, b = OutValuesFunctionCallRval(2)
+    Assert.AreEqual(r, 2, "should be the same.")
+    Assert.AreEqual(c, 16, "should be the same.")
+    Assert.AreEqual(b, 28, "should be the same.")
+
+    let r, c, b = OutValuesFunctionCallRvalWithK(2, 2)
+    Assert.AreEqual(r, 4, "should be the same.")
+    Assert.AreEqual(c, 16, "should be the same.")
+    Assert.AreEqual(b, 28, "should be the same.")
+
+    let w = 5
+    let rb = InOutValue(w)
+    Assert.IsTrue(rb, "should be the same.")
+    Assert.AreEqual(w, 20, "should be the same.")
+'''
+#Notice that in F#, you don't need to import any package to perform assertions,
+# you can use the NUnit.Framework module that comes with the NUnit package. 
+# Also in F#, you don't need to use pointers to pass values by reference, you can use the & operator.

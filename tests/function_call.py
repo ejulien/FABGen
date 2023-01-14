@@ -122,3 +122,47 @@ func Test(t *testing.T) {
 	assert.Equal(t, v, int32(14), "should be the same.")
 }
 '''
+
+test_fsharp = '''\
+    module MyTest
+
+open NUnit.Framework
+
+[<Test>]
+let ``Test``() = 
+    Assert.AreEqual(GetInt(), 8, "should be the same.")
+
+    let mutable globalInt = 0
+    Assert.AreEqual(GetGlobalInt globalInt, 0, "should be the same.")
+
+    SetGlobalInt globalInt
+    Assert.AreEqual(GetGlobalInt globalInt, 8, "should be the same.")
+
+    // overload
+    Assert.AreEqual(Get(), 0, "should be the same.")
+    Assert.AreEqual(GetWithV 2, 1, "should be the same.")
+    Assert.AreEqual(GetWithVK 4 3, 12, "should be the same.")
+    Assert.AreEqual(GetWithVKB 4 3 2, 14, "should be the same.")
+
+    // optional argument
+    Assert.AreEqual(GetGlobalIntMultiplied globalInt, 15, "should be the same.")
+    Assert.AreEqual(GetGlobalIntMultipliedWithK globalInt 2, 6, "should be the same.")
+
+    // argument in out
+    let mutable v = 2
+    GetModifyArgInOut v
+    Assert.AreEqual(v, 17, "should be the same.")
+
+    v <- 2
+    GetModifyArgInOutWithK v 4
+    Assert.AreEqual(v, 14, "should be the same.")
+'''
+#In F#, functions are called using the same syntax as in Go, with the difference that parameters are separated by spaces. Also, you don't need to import any package to perform assertions, you can use the NUnit.Framework module that comes with the NUnit package.
+#The code is calling several functions that have different types of parameters and checks the returned values against expected results using the Assert.AreEqual function.
+
+#The functions being tested are:
+
+#GetInt: which returns an int32
+#GetGlobalInt: which returns the value of a global int32 variable
+#SetGlobalInt: which sets the value of the global int32 variable
+#Get
