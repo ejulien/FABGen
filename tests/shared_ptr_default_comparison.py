@@ -92,3 +92,31 @@ func Test(t *testing.T) {
 	assert.True(t, a.Equal(d), "should be the equal.")
 }
 '''
+
+test_fsharp = '''\
+    module MyTest
+
+open NUnit.Framework
+
+[<Test>]
+let ``Test``() = 
+    let a = GetObj0()
+    let b = GetObj0()
+
+    Assert.IsTrue(a.Equal(b), "should be the equal.")
+
+    let c = GetObj1()
+
+    Assert.IsFalse(a.Equal(c), "should be different.")
+    Assert.IsFalse(b.Equal(c), "should be different.")
+
+    let d = GetObj2()
+
+    Assert.IsTrue(a.Equal(d), "should be the equal.")
+'''
+#In F#, you can call functions and assign their returned values to variables just like in Go.
+#The test function calls the function "GetObj0()" twice and assigns the returned values to the variables "a" and "b". Then it uses the "Assert.IsTrue()" function to check if the "Equal()" method called on object "a" and passed object "b" returns true, indicating that the two objects are equal.
+
+#Then it calls the "GetObj1()" function and assigns the returned value to the variable "c". Then it uses the "Assert.IsFalse()" function to check if the "Equal()" method called on objects "a" and "b" with object "c" passed as argument returns false, indicating that the two objects are different.
+
+#Then it calls the "GetObj2()" function and assigns the returned value to the variable "d". Then it uses the "Assert.IsTrue()" function to check if the "Equal()" method called on object "a" with object "

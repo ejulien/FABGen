@@ -124,3 +124,32 @@ func Test(t *testing.T) {
 	TestStdFunction(t)
 }
 '''
+
+test_fsharp = '''\
+    open MyTest
+
+let simpleVoidFunction() = 
+    printfn "void function called!"
+
+setSimpleVoidFunction simpleVoidFunction
+invokeSimpleVoidFunction()
+
+let computeFunction v m c = 
+    v * m + c
+
+setComputeFunction computeFunction
+let r = invokeComputeFunction 5 3 4
+
+assert r = 19
+'''
+#In F#, you can define functions in a similar way to Python, by using the "let" keyword and providing the function name, parameters, and body.
+#In this example, it defines two functions "simpleVoidFunction" and "computeFunction".
+#The first function is a simple function that only prints a message to the console.
+#The second function is a more complex function that takes three arguments (v,m,c) and returns the value of v * m + c
+
+#It then calls the F# function "setSimpleVoidFunction" and passes the "simpleVoidFunction" as an argument. This sets the F# function pointer to point to the F# function "simpleVoidFunction"
+#It then calls the F# function "invokeSimpleVoidFunction" which will invoke the F# function "simpleVoidFunction" which will print the message "void function called!"
+
+#Then it calls the F# function "setComputeFunction" and passes the "computeFunction" as an argument. This sets the F# function pointer to point to the F# function "computeFunction"
+#It then calls the F# function "invokeComputeFunction" which will invoke the F# function "computeFunction" passing in the arguments 5, 3, 4. The function will return the value of (5*3)+4 = 19
+#The returned value is then stored in the variable "r" and an assertion is done to check if the returned value

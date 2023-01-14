@@ -78,3 +78,25 @@ func Test(t *testing.T) {
 	assert.Equal(t, future.Get(), int32(8), "should be the same.")
 }
 """
+
+test_fsharp = '''\
+    open MyTest
+
+let future = getFutureValue()
+
+if future.IsValid then
+    future.Wait()
+    let result = future.Get()
+    printfn "Result: %d" result
+    assert result = 8
+else
+    printfn "Invalid Future"
+'''
+#In this example, it calls the F# function "getFutureValue" which returns a future object.
+#It then asserts that the "IsValid" function of the future object returns true. This verifies that the future object points to a valid future value.
+
+#Then it calls the "Wait" function on the future object which will wait until the future value is ready.
+
+#Once the future value is ready it assigns the result to the variable "result" and asserts that the result is equal to 8, which is the expected value.
+
+#This test is checking if the future value is returned correctly and if the future object is valid before getting the value from it and if Wait function is working correctly.

@@ -43,3 +43,18 @@ func Test(t *testing.T) {
 	assert.Nil(t, v, "should be nil.")
 }
 '''
+
+test_fsharp = '''\
+    module MyTest
+
+open NUnit.Framework
+
+[<Test>]
+let ``Test``() = 
+    let v = ReturnNullptr()
+    Assert.IsNull(v, "should be null.")
+'''
+#In F#, you can call functions and assign their returned values to variables just like in Go.
+#The test function calls a function "ReturnNullptr()" and assigns the returned value to the variable "v". Then it uses the "Assert.IsNull()" function to check if the value of "v" is null, which means the pointer is pointing to nothing.
+
+#This test case checks if the ReturnNullptr function is working correctly and returning a null pointer.

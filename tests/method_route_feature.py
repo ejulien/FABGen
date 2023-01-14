@@ -54,3 +54,23 @@ func Test(t *testing.T) {
 }
 """
 
+test_fsharp = '''\
+    module MyTest
+
+open NUnit.Framework
+
+[<Test>]
+let ``Test``() = 
+    let o = new Object()
+    Assert.AreEqual(o.Get 4, 15, "should be the same.")
+'''
+#In F#, you can use the "new" keyword to create an instance of an object and call its methods using the "." operator.
+#The test function creates an instance of an object, "o", using the "new Object()" function. Then it calls a method on the object, "Get()", passing in an int32 argument of 4.
+#It uses the "Assert.AreEqual()" function to compare the returned value of the "Get()" method with the expected value of 15 and check if they are the same.
+
+#This test case checks if the "Get()" method of the object is working correctly and returning the expected results when passed a specific argument.
+
+
+
+
+

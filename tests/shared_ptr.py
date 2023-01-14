@@ -104,3 +104,31 @@ func Test(t *testing.T) {
 	assert.True(t, spn.IsNil(), "should be nil.")
 }
 '''
+
+test_fsharp = '''\
+    module MyTest
+
+open NUnit.Framework
+
+[<Test>]
+let ``Test``() = 
+    let sp = GetSharedPtrToSimpleStruct()
+	
+    Assert.AreEqual(sp.GetU(), 4.0, "should be the same.")
+    Assert.AreEqual(sp.GetV(), 7, "should be the same.")
+
+    let sp2 = NewSsimpleStruct(9.0)
+
+    Assert.AreEqual(sp2.GetU(), 9.0, "should be the same.")
+    Assert.AreEqual(sp2.GetV(), 90, "should be the same.")
+
+    let spn = GetEmptySharedPtr()
+
+    Assert.IsTrue(spn.IsNil(), "should be nil.")
+'''
+#In F#, you can call functions and assign their returned values to variables just like in Go.
+#The test function calls the function "GetSharedPtrToSimpleStruct()" and assigns the returned value to the variable "sp". Then it uses the "Assert.AreEqual()" function to check if the "GetU()" and "GetV()" method called on object "sp" returns the expected values of 4.0 and 7 respectively.
+
+#Then it calls the function "NewSsimpleStruct()" passing in the argument 9.0 and assigns the returned value to the variable "sp2". Then it uses the "Assert.AreEqual()" function to check if the "GetU()" and "GetV()" method called on object "sp2" returns the expected values of 9.0 and 90 respectively.
+
+#Then it calls the function "GetEmptySharedPtr()" and assigns the returned value to the variable "spn". 

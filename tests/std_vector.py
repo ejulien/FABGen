@@ -246,3 +246,56 @@ func Test(t *testing.T) {
 	assert.Equal(t, vPtr.Len(), int32(2), "should be the same.")
 }
 '''
+
+test_fsharp = '''\
+    open MyTest
+let v = new VectorOfInt()
+
+// testing size and length
+assert v.Size() = 0
+assert v.Len() = 0
+
+//push back elements
+v.PushBack(5)
+v.PushBack(1)
+v.PushBack(9)
+
+//testing size and length again
+assert v.Size() = 3
+assert v.Len() = 3
+
+//testing accessing elements
+assert v.At(1) = 1
+assert v.At(2) = 9
+assert v.At(0) = 5
+
+//testing get function
+assert v.Get(1) = 1
+assert v.Get(2) = 9
+assert v.Get(0) = 5
+
+//testing set function
+v.Set(1,16)
+assert v.Get(1) = 16
+
+//multiplying the first element by 4
+v.Set(0, v.Get(0)*4)
+assert v.Get(0) = 20
+
+//consuming pointer to int
+assert ConsumePointerToInt(v.Data()) = 16
+
+//constructing from go slice
+let w = new VectorOfIntWithSequence([5;2;8])
+
+assert w.Get(0) = 5
+assert w.Get(1) = 2
+assert w.Get(2) = 8
+
+let vPtr = new VectorOfIntPtr()
+vPtr.PushBack(null)
+vPtr.PushBack(v.Data())
+
+assert vPtr.Size() = 2
+assert vPtr.Len() = 2
+'''
