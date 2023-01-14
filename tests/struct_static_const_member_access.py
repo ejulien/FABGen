@@ -67,3 +67,24 @@ func Test(t *testing.T) {
 	assert.Equal(t, SimpleStructGetS(), "some string", "should be the same.")
 }
 '''
+
+test_fsharp = '''\
+    open NUnit.Framework
+
+type SimpleStruct() =
+    member val V = 3
+    with get, set
+
+let SimpleStructGetI() = 5
+let SimpleStructGetS() = "some string"
+
+[<Test>]
+let ``Test SimpleStruct``() = 
+    let v = SimpleStruct()
+    Assert.AreEqual(3, v.V, "should be the same.")
+    Assert.AreEqual(5, SimpleStructGetI(), "should be the same.")
+    Assert.AreEqual("some string", SimpleStructGetS(), "should be the same.")
+'''
+#This code defines a struct named SimpleStruct in F#, which has a single field "V" initialized to 3. Then it defines two functions SimpleStructGetI and SimpleStructGetS which just return 5 and "some string" respectively.
+#And the test function Test SimpleStruct creates an instance of SimpleStruct and assert that the value of V is 3, and both the functions return the expected values.
+#It uses the NUnit.Framework library for assertions, which would need to be imported in the project for this code to work.

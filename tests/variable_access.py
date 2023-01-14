@@ -91,3 +91,23 @@ func Test(t *testing.T) {
 	assert.Equal(t, GetU(), float32(7), "should be the same.")
 }
 '''
+
+test_fsharp = '''\
+    open FsUnit
+
+let ``Test`` () =
+    test <assert.AreEqual(GetV(), int32 2) "should be the same.">
+    SetV(int32 5)
+    test <assert.AreEqual(GetV(), int32 5) "should be the same.">
+
+    test <assert.AreEqual(GetS().GetV(), int32 4) "should be the same.">
+    GetS().SetV(int32 9)
+    test <assert.AreEqual(GetS().GetV(), int32 9) "should be the same.">
+
+    test <assert.AreEqual(GetW(), int32 14) "should be the same.">
+
+    test <assert.AreEqual(GetU(), float32 7) "should be the same.">
+    '''
+    #This test is for the functions GetV(), SetV(), GetS(), GetW() and GetU() in the package mytest. It is using the "testing" package and "github.com/stretchr/testify/assert" to test the functions. It is making sure that the values returned by these functions are as expected.
+    
+    

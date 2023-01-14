@@ -98,3 +98,26 @@ func Test(t *testing.T) {
 	assert.Equal(t, e.GetN().GetV(), int32(24), "should be the same.")
 }
 '''
+
+test_fsharp = '''\
+    open NUnit.Framework
+
+[<Test>]
+let ``test nested structs and their methods`` () =
+    let n = NewNestedStruct()
+    Assert.AreEqual(n.V, 8)
+    n.V <- n.V - 4
+    Assert.AreEqual(n.V, 4)
+
+    let e = NewEnclosingStruct()
+    Assert.AreEqual(e.N.V, 8)
+    e.N.V <- 12
+    Assert.AreEqual(e.N.V, 12)
+    e.N.V <- e.N.V * 4
+    Assert.AreEqual(e.N.V, 48)
+    e.N.V <- e.N.V / 2
+    Assert.AreEqual(e.N.V, 24)
+'''
+#The test function creates a variable n and assigns the result of calling NewNestedStruct() to it, which creates a new instance of a struct with default values. Then it asserts that the value of the property n.V match the expected value 8 using the Assert.AreEqual() function.
+
+#It then assigns the value n.V - 4 to the property n.V to change the value of its property V and asserts that the new value of the property n.V match the expected value `4.

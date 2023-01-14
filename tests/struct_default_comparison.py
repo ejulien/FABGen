@@ -78,3 +78,22 @@ func Test(t *testing.T) {
 	assert.NotEqual(t, b, c, "should not be the same.")
 }
 '''
+test_fsharp = '''\
+    open NUnit.Framework
+
+[<Test>]
+let ``test GetObj functions`` () =
+    let a = GetObj0()
+    let b = GetObj0()
+
+    // Check that a and b are the same
+    Assert.AreEqual(a, b)
+
+    let c = GetObj1()
+
+    // Check that a, b, and c are different
+    Assert.AreNotEqual(a, c)
+    Assert.AreNotEqual(b, c)
+'''
+#This test function creates three variables a, b, and c and assigns the result of calling GetObj0() to a and b, and the result of calling GetObj1() to c. Then it uses the Assert.AreEqual() function to check that the values of a and b are the same, and the Assert.AreNotEqual() function to check that the values of a, b, and c are different.
+

@@ -127,6 +127,17 @@ assert(my_test.base_class.static_override == 1)
 assert(my_test.derived_class.static_override == 42)
 '''
 
+
+#This is a Go test function that tests the behavior of several functions and methods related to inheritance and polymorphism. The test function is defined in the "mytest" package and imports the "testing" package as well as the "github.com/stretchr/testify/assert" package.
+
+#The test function creates a variable base and assigns the result of calling NewBaseClass() to it. Then it asserts that the result of calling base.BaseMethod() and base.BaseMethodOverride() is equal to int32(4) using the assert.Equal() function.
+
+#It then creates a variable derived and assigns the result of calling NewDerivedClass() to it. Then it asserts that the result of calling derived.BaseMethod(), derived.DerivedMethod() and derived.BaseMethodOverride() are equal to int32(4), int32(8) and int32(8) respectively using the assert.Equal() function.
+
+#It then calls the function ReadVirtualMethodThroughBaseClass(base) and ReadVirtualMethodThroughBaseClass(CastDerivedClassToBaseClass(derived)) and asserts that the results are equal to int32(6) and int32(9) respectively.
+
+#It then asserts that the values of the properties base.GetU(), derived.GetU(), base.GetV(), derived.GetV(), base.GetOverride(), base.GetStaticOverride(), `
+
 test_go = '''\
 package mytest
 
@@ -168,3 +179,34 @@ func Test(t *testing.T) {
 	assert.Equal(t, DerivedClassGetStaticOverride(), int32(42), "should be the same.")
 }
 '''
+
+test_fsharp = '''\
+    open NUnit.Framework
+
+[<Test>]
+let ``test class inheritance and polymorphism`` () =
+    let base = new BaseClass()
+    Assert.AreEqual(base.BaseMethod(), 4)
+    Assert.AreEqual(base.BaseMethodOverride(), 4)
+
+    let derived = new DerivedClass()
+    Assert.AreEqual(derived.BaseMethod(), 4)
+    Assert.AreEqual(derived.DerivedMethod(), 8)
+    Assert.AreEqual(derived.BaseMethodOverride(), 8)
+
+    // argument casting through inheritance tree
+    Assert.AreEqual(ReadVirtualMethodThroughBaseClass(base), 6)
+    Assert.AreEqual(ReadVirtualMethodThroughBaseClass(derived :> BaseClass), 9)
+
+    // member access through inheritance tree
+    Assert.AreEqual(base.U, 6)
+    Assert.AreEqual(derived.U, 6)
+    Assert.AreEqual(BaseClass.V, 7)
+    Assert.AreEqual(DerivedClass.V, 7)
+
+    Assert.AreEqual(base.GetOverride(), 4)
+    Assert.AreEqual(base.GetStaticOverride(), 1)
+    Assert.AreEqual(derived.GetOverride(), 12)
+    Assert.AreEqual(derived.GetStaticOverride(), 42)
+'''
+#This test function creates a variable base and assigns the result of calling the constructor of BaseClass to it. Then it asserts that the result of calling base.BaseMethod() and base.BaseMethodOverride() is equal to 4 using the Assert.AreEqual() function.

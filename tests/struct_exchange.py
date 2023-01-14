@@ -107,3 +107,24 @@ func Test(t *testing.T) {
 	assert.True(t, TestSimpleStruct(), "should be true.")
 }
 '''
+
+test_fsharp = '''\
+    open NUnit.Framework
+
+[<Test>]
+let ``test struct functions`` () =
+    // take by value
+    let s = ReturnSimpleStructByValue()
+    TakeSimpleStructByValue(s)
+    Assert.IsTrue(TestSimpleStruct())
+
+    let sp = ReturnSimpleStructByPointer()
+    TakeSimpleStructByPointer(sp)
+    Assert.IsTrue(TestSimpleStruct())
+
+    let sr = ReturnSimpleStructByRef()
+    TakeSimpleStructByRef(sr)
+    Assert.IsTrue(TestSimpleStruct())
+'''
+#This test function creates three variables s, sp, and sr and assigns the result of calling ReturnSimpleStructByValue(), ReturnSimpleStructByPointer() and ReturnSimpleStructByRef() respectively. Then it calls TakeSimpleStructByValue(s), TakeSimpleStructByPointer(sp) and TakeSimpleStructByRef(sr) passing s, sp and sr respectively. After that, it calls TestSimpleStruct() and asserts that it returns true using the Assert.IsTrue(TestSimpleStruct())
+

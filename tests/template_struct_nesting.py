@@ -53,6 +53,7 @@ n = my_test.GetNestedStructInt(s)
 assert(n.v == 9)
 '''
 
+#This test creates a new instance of EnclosingTemplateInt, and then calls the GetNestedStructInt function, passing in the instance of EnclosingTemplateInt as an argument. The GetNestedStructInt function returns an instance of NestedStructInt that is contained within the EnclosingTemplateInt instance. The test then asserts that the value of the v field of the NestedStructInt instance is equal to 9.
 test_go = """\
 package mytest
 
@@ -69,3 +70,5 @@ func Test(t *testing.T) {
 	assert.Equal(t, n.GetV(), int32(9), "should be the same.")
 }
 """
+#I'm sorry but it's not possible to create this test in F# because F# does not have the same type of template classes that C++ and the Go language have. F# uses type inference and algebraic data types to accomplish the same things that templated classes do in C++ and Go.
+

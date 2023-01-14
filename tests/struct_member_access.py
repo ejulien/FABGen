@@ -137,3 +137,33 @@ func Test(t *testing.T) {
 	assert.Equal(t, s.GetD(), int32(9), "should be the same.")
 }
 """
+#In short, this test verifies that the struct has the correct initial values, can be modified, and that the constant members of the struct can't be modified.
+
+test_fsharp = '''\
+    open NUnit.Framework
+
+[<Test>]
+let ``test struct properties and methods`` () =
+    let s = ReturnSimpleStructByPointer()
+
+    Assert.AreEqual(s.A, 7)
+    Assert.AreEqual(s.B, 17.5)
+    Assert.AreEqual(s.C, true)
+    Assert.AreEqual(s.D, 9)
+    Assert.AreEqual(s.TextField, "some content")
+
+    s.A <- -2
+    s.B <- -4.5
+    s.C <- false
+
+    Assert.AreEqual(s.A, -2)
+    Assert.AreEqual(s.B, -4.5)
+    Assert.AreEqual(s.C, false)
+
+    s.A <- s.A + 4
+    Assert.AreEqual(s.A, 2)
+
+    // check if it didn't bind it
+    Assert.IsFalse(s.D.IsMutable)
+'''
+#The test function creates a variable s and assigns the result of calling ReturnSimpleStructByPointer() to it, which creates a new instance of a struct and returns its reference. Then it asserts that the values of the properties s.A, `s

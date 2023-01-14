@@ -70,3 +70,16 @@ func Test(t *testing.T) {
 	assert.Equal(t, b.GetU(), int32(7), "should be the same.")
 }
 '''
+
+test_fsharp = '''\
+    open NUnit.Framework
+
+[<Test>]
+let ``test class casting`` () =
+    let a = GetBaseClass()
+    let b = CastBaseClassToDerivedClass(a)
+    Assert.AreEqual(b.U, 7)
+'''
+#The test function creates a variable a and assigns the result of calling GetBaseClass() to it. Then it creates a variable b and assigns the result of calling CastBaseClassToDerivedClass(a) to it. CastBaseClassToDerivedClass(a) takes a variable of a base class and casts it to a derived class. After that, it uses the Assert.AreEqual() function to check that the value of the property b.U is equal to 7.
+
+#It's important to note that in F#, class casting is done by using the :> operator and it's not a function.

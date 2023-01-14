@@ -65,3 +65,18 @@ func Test(t *testing.T) {
 	assert.Equal(t, u.GetV(), int32(4), "should be the same.")
 }
 """
+
+test_fsharp = '''\
+    open NUnit.Framework
+
+[<Test>]
+let ``test struct creation`` () =
+    let s = new SimpleStruct()
+    let u = new SimpleStruct(4)
+
+    Assert.AreEqual(s.V, -8)
+    Assert.AreEqual(u.V, 4)
+'''
+#The test function creates a variable s and assigns the result of calling the constructor of SimpleStruct with no arguments to it, which creates a new instance of a struct with default values. Then it creates a variable u and assigns the result of calling the constructor of SimpleStruct with the argument 4 which creates a new instance of the same struct with a custom value for the property V. After that, it uses the Assert.AreEqual() function to check that the value of the property s.V match the expected value -8 and the value of the property u.V match the expected value 4.
+
+#This test is checking if the constructor new SimpleStruct() creates a struct with the default value, and if the constructor new SimpleStruct(4) creates a struct with the custom value.

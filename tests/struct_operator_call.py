@@ -170,3 +170,40 @@ func Test(t *testing.T) {
 	assert.True(t, a.Ne(b), "should be the same.")
 }
 """
+
+test_fsharp = '''\
+    open NUnit.Framework
+
+[<Test>]
+let ``test simple struct math operations`` () =
+    let a, b = NewSimpleStruct 4, NewSimpleStruct 8
+
+    let s = a.AddSimpleStruct b
+    Assert.AreEqual(s.V, 12)
+    s.InplaceAddSimpleStruct b
+    Assert.AreEqual(s.V, 20)
+    s.InplaceAddInt 4
+    Assert.AreEqual(s.V, 24)
+
+    let s = s.DivInt 4
+    Assert.AreEqual(s.V, 6)
+    s.InplaceDivInt 3
+    Assert.AreEqual(s.V, 2)
+    s.InplaceAddSimpleStruct a
+    Assert.AreEqual(s.V, 6)
+
+    let s = s.MulSimpleStruct a
+    Assert.AreEqual(s.V, 24)
+    s.InplaceMulInt 2
+    Assert.AreEqual(s.V, 48)
+
+    let s = s.SubSimpleStruct b
+    Assert.AreEqual(s.V, 40)
+    s.InplaceSubInt 32
+    Assert.AreEqual(s.V, 8)
+
+    let c = a.MulInt 2
+    Assert.IsTrue(c.Eq b)
+    Assert.IsTrue(a.Ne b)
+'''
+#The test function creates two variables a and b and assigns the result of calling NewSimpleStruct() to them, which creates new instances of structs with specified values. Then it performs various mathematical operations on these structs by using the methods like AddSimpleStruct, InplaceAddSimpleStruct, InplaceAddInt, DivInt, InplaceDivInt, MulSimpleStruct, InplaceMulInt, SubSimpleStruct, InplaceSubInt, Eq, and Ne. The test function also uses the operators +, +=, /, /=, *, *=, -, -=, ==, and !=. The test function asserts that the results of these operations are correct.

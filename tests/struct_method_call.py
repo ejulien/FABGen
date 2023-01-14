@@ -139,3 +139,41 @@ func Test(t *testing.T) {
 	assert.Equal(t, sOut2.GetA(), int32(28), "should be the same.")
 }
 '''
+
+test_fsharp = '''\
+    open NUnit.Framework
+
+[<Test>]
+let ``test struct properties and methods`` () =
+    let s = NewSimpleStructSimplestConstructor()
+
+    Assert.AreEqual(s.A, 1)
+    Assert.IsTrue(s.SetAWithV0V1(8, 2))
+
+    Assert.AreEqual(s.A, 10)
+
+    Assert.AreEqual(s.SetA(9), 9)
+    Assert.AreEqual(s.A, 9)
+
+    Assert.AreEqual(s.StaticInt, 4)
+
+    let sOut = GetModifyArgOut()
+    Assert.AreEqual(sOut.A, 4)
+
+    let sOut = GetModifyArgOutWithK(NewSimpleStructWithV(5))
+    Assert.AreEqual(sOut.A, 16)
+
+    let s2 = NewSimpleStruct2WithOtherStruct(sOut)
+    Assert.AreEqual(s2.A, 16)
+
+    let sOut2 = GetModifyArgOut2()
+    Assert.AreEqual(sOut2.A, 4)
+
+    let sOut2 = GetModifyArgOut2WithK(s)
+    Assert.AreEqual(sOut2.A, 28)
+'''
+#The test function creates a variable s and assigns the result of calling NewSimpleStructSimplestConstructor() to it, which creates a new instance of a struct with default values. Then it asserts that the value of the property s.A match the expected value 1 using the Assert.AreEqual() function.
+
+#It then calls the method s.SetAWithV0V1(8, 2) on the struct s to change the value of its property A and asserts that the returned value is true using the Assert.IsTrue() function. It asserts that the new value of the property s.A match the expected value 10 using the Assert.AreEqual() function.
+
+#It then calls the method s.SetA(9) on the struct s to change the value of its property A and asserts that the returned value is 9 using the Assert.AreEqual() function. It asserts that the new value of the property s.A match the expected value 9 using the Assert.AreEqual() function.

@@ -299,3 +299,4 @@ vPtr.PushBack(v.Data())
 assert vPtr.Size() = 2
 assert vPtr.Len() = 2
 '''
+#This code is testing the functionality of Vector of Int in go and its equivalent in F#. It is creating a new VectorOfInt, pushing elements to it, accessing its elements using different functions like At, Get and Set and checking if the returned values are as expected.

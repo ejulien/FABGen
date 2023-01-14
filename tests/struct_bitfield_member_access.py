@@ -87,3 +87,30 @@ func Test(t *testing.T) {
 	assert.Equal(t, s.GetC(), int32(2), "should be the same.")
 }
 '''
+
+test_fsharp = '''\
+    open NUnit.Framework
+
+[<Test>]
+let ``test simple struct`` () =
+    let s = SimpleStruct()
+
+    // Check initial values
+    Assert.AreEqual(s.A, 3)
+    Assert.AreEqual(s.B, 11)
+    Assert.AreEqual(s.C, 1)
+
+    // Update values
+    s.A <- 1
+    s.B <- 7
+    s.C <- 2
+
+    // Check updated values
+    Assert.AreEqual(s.A, 1)
+    Assert.AreEqual(s.B, 7)
+    Assert.AreEqual(s.C, 2)
+'''
+#It's important to note that in F# properties are usually defined as member variables and accessed directly, so you don't need to define getter/setter methods like in Go.
+#Also, the test function is marked with the [<Test>] attribute to indicate that it is a test function, and the Assert.AreEqual() function from the NUnit.Framework library is used to check that the values match the expected values.
+
+#Please note that this is just an example, and you'll need to adjust the code to match the design of the actual struct you're testing.

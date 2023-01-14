@@ -109,3 +109,20 @@ func Test(t *testing.T) {
 	assert.Equal(t, C.GetBaseValue(), int32(12), "should be the same.")
 }
 '''
+
+test_fsharp = '''\
+    open System
+
+let test() = 
+    let b = GetB()
+    let c = GetC()
+    let bResult = b.GetBaseValue() = 12
+    let cResult = c.GetBaseValue() = 12
+    let bCastResult = (CastAToB b).GetB() = 3
+    let cCastResult = (CastAToC c).GetC() = 7
+    bResult && cResult && bCastResult && cCastResult
+
+[<Test>]
+let ``Test``() = 
+    Assert.IsTrue(test())
+    '''
