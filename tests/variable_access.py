@@ -93,21 +93,26 @@ func Test(t *testing.T) {
 '''
 
 test_fsharp = '''\
-    open FsUnit
+   open Xunit
 
+[<Fact>]
 let ``Test`` () =
-    test <assert.AreEqual(GetV(), int32 2) "should be the same.">
-    SetV(int32 5)
-    test <assert.AreEqual(GetV(), int32 5) "should be the same.">
+    Assert.Equal(GetV(), 2, "should be the same.")
+    SetV(5)
+    Assert.Equal(GetV(), 5, "should be the same.")
 
-    test <assert.AreEqual(GetS().GetV(), int32 4) "should be the same.">
-    GetS().SetV(int32 9)
-    test <assert.AreEqual(GetS().GetV(), int32 9) "should be the same.">
+    Assert.Equal(GetS().GetV(), 4, "should be the same.")
+    GetS().SetV(9)
+    Assert.Equal(GetS().GetV(), 9, "should be the same.")
 
-    test <assert.AreEqual(GetW(), int32 14) "should be the same.">
+    Assert.Equal(GetW(), 14, "should be the same.")
 
-    test <assert.AreEqual(GetU(), float32 7) "should be the same.">
+    Assert.Equal(GetU(), 7.0f, "should be the same.")
+
     '''
-    #This test is for the functions GetV(), SetV(), GetS(), GetW() and GetU() in the package mytest. It is using the "testing" package and "github.com/stretchr/testify/assert" to test the functions. It is making sure that the values returned by these functions are as expected.
+#In this version of the test, the open Xunit statement imports the necessary XUnit libraries. The test is decorated with [<Fact>] attribute, this means this function will be considered as a test function. The test function named "Test" uses the "Assert.Equal" method to make several equality assertions between the output of various functions (GetV(), SetV(), GetS().GetV(), GetS().SetV(), GetW(), and GetU()) and expected values (2, 5, 4, 9, 14, and 7.0f). If any of these assertions fail, the test will fail and the corresponding message "should be the same." will be printed.
+
+
+
     
     
