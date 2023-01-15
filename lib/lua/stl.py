@@ -8,6 +8,7 @@ def bind_stl(gen):
 	gen.add_include('vector', True)
 	gen.add_include('string', True)
 
+	# It converts a C++ string to a Lua string and vice versa
 	class LuaStringConverter(lang.lua.LuaTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
 			return 'bool %s(lua_State *L, int idx) { return lua_type(L, idx) == LUA_TSTRING; }\n' % self.check_func +\
@@ -71,6 +72,7 @@ int %s(lua_State *L, void *obj, OwnershipPolicy) {
 	return gen.bind_type(LuaStdFunctionConverter(type))
 
 
+# It converts a Lua table to a std::vector
 class LuaTableToStdVectorConverter(lang.lua.LuaTypeConverterCommon):
 	def __init__(self, type, T_conv):
 		native_type = 'std::vector<%s>' % T_conv.ctype

@@ -7,6 +7,7 @@ import lang.lua
 def bind_std(gen):
 	gen.add_include('cstdint', True)
 
+	# It converts a C++ bool to a Lua boolean and vice versa
 	class LuaBoolConverter(lang.lua.LuaTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
 			return 'bool %s(lua_State *L, int idx) { return lua_isboolean(L, idx) ? true : false; }\n' % self.check_func +\
@@ -15,12 +16,14 @@ def bind_std(gen):
 
 	gen.bind_type(LuaBoolConverter('bool'))
 
+	# It converts Python integers to Lua integers and vice versa
 	class LuaIntConverter(lang.lua.LuaTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
 			return 'bool %s(lua_State *L, int idx) { return lua_isinteger(L, idx); }\n' % self.check_func +\
 			'void %s(lua_State *L, int idx, void *obj) { *((%s*)obj) = (%s)lua_tointeger(L, idx); }\n' % (self.to_c_func, self.ctype, self.ctype) +\
 			'int %s(lua_State *L, void *obj, OwnershipPolicy) { lua_pushinteger(L, *((%s*)obj)); return 1; }\n' % (self.from_c_func, self.ctype)
 
+	# Binding the types to the LuaIntConverter class.
 	gen.bind_type(LuaIntConverter('char'))
 	gen.bind_type(LuaIntConverter('short'))
 	gen.bind_type(LuaIntConverter('int'))
@@ -42,6 +45,7 @@ def bind_std(gen):
 	gen.bind_type(LuaIntConverter('intptr_t'))
 	gen.bind_type(LuaIntConverter('size_t'))
 
+	# It binds the C++ type 'float' to the Lua type 'number'
 	class LuaDoubleConverter(lang.lua.LuaTypeConverterCommon):
 		def get_type_glue(self, gen, module_name):
 			return 'bool %s(lua_State *L, int idx) { return lua_isnumber(L, idx); }\n' % self.check_func +\
@@ -51,6 +55,7 @@ def bind_std(gen):
 	gen.bind_type(LuaDoubleConverter('float'))
 	gen.bind_type(LuaDoubleConverter('double'))
 
+	# It converts a const char* to a Lua string, and vice versa
 	class LuaConstCharPtrConverter(lang.lua.LuaTypeConverterCommon):
 		def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None):
 			super().__init__(type, to_c_storage_type, bound_name, from_c_storage_type, True)

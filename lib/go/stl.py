@@ -14,6 +14,7 @@ def bind_stl(gen):
 	gen.add_include('vector', True)
 	gen.add_include('string', True)
 	
+	# It converts a Python string to a C string, and a C string to a Python string
 	class GoStringConverter(lang.go.GoTypeConverterCommon):
 		def __init__(self, type, to_c_storage_type=None, bound_name=None, from_c_storage_type=None, needs_c_storage_class=False):
 			super().__init__(type, to_c_storage_type, bound_name, from_c_storage_type, needs_c_storage_class)
